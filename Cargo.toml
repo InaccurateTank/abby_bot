@@ -1,0 +1,21 @@
+[package]
+name = "abby_bot"
+authors = ["InaccurateTank (Tank#1623)"]
+description = "A poorly assembled custom chatbot"
+repository = "https://github.com/InaccurateTank"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+poise = { version = "0.5.*" }
+tokio = { version = "1.23", features = ["macros", "rt-multi-thread", "signal"] }
+regex = { version = "1.7" }
+time = { version = "0.3.*", features = ["formatting", "local-offset"] }
+# owo-colors = "3"
+
+[dev-dependencies]
+brunch = "0.3.*"
+
+# [[bench]]
+# name = "test"
+# harness = false
