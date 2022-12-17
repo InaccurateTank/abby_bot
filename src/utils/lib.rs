@@ -30,7 +30,6 @@ pub async fn cmd_err(reply: &str, term: &str, ctx: Context<'_>, msg: poise::Repl
 			term,
 			ctx.guild().unwrap().name);
 	}
-
 	Ok(())
 }
 
