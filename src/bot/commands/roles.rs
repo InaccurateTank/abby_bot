@@ -1,26 +1,10 @@
-use crate::{Context, Error};
 use std::{
-	time::Duration, collections::HashMap,
-	// str::FromStr
+	time::Duration,
+	collections::HashMap
 };
 use poise::serenity_prelude as serenity;
-use time;
-
-async fn fetch_all_roles(ctx: Context<'_>) -> Result<Vec<serenity::builder::CreateSelectMenuOption>, Error>{
-	let hash = ctx.guild()
-		.expect("Could not fetch guild from cache.")
-		.roles;
-	let mut list: Vec<serenity::builder::CreateSelectMenuOption> = Vec::new();
-	for (rid, r) in hash {
-		if r.name != "@everyone" {
-			// let h = if ctx.author().has_role(&ctx, ctx.guild_id().unwrap(), &r).await? { true } else { false };
-			list.push(serenity::builder::CreateSelectMenuOption::new(r.name, rid)
-				// .default_selection(h)
-				.to_owned())
-		}
-	};
-	Ok(list)
-}
+// use time;
+use abby_utils::{Context, Error, cmd_err};
 
 /// Role Test
 #[poise::command(
@@ -33,7 +17,7 @@ async fn fetch_all_roles(ctx: Context<'_>) -> Result<Vec<serenity::builder::Crea
 pub async fn roles(
 	ctx:Context<'_>
 ) -> Result<(), Error> {
-	let roles = fetch_all_roles(ctx).await?;
+	let roles = abby_utils::all_roles_select(ctx, None).await?;
 
 	let reply = ctx.send(|b| {
 		b.content("Please choose roles from the list.")
@@ -63,10 +47,11 @@ pub async fn roles(
 	let interaction_id = match &interaction {
 		Some(m) => &m.data.custom_id,
 		None => {
-			reply.edit(ctx, |b| {
-					b.components(|b| b).content("Interaction timed out, please try again.")
-				})
-				.await?;
+			// reply.edit(ctx, |b| {
+			// 		b.components(|b| b).content("Interaction timed out, please try again.")
+			// 	})
+			// 	.await?;
+			cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
 			return Ok(());
 		}
 	};
@@ -76,24 +61,25 @@ pub async fn roles(
 			match &interaction {
 				Some(m) => m.data.values.clone(),
 				None => {
-					reply.edit(ctx, |b| {
-							b.components(|b| b).content(":warning: Interaction Has No Data :warning:")
-						})
-						.await?;
-					eprintln!("Interaction Has No Data in \"{}\"", ctx.guild().unwrap().name);
+					// reply.edit(ctx, |b| {
+					// 		b.components(|b| b).content(":warning: Interaction Has No Data :warning:")
+					// 	})
+					// 	.await?;
+					// eprintln!("Interaction Has No Data in \"{}\"", ctx.guild().unwrap().name);
+					cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
 					return Ok(());
 				}
 			}
 		},
-		other => {
-			reply.edit(ctx, |b| {
-					b.components(|b| b).content(":warning: Unknown Interaction ID :warning:")
-				})
-				.await?;
-			eprintln!("{} - Unknown Interaction ID in \"{}\": {:?}", time::OffsetDateTime::now_utc()
-					.to_offset(time::UtcOffset::current_local_offset()?)
-					.format(&time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second][offset_hour sign:mandatory]:[offset_minute]")?)?,
-				ctx.guild().unwrap().name, other);
+		o => {
+			// reply.edit(ctx, |b| {
+			// 		b.components(|b| b).content(":warning: Unknown Interaction ID :warning:")
+			// 	})
+			// 	.await?;
+			// eprintln!("{} - Unknown Interaction ID in \"{}\": {:?}",
+			// 	stamp()?,
+			// 	ctx.guild().unwrap().name, other);
+			cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {}", o).as_str(), ctx, reply).await?;
 			return Ok(());
 		}
 	};

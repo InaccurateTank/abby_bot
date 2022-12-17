@@ -1,12 +1,13 @@
 use poise::serenity_prelude as serenity;
+use abby_utils::{Context, Error, Data};
 
 mod commands;
 mod events;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+// type Error = Box<dyn std::error::Error + Send + Sync>;
+// type Context<'a> = poise::Context<'a, Data, Error>;
 
-pub struct Data {} // User data, which is stored and accessible in all command invocations
+// pub struct Data {} // User data, which is stored and accessible in all command invocations
 
 #[tokio::main]
 	async fn main() {

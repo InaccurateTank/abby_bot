@@ -6,7 +6,6 @@ version = 3
 name = "abby_workshop"
 version = "0.1.0"
 dependencies = [
- "brunch",
  "poise",
  "regex",
  "time",
@@ -89,16 +88,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cce20737498f97b993470a6e536b8523f0af7892a4f928cceb1ac5e52ebe7e"
 dependencies = [
  "generic-array",
-]
-
-[[package]]
-name = "brunch"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27e5390cbbd2d935ef557c00efa33a49ed3962e2702842d8fb71d04bbd7e16c9"
-dependencies = [
- "dactyl",
- "unicode-width",
 ]
 
 [[package]]
@@ -230,15 +219,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "dactyl"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9727ada0af62b62efdc175f70ab80bc7198869af62ac923f6367be1e9e81a495"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]
