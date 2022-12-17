@@ -1,5 +1,5 @@
 [package]
-name = "abby_bot"
+name = "abby_workshop"
 authors = ["InaccurateTank (Tank#1623)"]
 description = "A poorly assembled custom chatbot"
 repository = "https://github.com/InaccurateTank"
@@ -14,6 +14,14 @@ time = { version = "0.3.*", features = ["formatting", "local-offset"] }
 
 [dev-dependencies]
 brunch = "0.3.*"
+
+[[bin]]
+name = "abby_bot"
+path = "src/bot/main.rs"
+
+[lib]
+name = "abby_utils"
+path = "src/utils/lib.rs"
 
 # [[bench]]
 # name = "test"

@@ -5,14 +5,20 @@ use poise::serenity_prelude as serenity;
 
 pub async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageComponentInteraction) -> Result<(), Error> {
 	let data = &mci.data;
+	let (front, back) = data.custom_id.split_once('.')
+		.expect("Not a splittable ID");
 
-	match data.custom_id.as_str() {
-		"rolelist.all" => {},
-		_ => {}
+	match front {
+		"rolelist" => {
+			match back {
+				o => {}
+			}
+		}
+		"roleadd" => {}
+		o => {}
 	}
 
-
-	if data.custom_id.starts_with("roleadd") {
+	if front == "roleadd" {
 		let (_, id) = data.custom_id.split_once('.')
 			.unwrap();
 		let mut remove = "Added";

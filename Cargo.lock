@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "abby_bot"
+name = "abby_workshop"
 version = "0.1.0"
 dependencies = [
  "brunch",
