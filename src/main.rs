@@ -26,17 +26,22 @@ pub struct Data {} // User data, which is stored and accessible in all command i
 		event_handler: |ctx, event, _framework, _data| {
 			Box::pin(async move {
 				match event {
-					poise::Event::Ready { data_about_bot: ready } => {
-						println!("{} is connected!", ready.user.name);
+					poise::Event::Ready { data_about_bot } => {
+						println!("{} is connected!", data_about_bot.user.name);
 						ctx.set_activity(serenity::Activity::watching("Everything")).await;
 					},
-					poise::Event::Message { new_message: msg } => {
-						if !msg.is_own(&ctx.cache) {
-							let m = msg.content.as_str();
-							events::borger(ctx, msg, &m).await?;
-							events::v(ctx, msg, &m).await?;
+					poise::Event::Message { new_message } => {
+						if !new_message.is_own(&ctx.cache) {
+							let m = new_message.content.as_str();
+							events::borger(ctx, new_message, &m).await?;
+							events::v(ctx, new_message, &m).await?;
 						}
 					},
+					poise::Event::InteractionCreate { interaction } => {
+						if let Some(mci) = &interaction.clone().message_component() {
+							events::roles_click(ctx, mci).await?;
+						}
+					}
 					_ => ()
 				}
 				Ok(())
@@ -65,7 +70,7 @@ pub struct Data {} // User data, which is stored and accessible in all command i
 			})
 		});
 
-	framework.run()
-		.await
-		.unwrap();
+	if let Err(why) = framework.run().await {
+		println!("Client error: {:?}", why);
+	}
 }

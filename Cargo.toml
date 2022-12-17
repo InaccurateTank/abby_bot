@@ -11,7 +11,6 @@ poise = { version = "0.5.*" }
 tokio = { version = "1.23", features = ["macros", "rt-multi-thread", "signal"] }
 regex = { version = "1.7" }
 time = { version = "0.3.*", features = ["formatting", "local-offset"] }
-# owo-colors = "3"
 
 [dev-dependencies]
 brunch = "0.3.*"

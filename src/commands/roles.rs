@@ -1,7 +1,7 @@
 use crate::{Context, Error};
 use std::{
-	time::Duration,
-	str::FromStr
+	time::Duration, collections::HashMap,
+	// str::FromStr
 };
 use poise::serenity_prelude as serenity;
 use time;
@@ -13,9 +13,9 @@ async fn fetch_all_roles(ctx: Context<'_>) -> Result<Vec<serenity::builder::Crea
 	let mut list: Vec<serenity::builder::CreateSelectMenuOption> = Vec::new();
 	for (rid, r) in hash {
 		if r.name != "@everyone" {
-			let h = if ctx.author().has_role(&ctx, ctx.guild_id().unwrap(), &r).await? { true } else { false };
+			// let h = if ctx.author().has_role(&ctx, ctx.guild_id().unwrap(), &r).await? { true } else { false };
 			list.push(serenity::builder::CreateSelectMenuOption::new(r.name, rid)
-				.default_selection(h)
+				// .default_selection(h)
 				.to_owned())
 		}
 	};
@@ -40,7 +40,7 @@ pub async fn roles(
 			.components(|c| {
 				c.create_action_row(|row| {
 					row.create_select_menu(|menu| {
-						menu.custom_id("roles.test");
+						menu.custom_id("rolelist.all");
 						menu.placeholder("Select a role");
 						menu.min_values(0);
 						menu.max_values(roles.len() as u64);
@@ -72,7 +72,7 @@ pub async fn roles(
 	};
 
 	let selected = match interaction_id.as_str() {
-		"roles.test" => {
+		"rolelist.all" => {
 			match &interaction {
 				Some(m) => m.data.values.clone(),
 				None => {
@@ -104,15 +104,75 @@ pub async fn roles(
 	// 	.await?;
 	// ctx.data().rlist
 
-	let mut mem = ctx.author_member()
-		.await
-		.expect("Could not get Member data")
-		.into_owned();
+	// let mut mem = ctx.author_member()
+	// 	.await
+	// 	.expect("Could not get Member data")
+	// 	.into_owned();
 
-	for role in selected {
-		let rid = serenity::RoleId::from_str(role.as_str())?;
-		mem.add_role(ctx, rid).await?
-	}
+	// for role in selected {
+	// 	let rid = serenity::RoleId::from_str(role.as_str())?;
+	// 	mem.add_role(ctx, rid).await?
+	// }
+
+	let mut new: HashMap<String, String> = HashMap::new();
+
+	for rid in selected {
+		let name = ctx.guild().unwrap().roles.iter()
+			.find_map(|(key, val)| if key.to_string() == rid { Some(val.name.to_owned()) } else { None });
+		new.insert(rid, name.unwrap());
+	};
+
+	reply.delete(ctx).await?;
+	// interaction.unwrap().delete_original_interaction_response(ctx).await?;
+
+	// let secondary = ctx.channel_id().send_message(ctx, |b| {
+	// 	b.content("Please choose roles from the list.")
+	// 		.components(|c| {
+	// 			c.create_action_row(|row| {
+	// 				for (rid, name) in new {
+	// 					row.create_button(|button| {
+	// 						button.custom_id(format!("roleadd.{}", rid));
+	// 						button.label(name);
+	// 						button.style(serenity::ButtonStyle::Primary)
+	// 					});
+	// 				}
+	// 				row
+	// 			})
+	// 		})
+	// }).await?;
+
+	// let secondary_inter = secondary
+	// 	.await_component_interaction(ctx)
+	// 	.await;
+
+	// let secondary_id = match &secondary_inter {
+	// 	Some(m) => &m.data.custom_id,
+	// 	None => {
+	// 		reply.edit(ctx, |b| {
+	// 				b.components(|b| b).content("Interaction timed out, please try again.")
+	// 			})
+	// 			.await?;
+	// 		return Ok(());
+	// 	}
+	// };
+
+	// ctx.channel_id().say(ctx, format!("{}",secondary_id)).await?;
+
+	ctx.channel_id().send_message(ctx, |b| {
+		b.content("Please choose roles from the list.")
+			.components(|c| {
+				c.create_action_row(|row| {
+					for (rid, name) in new {
+						row.create_button(|button| {
+							button.custom_id(format!("roleadd.{}", rid));
+							button.label(name);
+							button.style(serenity::ButtonStyle::Primary)
+						});
+					}
+					row
+				})
+			})
+	}).await?;
 
 	Ok(())
 }
