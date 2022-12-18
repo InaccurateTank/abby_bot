@@ -2,7 +2,7 @@
 name = "abby_workshop"
 authors = ["InaccurateTank (Tank#1623)"]
 description = "A poorly assembled custom chatbot"
-repository = "https://github.com/InaccurateTank"
+repository = "https://git.inaccuratetank.gay/inaccuratetank/abby_bot"
 version = "0.1.0"
 edition = "2021"
 
