@@ -30,12 +30,12 @@ mod events;
 					poise::Event::Ready { data_about_bot } => {
 						println!("{} is connected!", data_about_bot.user.name);
 						ctx.set_activity(serenity::Activity::watching("Everything")).await;
-						for guild in &data_about_bot.guilds {
-							if guild.unavailable {
-								poise::builtins::register_in_guild(&ctx, &framework.options().commands, guild.id).await?;
-								println!("Registered commands in guild {}", guild.id.name(&ctx).unwrap());
-							}
-						}
+						// for guild in &data_about_bot.guilds {
+						// 	if guild.unavailable {
+						// 		poise::builtins::register_in_guild(&ctx, &framework.options().commands, guild.id).await?;
+						// 		println!("Registered commands in guild {}", guild.id.name(&ctx).unwrap());
+						// 	}
+						// }
 					},
 					poise::Event::Message { new_message } => {
 						if !new_message.is_own(&ctx.cache) {
