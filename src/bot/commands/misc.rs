@@ -50,6 +50,29 @@ pub async fn about(
 				})
 		})
 	}).await?;
+
+	ctx.send(|b| {
+		b.content("")
+		.embed(|e|{
+			e.color(serenity::utils::Color::LIGHTER_GREY);
+			e.field("Pronouns", "She/Her\nHe/Him\nThey/Them\nIt/Its", true);
+			e.field("Users", "2\n0\n3\n0", true)
+		});
+		b.components(|c| {
+			c.create_action_row(|row| {
+				row.create_button(|button| {
+					button.custom_id("roleadd.roles");
+					button.label("Select Roles");
+					button.style(serenity::ButtonStyle::Primary)
+				});
+				row.create_button(|button| {
+					button.custom_id("edit.roles");
+					button.label("Edit Roles");
+					button.style(serenity::ButtonStyle::Secondary)
+				})
+			})
+		})
+	}).await?;
 	Ok(())
 }
 
