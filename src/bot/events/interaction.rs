@@ -41,6 +41,22 @@ pub async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageCompone
 					})
 				}).await?;
 		}
+		"edit" => {
+			let test = mci.message.components.clone();
+			// let mut list: Vec<String> = Vec::new();
+			for row in test {
+				for arc in row.components {
+					if let serenity::ActionRowComponent::Button(button) = arc {
+						let id = button.custom_id.unwrap();
+						let (f, b) = id.split_once('.').unwrap();
+						if f == "roleadd" {
+							println!("{}", b);
+							// list.push(b.to_string());
+						}
+					}
+				}
+			}
+		},
 		_ => {
 			inter_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {}", &data.custom_id).as_str(), ctx, mci).await?;
 			return Ok(());

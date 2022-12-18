@@ -156,6 +156,13 @@ pub async fn roles(
 						});
 					}
 					row
+				});
+				c.create_action_row(|row| {
+					row.create_button(|button| {
+						button.custom_id("edit.roles");
+						button.label("Edit Roles");
+						button.style(serenity::ButtonStyle::Secondary)
+					})
 				})
 			})
 	}).await?;
