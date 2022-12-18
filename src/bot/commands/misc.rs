@@ -2,7 +2,6 @@ use crate::{Context, Error};
 use poise::serenity_prelude as serenity;
 
 const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
-const NAME: &'static str = "Abby";
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
 const REPO: &'static str = env!("CARGO_PKG_REPOSITORY");
@@ -40,7 +39,7 @@ pub async fn about(
 	ctx.send(|b| {
 		b.content("")
 		.embed(|e|{
-			e.title(format!("Hello I'm {}!", NAME))
+			e.title("Hello I'm Abby!")
 				.color(serenity::utils::Color::new(663366))
 				.description(DESCRIPTION)
 				.field("Creator", AUTHORS.replace(":", "\n"), true)
@@ -54,7 +53,7 @@ pub async fn about(
 	Ok(())
 }
 
-/// Registers slash commands either within this server or globally.
+/// Registers slash commands either within this server or globally. Only usable by the bot owner.
 #[poise::command(
 	prefix_command,
 	category="General", hide_in_help,

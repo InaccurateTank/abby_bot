@@ -8,25 +8,6 @@ pub async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageCompone
 		.expect("Not a splittable ID");
 
 	match front {
-		// "rolelist" => {
-		// 	match back {
-		// 		_ => {
-		// 			// mci.create_interaction_response(ctx, |f| {
-		// 			// 	f.kind(serenity::InteractionResponseType::UpdateMessage).interaction_response_data(|d| {
-		// 			// 			d.components(|c| c).content(":warning: Unknown Interaction ID :warning:")
-		// 			// 		})
-		// 			// }).await?;
-
-		// 			// eprintln!("{} - Unknown Interaction ID in \"{}\": {:?}",
-		// 			// 	stamp()?,
-		// 			// 	mci.guild_id.unwrap().name(ctx.cache.to_owned()).unwrap(),
-		// 			// 	o);
-		// 			inter_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {}", &data.custom_id).as_str(), ctx, mci).await?;
-
-		// 			return Ok(());
-		// 		}
-		// 	}
-		// }
 		"roleadd" => {
 			let mut remove = "Added";
 			let rid = serenity::RoleId::from_str(back)
