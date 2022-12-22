@@ -1,3 +1,1 @@
 # abby_bot
-
-v
