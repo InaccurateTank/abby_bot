@@ -1,11 +1,12 @@
 use crate::{Context, Error};
+use abby_utils::concat;
 
-fn concat(a: &str, b: &str) -> String {
-  let mut result: String = String::with_capacity(a.len() + b.len());
-  result += a;
-  result += b;
-  result
-}
+// fn concat(a: &str, b: &str) -> String {
+//   let mut result: String = String::with_capacity(a.len() + b.len());
+//   result += a;
+//   result += b;
+//   result
+// }
 
 fn byte_to_emoji(value: u8) -> String {
   let mut buffer = String::new();
@@ -34,7 +35,7 @@ fn byte_to_emoji(value: u8) -> String {
 /// Technically just translates messages into bytecode. Not that this is any less accurate of a bottom translator than, say, a wild guess.
 #[poise::command(
   slash_command,
-  category = "Toys"
+  category = "Misc"
 )]
 pub async fn bottomify(
   ctx: Context<'_>,

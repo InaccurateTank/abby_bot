@@ -3,17 +3,21 @@ name = "abby_workshop"
 authors = ["InaccurateTank (Tank#1623)"]
 description = "A poorly assembled custom chatbot"
 repository = "https://git.inaccuratetank.gay/inaccuratetank/abby_bot"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-poise = { version = "0.5.*" }
-tokio = { version = "1.23", features = ["macros", "rt-multi-thread", "signal"] }
+poise = { version = "0.5" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 regex = { version = "1.7" }
-time = { version = "0.3.*", features = ["formatting", "local-offset"] }
+time = { version = "0.3", features = ["formatting", "local-offset"] }
+gumdrop = { version = "0.8" }
+sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls", "sqlite" ] }
+serde = { version = "1" }
+toml = { version = "0.7" }
 
-# [dev-dependencies]
-# brunch = "0.3.*"
+[dev-dependencies]
+brunch = "0.4"
 
 [[bin]]
 name = "abby_bot"
@@ -23,6 +27,6 @@ path = "src/bot/main.rs"
 name = "abby_utils"
 path = "src/utils/lib.rs"
 
-# [[bench]]
-# name = "test"
-# harness = false
+[[bench]]
+name = "test"
+harness = false

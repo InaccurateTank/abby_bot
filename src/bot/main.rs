@@ -1,16 +1,50 @@
 use poise::serenity_prelude as serenity;
-use abby_utils::{Context, Error, Data};
+use gumdrop::Options;
+use sqlx::{migrate::MigrateDatabase, Sqlite, sqlite::SqlitePoolOptions};
+use abby_utils::{Context, Error, Data, concat, Config};
 
 mod commands;
 mod events;
 
-// type Error = Box<dyn std::error::Error + Send + Sync>;
-// type Context<'a> = poise::Context<'a, Data, Error>;
-
-// pub struct Data {} // User data, which is stored and accessible in all command invocations
+#[derive(Debug, Options)]
+struct Opts {
+	help: bool,
+	#[options(help = "Set data folder location.", default = "data/")]
+	data: String
+}
 
 #[tokio::main]
-	async fn main() {
+async fn main() -> Result<(), Error> {
+	// Opts
+	let opts = Opts::parse_args_default_or_exit();
+
+	// Folder from opts
+	let data_folder = if !opts.data.ends_with("/") {
+		concat(&opts.data, "/")
+	} else {
+		opts.data
+	};
+
+	// Config
+	let config = Config::new(&data_folder)?;
+	serenity::token::validate(&config.token)?;
+
+	// DB
+	let db_url = format!("sqlite:{}sqlite.db", &data_folder);
+	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
+		println!("Creating database {}", &db_url);
+		match Sqlite::create_database(&db_url).await {
+			Ok(_) => println!("DB Creation Success!"),
+			Err(error) => panic!("error: {}", error)
+		}
+	}
+	println!("Connecting to database...");
+	let pool = SqlitePoolOptions::new()
+		.max_connections(5)
+		.connect(&db_url).await?;
+	println!("Connection established!");
+
+	// Bot Start
 	let options = poise::FrameworkOptions {
 		commands: vec![
 			commands::help(),
@@ -58,12 +92,11 @@ mod events;
 		},
 		..Default::default()
 	};
-	let token = "OTc2MzQwMTM3NjMxOTYxMDg4.GpM-Gs.0kOy37LTuH3FtBOomK97BWB8B9U6PxnomDfqlA";
 	let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::GUILD_MESSAGES | serenity::GatewayIntents::MESSAGE_CONTENT;
 
 	let framework = poise::Framework::builder()
 		.options(options)
-		.token(token)
+		.token(&*config.token)
 		.intents(intents)
 		.setup(move |_ctx, _ready, framework| {
 			Box::pin(async move {
@@ -75,11 +108,14 @@ mod events;
 					print!("Shutting Down");
 					sm.lock().await.shutdown_all().await;
 				});
-				Ok(Data {})
+				Ok(Data {
+					db: pool
+				})
 			})
 		});
 
 	if let Err(why) = framework.run().await {
 		println!("Client error: {:?}", why);
 	}
+	Ok(())
 }

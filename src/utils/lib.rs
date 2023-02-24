@@ -1,12 +1,19 @@
 use poise::serenity_prelude as serenity;
 use time;
 
+// Setup
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
-pub struct Data {}
+
+// Data available in all command invocations.
+pub struct Data {
+	pub db: sqlx::Pool<sqlx::Sqlite>
+}
 
 pub mod role_utils;
 pub use role_utils::*;
+pub mod config;
+pub use config::Config;
 
 fn stamp() -> Result<String, Error>{
 	if let Ok(r) = time::OffsetDateTime::now_local() {
@@ -24,7 +31,7 @@ pub async fn cmd_err(reply: &str, term: &str, ctx: Context<'_>, msg: poise::Repl
 			b.components(|b| b).content(reply)
 		})
 		.await?;
-	if term.is_empty() == false {
+	if !term.is_empty() {
 		eprintln!("{} - {} in \"{}\"",
 			stamp()?,
 			term,
@@ -39,11 +46,18 @@ pub async fn inter_err(reply: &str, term: &str, ctx: &serenity::Context, int: &s
 				d.components(|c| c).content(reply)
 			})
 	}).await?;
-	if term.is_empty() == false {
+	if !term.is_empty() {
 		eprintln!("{} - {} in \"{}\"",
 			stamp()?,
 			term,
 			int.guild_id.unwrap().name(ctx.cache.to_owned()).unwrap());
 	}
 	Ok(())
+}
+
+pub fn concat(a: &str, b: &str) -> String {
+  let mut result: String = String::with_capacity(a.len() + b.len());
+  result += a;
+  result += b;
+  result
 }
