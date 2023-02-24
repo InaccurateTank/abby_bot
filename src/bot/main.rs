@@ -27,12 +27,11 @@ async fn main() -> Result<(), Error> {
 
 	// Config
 	let config = Config::new(&data_folder)?;
-	serenity::token::validate(&config.token)?;
 
 	// DB
 	let db_url = format!("sqlite:{}sqlite.db", &data_folder);
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-		println!("Creating database {}", &db_url);
+		println!("Database absent in '{}', creating...", data_folder);
 		match Sqlite::create_database(&db_url).await {
 			Ok(_) => println!("DB Creation Success!"),
 			Err(error) => panic!("error: {}", error)
@@ -42,7 +41,7 @@ async fn main() -> Result<(), Error> {
 	let pool = SqlitePoolOptions::new()
 		.max_connections(5)
 		.connect(&db_url).await?;
-	println!("Connection established!");
+	println!("Database Connection established!");
 
 	// Bot Start
 	let options = poise::FrameworkOptions {
