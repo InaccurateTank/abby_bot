@@ -70,7 +70,7 @@ async fn main() -> Result<(), Error> {
 										e.title("Hello I'm Abby!")
 											.color(serenity::utils::Color::new(663366))
 											.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-											.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero context. If this concerns you, you can browse the source code [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+											.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero identifying information. If this concerns you, you can browse the source code [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
 									})
 								}).await?;
 								let id = guild.id.as_u64();
