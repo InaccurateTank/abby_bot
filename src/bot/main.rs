@@ -50,7 +50,8 @@ async fn main() -> Result<(), Error> {
 			commands::about(),
 			commands::register(),
 			commands::bottomify(),
-			commands::roles()
+			// commands::roles()
+			commands::setup()
 		],
 		prefix_options: poise::PrefixFrameworkOptions {
 			prefix: Some("~".into()),
@@ -60,6 +61,15 @@ async fn main() -> Result<(), Error> {
 		event_handler: |ctx, event, _framework, _data| {
 			Box::pin(async move {
 				match event {
+					poise::Event::GuildCreate { guild, is_new } => {
+						if let Some(id) = guild.system_channel_id {
+							if *is_new {
+								id.send_message(ctx, |m| {
+									m.content("Hello I am Abby, a general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
+								}).await?;
+							}
+						};
+					},
 					poise::Event::Ready { data_about_bot } => {
 						println!("{} is connected!", data_about_bot.user.name);
 						ctx.set_activity(serenity::Activity::watching("Everything")).await;
