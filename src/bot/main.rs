@@ -58,17 +58,35 @@ async fn main() -> Result<(), Error> {
 			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600))),
 			..Default::default()
 		},
-		event_handler: |ctx, event, _framework, _data| {
+		event_handler: |ctx, event, _framework, data| {
 			Box::pin(async move {
 				match event {
 					poise::Event::GuildCreate { guild, is_new } => {
 						if let Some(id) = guild.system_channel_id {
 							if *is_new {
 								id.send_message(ctx, |m| {
-									m.content("Hello I am Abby, a general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
+									m.content("")
+									.embed(|e|{
+										e.title("Hello I'm Abby!")
+											.color(serenity::utils::Color::new(663366))
+											.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
+											.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero context. If this concerns you, you can browse the source code [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+									})
 								}).await?;
+								let id = guild.id.as_u64();
+								println!("Creating database for server {}", id);
+								sqlx::query(&format!("CREATE TABLE IF NOT EXISTS `{}` ( roles BOOL, memes BOOL, respond BOOL );", id))
+									.execute(&data.db)
+									.await?;
 							}
 						};
+					},
+					poise::Event::GuildDelete { incomplete, full: _ } => {
+						let id = incomplete.id.as_u64();
+						println!("Deleting database for server {}", id);
+						sqlx::query(&format!("DROP TABLE `{}`;", id))
+							.execute(&data.db)
+							.await?;
 					},
 					poise::Event::Ready { data_about_bot } => {
 						println!("{} is connected!", data_about_bot.user.name);
