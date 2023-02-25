@@ -18,7 +18,7 @@ async fn main() -> Result<(), Error> {
 	// Opts
 	let opts = Opts::parse_args_default_or_exit();
 
-	// Folder from opts
+	// Data Folder From Opts
 	let data_folder = if !opts.data.ends_with('/') {
 		concat(&opts.data, "/")
 	} else {
