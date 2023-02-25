@@ -41,6 +41,9 @@ async fn main() -> Result<(), Error> {
 	let pool = SqlitePoolOptions::new()
 		.max_connections(5)
 		.connect(&db_url).await?;
+	sqlx::migrate!("./migrations")
+		.run(&pool)
+		.await?;
 	println!("Database Connection established!");
 
 	// Bot Start
@@ -74,8 +77,9 @@ async fn main() -> Result<(), Error> {
 									})
 								}).await?;
 								let id = guild.id.as_u64();
-								println!("Creating database for server {}", id);
-								sqlx::query(&format!("CREATE TABLE IF NOT EXISTS `{}` ( roles BOOL, memes BOOL, respond BOOL );", id))
+								println!("Creating database entries for server {}", id);
+								sqlx::query("INSERT INTO servers (id, memes, respond, roles) VALUES(?, true, true, null);")
+									.bind(id.to_string())
 									.execute(&data.db)
 									.await?;
 							}
@@ -84,7 +88,7 @@ async fn main() -> Result<(), Error> {
 					poise::Event::GuildDelete { incomplete, full: _ } => {
 						let id = incomplete.id.as_u64();
 						println!("Deleting database for server {}", id);
-						sqlx::query(&format!("DROP TABLE `{}`;", id))
+						sqlx::query(&format!("DROP TABLE IF EXISTS roles_{};", id))
 							.execute(&data.db)
 							.await?;
 					},
@@ -128,12 +132,14 @@ async fn main() -> Result<(), Error> {
 		.setup(move |_ctx, _ready, framework| {
 			Box::pin(async move {
 				let sm = framework.shard_manager().clone();
+				let db = pool.clone();
 				tokio::spawn(async move {
 					tokio::signal::ctrl_c()
 						.await
 						.expect("Failed to listen for Ctrl+C");
 					print!("Shutting Down");
 					sm.lock().await.shutdown_all().await;
+					db.close().await;
 				});
 				Ok(Data {
 					db: pool
