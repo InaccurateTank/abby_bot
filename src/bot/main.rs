@@ -29,7 +29,7 @@ async fn main() -> Result<(), Error> {
 	let config = Config::new(&data_folder)?;
 
 	// DB
-	let db_url = format!("sqlite:{}sqlite.db", &data_folder);
+	let db_url = format!("sqlite:{data_folder}sqlite.db");
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
 		println!("Database absent in '{data_folder}', creating...");
 		match Sqlite::create_database(&db_url).await {
@@ -46,7 +46,7 @@ async fn main() -> Result<(), Error> {
 		.await?;
 	println!("Database Connection established!");
 
-	// Bot Start
+	// Bot Options
 	let options = poise::FrameworkOptions {
 		commands: vec![
 			commands::help(),
@@ -64,6 +64,7 @@ async fn main() -> Result<(), Error> {
 		event_handler: |ctx, event, _framework, data| {
 			Box::pin(async move {
 				match event {
+					// Join Server
 					poise::Event::GuildCreate { guild, is_new } => {
 						if let Some(id) = guild.system_channel_id {
 							if *is_new {
@@ -85,6 +86,8 @@ async fn main() -> Result<(), Error> {
 							}
 						};
 					},
+
+					// Kicked from Server
 					poise::Event::GuildDelete { incomplete, full: _ } => {
 						let id = incomplete.id.as_u64();
 						println!("Deleting server {id} from database.");
@@ -96,16 +99,14 @@ async fn main() -> Result<(), Error> {
 							.execute(&data.db)
 							.await?;
 					},
+
+					// On Login
 					poise::Event::Ready { data_about_bot } => {
 						println!("{} is connected!", data_about_bot.user.name);
 						ctx.set_activity(serenity::Activity::watching("Everything")).await;
-						// for guild in &data_about_bot.guilds {
-						// 	if guild.unavailable {
-						// 		poise::builtins::register_in_guild(&ctx, &framework.options().commands, guild.id).await?;
-						// 		println!("Registered commands in guild {}", guild.id.name(&ctx).unwrap());
-						// 	}
-						// }
 					},
+
+					// On Message in Channel
 					poise::Event::Message { new_message } => {
 						if !new_message.is_own(&ctx.cache) {
 							let m = new_message.content.as_str();
@@ -113,6 +114,8 @@ async fn main() -> Result<(), Error> {
 							events::v(ctx, new_message, m).await?;
 						}
 					},
+
+					// On Interaction
 					poise::Event::InteractionCreate { interaction } => {
 						if let Some(mci) = &interaction.clone().message_component() {
 							if !mci.data.custom_id.starts_with("register") && !mci.data.custom_id.starts_with("unregister") {
@@ -120,6 +123,8 @@ async fn main() -> Result<(), Error> {
 							}
 						}
 					}
+
+					// Other
 					_ => ()
 				}
 				Ok(())
@@ -129,6 +134,7 @@ async fn main() -> Result<(), Error> {
 	};
 	let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::GUILD_MESSAGES | serenity::GatewayIntents::MESSAGE_CONTENT;
 
+	// Bot Setup
 	let framework = poise::Framework::builder()
 		.options(options)
 		.token(&*config.token)
@@ -151,6 +157,7 @@ async fn main() -> Result<(), Error> {
 			})
 		});
 
+	// Start Bot
 	if let Err(why) = framework.run().await {
 		println!("Client error: {why:?}");
 	}
