@@ -33,11 +33,11 @@ pub async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageCompone
 					.await?
 			}
 
-			ctx.cache.guild(mci.guild_id.unwrap()).unwrap().roles;
+			// ctx.cache.guild(mci.guild_id.unwrap()).unwrap().roles;
 			mci.create_interaction_response(&ctx, |f| {
 				f.kind(serenity::InteractionResponseType::ChannelMessageWithSource).interaction_response_data(|d| {
 						d.ephemeral(true);
-						d.content(format!("Role {} has been {}.", back, remove))
+						d.content(format!("Role {back} has been {remove}."))
 					})
 				}).await?;
 		}
@@ -54,7 +54,7 @@ pub async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageCompone
 							.split_once('.')
 							.unwrap();
 						if f == "roleadd" {
-							println!("{}", b);
+							println!("{b}");
 							// list.push(b.to_string());
 						}
 					}
@@ -62,7 +62,7 @@ pub async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageCompone
 			}
 		},
 		_ => {
-			inter_err(":warning: Unknown Interaction ID :warning:", &*format!("Unknown Interaction ID {}", &data.custom_id), ctx, mci).await?;
+			inter_err(":warning: Unknown Interaction ID :warning:", &format!("Unknown Interaction ID {}", &data.custom_id), ctx, mci).await?;
 			return Ok(());
 		}
 	}

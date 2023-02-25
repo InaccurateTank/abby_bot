@@ -18,7 +18,7 @@ pub async fn all_roles_select(ctx: Context<'_>, overlap: Option<HashMap<RoleId, 
 		if r.name != "@everyone" {
 			let mut sel = false;
 			if let Some(hm) = &overlap {
-				for (k, _) in hm {
+				for k in hm.keys() {
 					if k == &rid {
 						sel = true;
 						break;
@@ -35,6 +35,6 @@ pub async fn all_roles_select(ctx: Context<'_>, overlap: Option<HashMap<RoleId, 
 
 pub fn roles_from_selected(selected: Vec<String>, roles: HashMap<RoleId, Role>) -> HashMap<RoleId, Role> {
 	return roles.iter()
-		.filter_map(|(k, v)| if selected.contains(&k.to_string()) {Some((k.clone(), v.clone()))} else {None})
+		.filter_map(|(k, v)| if selected.contains(&k.to_string()) {Some((*k, v.clone()))} else {None})
 		.collect::<HashMap<RoleId, Role>>();
 }

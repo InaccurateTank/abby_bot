@@ -1,10 +1,10 @@
 use crate::{Context, Error};
 use poise::serenity_prelude as serenity;
 
-const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
-const REPO: &'static str = env!("CARGO_PKG_REPOSITORY");
+const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
+const REPO: &str = env!("CARGO_PKG_REPOSITORY");
 
 /// Displays this command help prompt.
 #[poise::command(
@@ -42,7 +42,7 @@ pub async fn about(
 			e.title("Hello I'm Abby!")
 				.color(serenity::utils::Color::new(663366))
 				.description(DESCRIPTION)
-				.field("Creator", AUTHORS.replace(":", "\n"), true)
+				.field("Creator", AUTHORS.replace(':', "\n"), true)
 				.field("Version", VERSION, true)
 				.field("Repository", REPO, false)
 				.footer(|f| {

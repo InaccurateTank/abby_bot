@@ -19,7 +19,7 @@ async fn main() -> Result<(), Error> {
 	let opts = Opts::parse_args_default_or_exit();
 
 	// Folder from opts
-	let data_folder = if !opts.data.ends_with("/") {
+	let data_folder = if !opts.data.ends_with('/') {
 		concat(&opts.data, "/")
 	} else {
 		opts.data
@@ -31,10 +31,10 @@ async fn main() -> Result<(), Error> {
 	// DB
 	let db_url = format!("sqlite:{}sqlite.db", &data_folder);
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-		println!("Database absent in '{}', creating...", data_folder);
+		println!("Database absent in '{data_folder}', creating...");
 		match Sqlite::create_database(&db_url).await {
 			Ok(_) => println!("DB Creation Success!"),
-			Err(error) => panic!("error: {}", error)
+			Err(error) => panic!("error: {error}")
 		}
 	}
 	println!("Connecting to database...");
@@ -77,7 +77,7 @@ async fn main() -> Result<(), Error> {
 									})
 								}).await?;
 								let id = guild.id.as_u64();
-								println!("Creating database entries for server {}", id);
+								println!("Creating database entry for server {id}.");
 								sqlx::query("INSERT INTO servers (id, memes, respond, roles) VALUES(?, true, true, null);")
 									.bind(id.to_string())
 									.execute(&data.db)
@@ -87,8 +87,12 @@ async fn main() -> Result<(), Error> {
 					},
 					poise::Event::GuildDelete { incomplete, full: _ } => {
 						let id = incomplete.id.as_u64();
-						println!("Deleting database for server {}", id);
-						sqlx::query(&format!("DROP TABLE IF EXISTS roles_{};", id))
+						println!("Deleting server {id} from database.");
+						sqlx::query("DELETE FROM servers WHERE id = ?;")
+							.bind(id.to_string())
+							.execute(&data.db)
+							.await?;
+						sqlx::query(&format!("DROP TABLE IF EXISTS roles_{id};"))
 							.execute(&data.db)
 							.await?;
 					},
@@ -105,8 +109,8 @@ async fn main() -> Result<(), Error> {
 					poise::Event::Message { new_message } => {
 						if !new_message.is_own(&ctx.cache) {
 							let m = new_message.content.as_str();
-							events::borger(ctx, new_message, &m).await?;
-							events::v(ctx, new_message, &m).await?;
+							events::borger(ctx, new_message, m).await?;
+							events::v(ctx, new_message, m).await?;
 						}
 					},
 					poise::Event::InteractionCreate { interaction } => {
@@ -148,7 +152,7 @@ async fn main() -> Result<(), Error> {
 		});
 
 	if let Err(why) = framework.run().await {
-		println!("Client error: {:?}", why);
+		println!("Client error: {why:?}");
 	}
 	Ok(())
 }

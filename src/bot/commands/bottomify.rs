@@ -42,7 +42,7 @@ pub async fn bottomify(
   #[description = "Text to translate"]
   plead: String
 ) -> Result<(), Error> {
-  let result = plead.bytes().map(|t| byte_to_emoji(t)).collect::<String>();
+  let result = plead.bytes().map(byte_to_emoji).collect::<String>();
   ctx.send(|c| {
     c.content(result)
   }).await?;

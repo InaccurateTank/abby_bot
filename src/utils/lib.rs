@@ -1,5 +1,4 @@
 use poise::serenity_prelude as serenity;
-use time;
 
 // Setup
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -23,7 +22,7 @@ fn stamp() -> Result<String, Error>{
 			}
 		}
 	}
-	return Err("Could not get time".into())
+	Err("Could not get time".into())
 }
 
 pub async fn cmd_err(reply: &str, term: &str, ctx: Context<'_>, msg: poise::ReplyHandle<'_>) -> Result<(), Error> {
@@ -50,7 +49,7 @@ pub async fn inter_err(reply: &str, term: &str, ctx: &serenity::Context, int: &s
 		eprintln!("{} - {} in \"{}\"",
 			stamp()?,
 			term,
-			int.guild_id.unwrap().name(ctx.cache.to_owned()).unwrap());
+			int.guild_id.unwrap().name(&ctx.cache).unwrap());
 	}
 	Ok(())
 }

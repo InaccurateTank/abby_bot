@@ -65,7 +65,7 @@ async fn rolelist(ctx: Context<'_>) -> Result<(), Error> {
 	let interaction = reply
 		.message()
 		.await?
-		.await_component_interaction(&ctx)
+		.await_component_interaction(ctx)
 			.author_id(ctx.author().id)
 			.timeout(Duration::from_secs(300))
 		.await;
@@ -89,7 +89,7 @@ async fn rolelist(ctx: Context<'_>) -> Result<(), Error> {
 			}
 		},
 		o => {
-			cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {}", o).as_str(), ctx, reply).await?;
+			cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
 			return Ok(());
 		}
 	};
@@ -103,7 +103,7 @@ async fn rolelist(ctx: Context<'_>) -> Result<(), Error> {
 				c.create_action_row(|row| {
 					for (rid, r) in new {
 						row.create_button(|button| {
-							button.custom_id(format!("roleadd.{}", rid));
+							button.custom_id(format!("roleadd.{rid}"));
 							button.label(r.name);
 							button.style(serenity::ButtonStyle::Primary)
 						});
