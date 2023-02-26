@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS servers
+(
+	srvid				BIGINT	PRIMARY KEY NOT NULL,
+	serious		BOOL		NOT NULL DEFAULT true,
+	messages	BOOL		NOT NULL DEFAULT false,
+	roles			BOOL		NOT NULL DEFAULT false
+);
+CREATE TABLE IF NOT EXISTS roles
+(
+	srvid			BIGINT	PRIMARY KEY NOT NULL,
+	tab				TEXT		NOT NULL,
+	channel		BIGINT
+);

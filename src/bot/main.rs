@@ -1,7 +1,17 @@
 use poise::serenity_prelude as serenity;
 use gumdrop::Options;
-use sqlx::{migrate::MigrateDatabase, Sqlite, sqlite::SqlitePoolOptions};
-use abby_utils::{Context, Error, Data, concat, Config};
+use sqlx::{
+	migrate::MigrateDatabase,
+	Sqlite,
+	sqlite::SqlitePoolOptions,
+	query
+};
+use abby_utils::{
+	Context,
+	Error,
+	Data,
+	Config
+};
 
 mod commands;
 mod events;
@@ -20,7 +30,7 @@ async fn main() -> Result<(), Error> {
 
 	// Data Folder From Opts
 	let data_folder = if !opts.data.ends_with('/') {
-		concat(&opts.data, "/")
+		abby_utils::concat(&opts.data, "/")
 	} else {
 		opts.data
 	};
@@ -74,13 +84,13 @@ async fn main() -> Result<(), Error> {
 										e.title("Hello I'm Abby!")
 											.color(serenity::utils::Color::new(663366))
 											.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-											.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero identifying information. If this concerns you, you can browse the source code [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+											.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
 									})
 								}).await?;
 								let id = guild.id.as_u64();
 								println!("Creating database entry for server {id}.");
-								sqlx::query("INSERT INTO servers (id, memes, respond, roles) VALUES(?, true, true, null);")
-									.bind(id.to_string())
+								query("INSERT INTO servers (srvid) VALUES(?);")
+									.bind(*id as i64)
 									.execute(&data.db)
 									.await?;
 							}
@@ -91,11 +101,15 @@ async fn main() -> Result<(), Error> {
 					poise::Event::GuildDelete { incomplete, full: _ } => {
 						let id = incomplete.id.as_u64();
 						println!("Deleting server {id} from database.");
-						sqlx::query("DELETE FROM servers WHERE id = ?;")
-							.bind(id.to_string())
+						query("DELETE FROM servers WHERE srvid = ?;")
+							.bind(*id as i64)
 							.execute(&data.db)
 							.await?;
-						sqlx::query(&format!("DROP TABLE IF EXISTS roles_{id};"))
+						query("DELETE FROM roles WHERE srvid = ?;")
+							.bind(*id as i64)
+							.execute(&data.db)
+							.await?;
+						query(&format!("DROP TABLE IF EXISTS roles_{id};"))
 							.execute(&data.db)
 							.await?;
 					},
@@ -118,7 +132,8 @@ async fn main() -> Result<(), Error> {
 					// On Interaction
 					poise::Event::InteractionCreate { interaction } => {
 						if let Some(mci) = &interaction.clone().message_component() {
-							if !mci.data.custom_id.starts_with("register") && !mci.data.custom_id.starts_with("unregister") {
+							let inter_id = &*mci.data.custom_id;
+							if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
 								events::roles_click(ctx, mci).await?;
 							}
 						}

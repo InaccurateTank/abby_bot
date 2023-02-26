@@ -9,11 +9,11 @@ use poise::serenity_prelude::{
 
 use crate::{Context, Error};
 
-pub async fn all_roles_select(ctx: Context<'_>, overlap: Option<HashMap<RoleId, Role>>) -> Result<Vec<serenity::builder::CreateSelectMenuOption>, Error> {
+pub async fn all_roles_select(ctx: Context<'_>, overlap: Option<HashMap<RoleId, Role>>) -> Result<Vec<serenity::CreateSelectMenuOption>, Error> {
 	let hash = ctx.guild()
 		.expect("Could not fetch guild from cache.")
 		.roles;
-	let mut list: Vec<serenity::builder::CreateSelectMenuOption> = Vec::new();
+	let mut list: Vec<serenity::CreateSelectMenuOption> = Vec::new();
 	for (rid, r) in hash {
 		if r.name != "@everyone" {
 			let mut sel = false;
@@ -25,7 +25,7 @@ pub async fn all_roles_select(ctx: Context<'_>, overlap: Option<HashMap<RoleId, 
 					}
 				}
 			}
-			list.push(serenity::builder::CreateSelectMenuOption::new(r.name, rid)
+			list.push(serenity::CreateSelectMenuOption::new(r.name, rid)
 				.default_selection(sel)
 				.to_owned())
 		}
@@ -37,4 +37,8 @@ pub fn roles_from_selected(selected: Vec<String>, roles: HashMap<RoleId, Role>) 
 	return roles.iter()
 		.filter_map(|(k, v)| if selected.contains(&k.to_string()) {Some((*k, v.clone()))} else {None})
 		.collect::<HashMap<RoleId, Role>>();
+}
+
+pub async fn test() -> Result<(), Error> {
+	Ok(())
 }
