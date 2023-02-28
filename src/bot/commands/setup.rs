@@ -7,10 +7,11 @@ use abby_utils::{
 	Context,
 	Error,
 	cmd_err,
-	concat
+	concat,
+	db_structs
 };
 use sqlx::{
-	FromRow,
+	// FromRow,
 	query_as
 };
 
@@ -60,59 +61,59 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 // }
 
 // Server Features Struct
-#[derive(FromRow, Debug)]
-struct Server {
-	srvid: i64,
-	serious: bool,
-	messages: bool,
-	roles: bool
-}
-impl Server {
-	// fn as_hashmap(&self) -> HashMap<&str, bool> {
-	// 	let mut hash = HashMap::new();
-	// 	hash.insert("serious", self.serious);
-	// 	hash.insert("messages", self.messages);
-	// 	hash.insert("roles", self.roles);
-	// 	hash
-	// }
+// #[derive(FromRow, Debug)]
+// struct Server {
+// 	srvid: i64,
+// 	serious: bool,
+// 	messages: bool,
+// 	roles: bool
+// }
+// impl Server {
+// 	// fn as_hashmap(&self) -> HashMap<&str, bool> {
+// 	// 	let mut hash = HashMap::new();
+// 	// 	hash.insert("serious", self.serious);
+// 	// 	hash.insert("messages", self.messages);
+// 	// 	hash.insert("roles", self.roles);
+// 	// 	hash
+// 	// }
 
-	fn as_array(&self) -> [(&str, bool); 3] {
-		[
-			("serious", self.serious),
-			("messages", self.messages),
-			("roles", self.roles)
-		]
-	}
+// 	fn as_array(&self) -> [(&str, bool); 3] {
+// 		[
+// 			("serious", self.serious),
+// 			("messages", self.messages),
+// 			("roles", self.roles)
+// 		]
+// 	}
 
-	fn selectmenu_options(&self) -> Vec<serenity::CreateSelectMenuOption> {
-		let mut opts = Vec::new();
-		// for (k, v) in self.as_hashmap() {
-		// 	opts.push(serenity::CreateSelectMenuOption::new(k[0..1].to_uppercase() + &k[1..], concat("enable_", k))
-		// 	.default_selection(v)
-		// 	.to_owned());
-		// }
+// 	fn selectmenu_options(&self) -> Vec<serenity::CreateSelectMenuOption> {
+// 		let mut opts = Vec::new();
+// 		// for (k, v) in self.as_hashmap() {
+// 		// 	opts.push(serenity::CreateSelectMenuOption::new(k[0..1].to_uppercase() + &k[1..], concat("enable_", k))
+// 		// 	.default_selection(v)
+// 		// 	.to_owned());
+// 		// }
 
-		for (name, value) in self.as_array() {
-			opts.push(serenity::CreateSelectMenuOption::new(name[0..1].to_uppercase() + &name[1..], concat("enable_", name))
-				.default_selection(value)
-				.to_owned());
-		}
-		opts
-		// create_options!(self.serious, self.messages, self.roles)
-	}
+// 		for (name, value) in self.as_array() {
+// 			opts.push(serenity::CreateSelectMenuOption::new(name[0..1].to_uppercase() + &name[1..], concat("enable_", name))
+// 				.default_selection(value)
+// 				.to_owned());
+// 		}
+// 		opts
+// 		// create_options!(self.serious, self.messages, self.roles)
+// 	}
 
-	// async fn toggle_features(&self, selections: Vec<String>) {
-	// 	let original = self.as_hashmap();
-	// 	let mut new = HashMap::new();
-	// 	for key in original.keys() {
-	// 		if selections.contains(&concat("enable_", key)) {
-	// 			new.insert(*key, true);
-	// 		} else {
-	// 			new.insert(*key, false);
-	// 		}
-	// 	}
-	// }
-}
+// 	// async fn toggle_features(&self, selections: Vec<String>) {
+// 	// 	let original = self.as_hashmap();
+// 	// 	let mut new = HashMap::new();
+// 	// 	for key in original.keys() {
+// 	// 		if selections.contains(&concat("enable_", key)) {
+// 	// 			new.insert(*key, true);
+// 	// 		} else {
+// 	// 			new.insert(*key, false);
+// 	// 		}
+// 	// 	}
+// 	// }
+// }
 
 /// Sets up various settings for the bot on the server.
 #[poise::command(
@@ -124,7 +125,7 @@ impl Server {
 async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	let id = *ctx.guild_id().unwrap().as_u64();
 
-	let server_entry = query_as::<_, Server>("SELECT * FROM servers WHERE srvid = ?;")
+	let server_entry = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
@@ -147,7 +148,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 						menu.min_values(0);
 						menu.max_values(3);
 						menu.options(|f| {
-							f.set_options(server_entry.selectmenu_options())
+							f.set_options(server_entry.as_selectmenuoptions())
 						})
 					})
 				})
@@ -234,11 +235,10 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	// let a = format!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid);
 
 	// println!("{a}");
-	let updated = query_as::<_, Server>("SELECT * FROM servers WHERE srvid = ?;")
+	let updated = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
-
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
@@ -252,7 +252,6 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			.components(|f| f)
 	})
 	.await?;
-
 	Ok(())
 }
 

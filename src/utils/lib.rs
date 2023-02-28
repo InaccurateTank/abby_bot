@@ -13,6 +13,7 @@ pub mod role_utils;
 pub use role_utils::*;
 pub mod config;
 pub use config::Config;
+pub mod db_structs;
 
 fn stamp() -> Result<String, Error>{
 	if let Ok(r) = time::OffsetDateTime::now_local() {

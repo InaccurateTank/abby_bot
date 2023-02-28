@@ -4,13 +4,14 @@ use sqlx::{
 	migrate::MigrateDatabase,
 	Sqlite,
 	sqlite::SqlitePoolOptions,
-	query
+	query, query_as
 };
 use abby_utils::{
 	Context,
 	Error,
 	Data,
-	Config
+	Config,
+	db_structs
 };
 
 mod commands;
@@ -73,6 +74,7 @@ async fn main() -> Result<(), Error> {
 		},
 		event_handler: |ctx, event, _framework, data| {
 			Box::pin(async move {
+
 				match event {
 					// Join Server
 					poise::Event::GuildCreate { guild, is_new } => {
@@ -122,7 +124,25 @@ async fn main() -> Result<(), Error> {
 
 					// On Message in Channel
 					poise::Event::Message { new_message } => {
-						if !new_message.is_own(&ctx.cache) {
+						let feats = match new_message.guild_id {
+							Some(id) => Some(query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+								.bind(*id.as_u64() as i64)
+								.fetch_one(&data.db)
+								.await
+								.unwrap()),
+							None => None
+						};
+						let feat_msg = match &feats {
+							Some(msg) => {
+								if msg.messages {
+									true
+								} else {
+									false
+								}
+							},
+							None => false
+						};
+						if !new_message.is_own(&ctx.cache) && feat_msg {
 							let m = new_message.content.as_str();
 							events::borger(ctx, new_message, m).await?;
 							events::v(ctx, new_message, m).await?;
