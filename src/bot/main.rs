@@ -124,28 +124,16 @@ async fn main() -> Result<(), Error> {
 
 					// On Message in Channel
 					poise::Event::Message { new_message } => {
-						let feats = match new_message.guild_id {
+						let srv_features = match new_message.guild_id {
 							Some(id) => Some(query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 								.bind(*id.as_u64() as i64)
 								.fetch_one(&data.db)
 								.await
 								.unwrap()),
 							None => None
-						};
-						let feat_msg = match &feats {
-							Some(msg) => {
-								if msg.messages {
-									true
-								} else {
-									false
-								}
-							},
-							None => false
-						};
-						if !new_message.is_own(&ctx.cache) && feat_msg {
-							let m = new_message.content.as_str();
-							events::borger(ctx, new_message, m).await?;
-							events::v(ctx, new_message, m).await?;
+						}.unwrap_or_default();
+						if !new_message.is_own(&ctx.cache) && srv_features.messages {
+							events::message::handler(ctx, new_message, srv_features).await?;
 						}
 					},
 

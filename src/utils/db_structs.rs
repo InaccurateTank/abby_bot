@@ -10,6 +10,16 @@ pub struct Server {
 	pub messages: bool,
 	pub roles: bool
 }
+impl Default for Server {
+	fn default() -> Self {
+		Server {
+			srvid: 0,
+			serious: true,
+			messages: false,
+			roles: false
+		}
+	}
+}
 impl Server {
 	pub fn as_array(&self) -> [(&str, bool); 3] {
 		[
@@ -18,7 +28,6 @@ impl Server {
 			("roles", self.roles)
 		]
 	}
-
 	pub fn as_selectmenuoptions(&self) -> Vec<serenity::CreateSelectMenuOption> {
 		let mut opts = Vec::new();
 		for (name, value) in self.as_array() {
