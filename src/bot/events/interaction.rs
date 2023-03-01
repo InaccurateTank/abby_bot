@@ -2,11 +2,14 @@ use std::str::FromStr;
 use poise::serenity_prelude as serenity;
 use abby_utils::{
 	Error,
+	db_structs,
 	inter_err,
 };
 
-pub async fn mci_handler(ctx: &serenity::Context, mci: &serenity::MessageComponentInteraction) -> Result<(), Error> {
-	roles_click(ctx, mci).await?;
+pub async fn mci_handler(ctx: &serenity::Context, mci: &serenity::MessageComponentInteraction, srv_features: db_structs::Server) -> Result<(), Error> {
+	if srv_features.roles {
+		roles_click(ctx, mci).await?;
+	}
 	Ok(())
 }
 

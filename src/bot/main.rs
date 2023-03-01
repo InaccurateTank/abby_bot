@@ -141,9 +141,13 @@ async fn main() -> Result<(), Error> {
 					poise::Event::InteractionCreate { interaction } => {
 						match interaction {
 							serenity::Interaction::MessageComponent(m) => {
+								let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+									.bind(*m.guild_id.unwrap().as_u64() as i64)
+									.fetch_one(&data.db)
+									.await?;
 								let inter_id = &m.data.custom_id;
 								if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
-									events::interaction::mci_handler(ctx, m).await?;
+									events::interaction::mci_handler(ctx, m, srv_features).await?;
 								}
 							}
 							_ => {}
