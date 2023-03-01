@@ -139,15 +139,30 @@ async fn main() -> Result<(), Error> {
 
 					// On Interaction
 					poise::Event::InteractionCreate { interaction } => {
-						if let Some(mci) = &interaction.clone().message_component() {
-							let inter_id = &*mci.data.custom_id;
-							if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
-								events::roles_click(ctx, mci).await?;
+						match interaction {
+							serenity::Interaction::MessageComponent(m) => {
+								let inter_id = &m.data.custom_id;
+								if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
+									events::interaction::mci_handler(ctx, m).await?;
+								}
 							}
+							_ => {}
 						}
+
+
+						// if let Some(mci) = &interaction.clone().message_component() {
+						// 	let inter_id = &*mci.data.custom_id;
+						// 	if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
+						// 		events::interaction::handler(ctx, interaction).await?;
+						// 	}
+
+						// 	// if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
+						// 	// 	events::roles_click(ctx, mci).await?;
+						// 	// }
+						// }
 					}
 
-					// Other
+					// Otherwise Nothing
 					_ => ()
 				}
 				Ok(())

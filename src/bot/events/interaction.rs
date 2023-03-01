@@ -1,8 +1,16 @@
 use std::str::FromStr;
 use poise::serenity_prelude as serenity;
-use abby_utils::{Error, inter_err};
+use abby_utils::{
+	Error,
+	inter_err,
+};
 
-pub async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageComponentInteraction) -> Result<(), Error> {
+pub async fn mci_handler(ctx: &serenity::Context, mci: &serenity::MessageComponentInteraction) -> Result<(), Error> {
+	roles_click(ctx, mci).await?;
+	Ok(())
+}
+
+async fn roles_click(ctx: &serenity::Context, mci: &serenity::MessageComponentInteraction) -> Result<(), Error> {
 	let data = &mci.data;
 	let (front, back) = data.custom_id.split_once('.')
 		.expect("Not a splittable ID");
