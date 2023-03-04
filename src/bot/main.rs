@@ -74,7 +74,6 @@ async fn main() -> Result<(), Error> {
 		},
 		event_handler: |ctx, event, _framework, data| {
 			Box::pin(async move {
-
 				match event {
 					// Join Server
 					poise::Event::GuildCreate { guild, is_new } => {

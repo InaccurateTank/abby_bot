@@ -263,6 +263,22 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	ephemeral
 )]
 async fn roles(ctx: Context<'_>) -> Result<(), Error> {
+	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
+		.fetch_one(&ctx.data().db)
+		.await?;
+	if !srv_features.roles {
+		ctx.send(|r| {
+			r.content("")
+			.embed(|e|{
+				e.title("Feature Not Enabled!")
+					.color(serenity::utils::Color::new(663366))
+					.description("This command is for setting up role management features and your server does not have them enabled. If this is a mistake and you want them to be enabled, please run `/setup bot` and set the options.")
+			})
+		}).await?;
+		return Ok(())
+	}
+
 	let roles = abby_utils::all_roles_select(ctx, None).await?;
 
 	let reply = ctx.send(|b| {
