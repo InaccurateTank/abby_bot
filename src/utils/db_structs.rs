@@ -40,11 +40,16 @@ impl Server {
 }
 
 // Primary Roles Managment
+#[derive(Default, FromRow, Debug)]
 pub struct ServerRoles {
 	pub srvid: i64,
 	pub tab: String,
-	pub channel: i64
+	pub channel: Option<i64>
 }
-impl ServerRoles {
 
+// Individual Role List Struct
+#[derive(Default, FromRow, Debug)]
+pub struct RoleList {
+	pub group: String,
+	pub id: i64
 }
