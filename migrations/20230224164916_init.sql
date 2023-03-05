@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS servers
 (
-	srvid				BIGINT	PRIMARY KEY NOT NULL,
+	srvid			BIGINT	PRIMARY KEY NOT NULL,
 	serious		BOOL		NOT NULL DEFAULT true,
 	messages	BOOL		NOT NULL DEFAULT false,
 	roles			BOOL		NOT NULL DEFAULT false
