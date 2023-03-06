@@ -1,5 +1,4 @@
 use crate::{Context, Error};
-use poise::serenity_prelude as serenity;
 use abby_utils::{
 	db_structs,
 	concat
@@ -51,14 +50,7 @@ pub async fn bottomify(
 		.fetch_one(&ctx.data().db)
 		.await?;
 	if !srv_features.serious {
-		ctx.send(|r| {
-			r.content("")
-			.embed(|e|{
-				e.title("Feature Not Enabled!")
-					.color(serenity::utils::Color::from_rgb(102, 51, 102))
-					.description("This command requires a feature that isn't enabled on the server.")
-			})
-		}).await?;
+		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
   let result = plead.bytes().map(byte_to_emoji).collect::<String>();

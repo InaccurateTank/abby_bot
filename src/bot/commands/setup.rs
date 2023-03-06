@@ -325,14 +325,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		.fetch_one(&ctx.data().db)
 		.await?;
 	if !srv_features.roles {
-		ctx.send(|r| {
-			r.content("")
-			.embed(|e|{
-				e.title("Feature Not Enabled!")
-					.color(serenity::utils::Color::from_rgb(102, 51, 102))
-					.description("This command is for setting up role management features and your server does not have them enabled. If this is a mistake and you want this enabled, please run `/setup bot` and set the options.")
-			})
-		}).await?;
+		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
 	let role_opts = query_as::<_, db_structs::ServerRoles>("SELECT * FROM roles WHERE srvid = ?;")

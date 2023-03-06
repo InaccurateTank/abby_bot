@@ -61,3 +61,15 @@ pub fn concat(a: &str, b: &str) -> String {
   result += b;
   result
 }
+
+pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<(), Error> {
+	ctx.send(|r| {
+		r.content("")
+		.embed(|e|{
+			e.title("Feature Not Enabled!")
+				.color(serenity::utils::Color::from_rgb(102, 51, 102))
+				.description("This command requires a feature that isn't enabled on the server. If this is a mistake, have an admin run `/setup bot` to change it.")
+		})
+	}).await?;
+	Ok(())
+}
