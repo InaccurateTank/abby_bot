@@ -83,7 +83,7 @@ async fn main() -> Result<(), Error> {
 									m.content("")
 									.embed(|e|{
 										e.title("Hello I'm Abby!")
-											.color(serenity::utils::Color::new(663366))
+											.color(serenity::utils::Color::from_rgb(102, 51, 102))
 											.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
 											.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
 									})

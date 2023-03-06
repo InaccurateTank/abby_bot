@@ -136,7 +136,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		b.content("")
 			.embed(|e| {
 				e.title("Bot Configuration");
-				e.color(serenity::utils::Color::new(663366));
+				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
 				e.description("Below is a select menu to setup my features on a per-server basis. These can be changed at any time simply by running the command again.");
 				e.field("Serious", "Toggles the appearence of memes, injokes or other related content. This setting encompasses *all* invocations of this across all other features.", false);
 				e.field("Messages", "Whether or not I should listen to message events outside of command invocations. This is mostly to reply to them based on regex.", false);
@@ -168,7 +168,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
-				e.color(serenity::utils::Color::new(663366));
+				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
 				e.description("Processing, please wait...")
 			})
 			.components(|f| f)
@@ -246,7 +246,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		b.content("")
 			.embed(|e| {
 				e.title("Feature Changes Confirmed!");
-				e.color(serenity::utils::Color::new(663366));
+				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
 				e.description("Your new settings are:");
 				for (name, value) in updated.as_array() {
 					e.field(name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false);
@@ -269,6 +269,21 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			query("INSERT INTO roles (srvid, tab) VALUES(?, ?);")
 				.bind(id as i64)
 				.bind(format!("roles_{id}"))
+				.execute(&ctx.data().db)
+				.await?;
+			ctx.send(|b| {
+				b.content("")
+					.embed(|e| {
+						e.description("Note that using the default channel for roles is not advised. It is recommended to run `/setup roles` now.");
+						e.color(serenity::utils::Color::from_rgb(250,128,114))
+					})
+			}).await?;
+		} else {
+			query(&format!("DROP TABLE IF EXISTS roles_{id};"))
+				.execute(&ctx.data().db)
+				.await?;
+			query("DELETE FROM roles WHERE srvid = ?;")
+				.bind(id as i64)
 				.execute(&ctx.data().db)
 				.await?;
 		}
@@ -295,7 +310,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			r.content("")
 			.embed(|e|{
 				e.title("Feature Not Enabled!")
-					.color(serenity::utils::Color::new(663366))
+					.color(serenity::utils::Color::from_rgb(102, 51, 102))
 					.description("This command is for setting up role management features and your server does not have them enabled. If this is a mistake and you want this enabled, please run `/setup bot` and set the options.")
 			})
 		}).await?;
@@ -328,7 +343,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		b.content("")
 			.embed(|e| {
 				e.title("Role Setup");
-				e.color(serenity::utils::Color::new(663366));
+				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
 				e.description("Please select a channel for role management to take place in. This channel should be completely empty save for the role lists. All interactions done with me via this channel will be ephemeral, so there should end up being no clutter.")
 			})
 			.components(|c| {
@@ -357,7 +372,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
-				e.color(serenity::utils::Color::new(663366));
+				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
 				e.description("Processing, please wait...")
 			})
 			.components(|f| f)
@@ -413,7 +428,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		b.content("")
 			.embed(|e| {
 				e.title("Role Settings Confirmed!");
-				e.color(serenity::utils::Color::new(663366));
+				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
 				e.description(format!("Roles will now be managed in the {chname} channel."))
 			})
 			.components(|f| f)
