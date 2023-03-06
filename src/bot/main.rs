@@ -63,9 +63,9 @@ async fn main() -> Result<(), Error> {
 			commands::help(),
 			commands::about(),
 			commands::register(),
+			commands::setup(),
 			commands::bottomify(),
-			// commands::roles()
-			commands::setup()
+			commands::rolelist()
 		],
 		prefix_options: poise::PrefixFrameworkOptions {
 			prefix: Some("~".into()),

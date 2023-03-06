@@ -186,7 +186,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	let selected = match interaction_id.as_str() {
 		"setup.bot" => {
 			match &interaction {
-				Some(m) => m.data.values.clone(),
+				Some(m) => m.data.values.to_owned(),
 				None => {
 					cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
 					return Ok(());
@@ -257,11 +257,27 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	})
 	.await?;
 	// Changed Serious
+	// let gid = serenity::GuildId(updated.srvid as u64);
 	if updated.serious != server_entry.serious {
-		// Un/Register Toys
+		// use super::bottomify;
+		// let cmds = poise::builtins::create_application_commands(&vec![
+		// 	bottomify::bottomify()
+		// ]);
+		if updated.serious {
+			// gid.set_application_commands(ctx, |c| {
+			// 	*c = cmds;
+			// 	c
+			// }).await?;
+		} else {
+			// gid.set_application_commands(ctx, |c| c).await?;
+		}
 	}
 	// Changed Roles
 	if updated.roles != server_entry.roles {
+		// use super::rolelist;
+		// let cmds = poise::builtins::create_application_commands(&vec![
+		// 	rolelist::rolelist()
+		// ]);
 		if updated.roles {
 			query(&format!("CREATE TABLE IF NOT EXISTS roles_{id} (srvid BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, id BIGINT NOT NULL);"))
 				.execute(&ctx.data().db)
@@ -271,6 +287,10 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 				.bind(format!("roles_{id}"))
 				.execute(&ctx.data().db)
 				.await?;
+			// gid.set_application_commands(ctx, |c| {
+			// 	*c = cmds;
+			// 	c
+			// }).await?;
 			ctx.send(|b| {
 				b.content("")
 					.embed(|e| {
@@ -286,9 +306,8 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 				.bind(updated.srvid)
 				.execute(&ctx.data().db)
 				.await?;
+			// gid.set_application_commands(ctx, |c| c).await?;
 		}
-		// Un/Register Rolelist
-		// Create/Delete server table
 	}
 	Ok(())
 }
@@ -390,7 +409,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	let selected = match interaction_id.as_str() {
 		"setup.roles" => {
 			match &interaction {
-				Some(m) => m.data.values.clone(),
+				Some(m) => m.data.values.to_owned(),
 				None => {
 					cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
 					return Ok(());
