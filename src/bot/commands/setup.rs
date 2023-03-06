@@ -127,7 +127,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	let id = *ctx.guild_id().unwrap().as_u64();
 
-	let server_entry = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
@@ -150,7 +150,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 						menu.min_values(0);
 						menu.max_values(3);
 						menu.options(|f| {
-							f.set_options(server_entry.as_selectmenuoptions())
+							f.set_options(srv_features.as_selectmenuoptions())
 						})
 					})
 				})
@@ -221,7 +221,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	// 		}
 	// 	}
 	// }
-	let set_string = server_entry.as_array()
+	let set_string = srv_features.as_array()
 		.map(|(name, _)| {
 			format!("{name} = {}", selected.contains(&concat("enable_", name)))
 		}).join(",");
@@ -232,7 +232,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 
 	// println!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid);
 
-	query(&format!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid))
+	query(&format!("UPDATE servers SET {set_string} WHERE srvid = {};", srv_features.srvid))
 		.execute(&ctx.data().db)
 		.await?;
 	// let a = format!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid);
@@ -258,7 +258,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	.await?;
 	// Changed Serious
 	// let gid = serenity::GuildId(updated.srvid as u64);
-	if updated.serious != server_entry.serious {
+	if updated.serious != srv_features.serious {
 		// use super::bottomify;
 		// let cmds = poise::builtins::create_application_commands(&vec![
 		// 	bottomify::bottomify()
@@ -273,7 +273,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		}
 	}
 	// Changed Roles
-	if updated.roles != server_entry.roles {
+	if updated.roles != srv_features.roles {
 		// use super::rolelist;
 		// let cmds = poise::builtins::create_application_commands(&vec![
 		// 	rolelist::rolelist()
