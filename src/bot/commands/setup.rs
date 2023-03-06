@@ -267,7 +267,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 				.execute(&ctx.data().db)
 				.await?;
 			query("INSERT INTO roles (srvid, tab) VALUES(?, ?);")
-				.bind(id as i64)
+				.bind(updated.srvid)
 				.bind(format!("roles_{id}"))
 				.execute(&ctx.data().db)
 				.await?;
@@ -283,7 +283,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 				.execute(&ctx.data().db)
 				.await?;
 			query("DELETE FROM roles WHERE srvid = ?;")
-				.bind(id as i64)
+				.bind(updated.srvid)
 				.execute(&ctx.data().db)
 				.await?;
 		}
