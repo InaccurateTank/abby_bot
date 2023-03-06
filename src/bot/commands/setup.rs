@@ -1,6 +1,7 @@
 use std::{
 	time::Duration,
-	// collections::HashMap
+	collections::HashMap,
+	str::FromStr
 };
 use poise::serenity_prelude as serenity;
 use abby_utils::{
@@ -12,6 +13,7 @@ use abby_utils::{
 };
 use sqlx::{
 	// FromRow,
+	query,
 	query_as
 };
 
@@ -166,7 +168,8 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
-				e.description("Processing changes, please wait...")
+				e.color(serenity::utils::Color::new(663366));
+				e.description("Processing, please wait...")
 			})
 			.components(|f| f)
 	})
@@ -229,7 +232,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 
 	// println!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid);
 
-	sqlx::query(&format!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid))
+	query(&format!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid))
 		.execute(&ctx.data().db)
 		.await?;
 	// let a = format!("UPDATE servers SET {set_string} WHERE srvid = {};", server_entry.srvid);
@@ -243,6 +246,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		b.content("")
 			.embed(|e| {
 				e.title("Feature Changes Confirmed!");
+				e.color(serenity::utils::Color::new(663366));
 				e.description("Your new settings are:");
 				for (name, value) in updated.as_array() {
 					e.field(name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false);
@@ -252,14 +256,33 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			.components(|f| f)
 	})
 	.await?;
+	// Changed Serious
+	if updated.serious != server_entry.serious {
+		// Un/Register Toys
+	}
+	// Changed Roles
+	if updated.roles != server_entry.roles {
+		if updated.roles {
+			query(&format!("CREATE TABLE IF NOT EXISTS roles_{id} (srvid BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, id BIGINT NOT NULL);"))
+				.execute(&ctx.data().db)
+				.await?;
+			query("INSERT INTO roles (srvid, tab) VALUES(?, ?);")
+				.bind(id as i64)
+				.bind(format!("roles_{id}"))
+				.execute(&ctx.data().db)
+				.await?;
+		}
+		// Un/Register Rolelist
+		// Create/Delete server table
+	}
 	Ok(())
 }
 
-/// Creates a new role list.
+/// Edits settings for the role management feature.
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="MANAGE_ROLES",
+	required_permissions="ADMINISTRATOR",
 	ephemeral
 )]
 async fn roles(ctx: Context<'_>) -> Result<(), Error> {
@@ -273,25 +296,50 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			.embed(|e|{
 				e.title("Feature Not Enabled!")
 					.color(serenity::utils::Color::new(663366))
-					.description("This command is for setting up role management features and your server does not have them enabled. If this is a mistake and you want them to be enabled, please run `/setup bot` and set the options.")
+					.description("This command is for setting up role management features and your server does not have them enabled. If this is a mistake and you want this enabled, please run `/setup bot` and set the options.")
 			})
 		}).await?;
 		return Ok(())
 	}
+	let role_opts = query_as::<_, db_structs::ServerRoles>("SELECT * FROM roles WHERE srvid = ?;")
+		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
+		.fetch_optional(&ctx.data().db)
+		.await?
+		.unwrap_or_default();
 
-	let roles = abby_utils::all_roles_select(ctx, None).await?;
+	let channels = ctx.guild().unwrap().channels.into_iter().filter(|(_, c)| {
+		if let serenity::Channel::Guild(gc) = c {
+			if let serenity::ChannelType::Text = gc.kind {
+				return true
+			}
+		}
+		false
+	}).collect::<HashMap<serenity::ChannelId, serenity::Channel>>();
+	let mut selectopts: Vec<serenity::CreateSelectMenuOption> = Vec::new();
+	for (cid, c) in channels {
+		selectopts.push(serenity::CreateSelectMenuOption::new(c.guild().unwrap().name, cid)
+			.default_selection(if let Some(rch) = role_opts.channel {
+				*cid.as_u64() as i64 == rch
+			} else {false})
+			.to_owned())
+	}
 
 	let reply = ctx.send(|b| {
-		b.content("Please choose roles from the list.")
+		b.content("")
+			.embed(|e| {
+				e.title("Role Setup");
+				e.color(serenity::utils::Color::new(663366));
+				e.description("Please select a channel for role management to take place in. This channel should be completely empty save for the role lists. All interactions done with me via this channel will be ephemeral, so there should end up being no clutter.")
+			})
 			.components(|c| {
 				c.create_action_row(|row| {
 					row.create_select_menu(|menu| {
-						menu.custom_id("setup.rolelist");
-						menu.placeholder("Select a set of roles.");
+						menu.custom_id("setup.roles");
+						menu.placeholder("Select a Channel.");
 						menu.min_values(0);
-						menu.max_values(roles.len() as u64);
+						menu.max_values(1);
 						menu.options(|f| {
-							f.set_options(roles)
+							f.set_options(selectopts)
 						})
 					})
 				})
@@ -304,7 +352,17 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		.await_component_interaction(ctx)
 			.author_id(ctx.author().id)
 			.timeout(Duration::from_secs(300))
-			.await;
+		.await;
+
+	reply.edit(ctx, |b| {
+		b.content("")
+			.embed(|e| {
+				e.color(serenity::utils::Color::new(663366));
+				e.description("Processing, please wait...")
+			})
+			.components(|f| f)
+	})
+	.await?;
 
 	let interaction_id = match &interaction {
 		Some(m) => &m.data.custom_id,
@@ -315,7 +373,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	};
 
 	let selected = match interaction_id.as_str() {
-		"setup.rolelist" => {
+		"setup.roles" => {
 			match &interaction {
 				Some(m) => m.data.values.clone(),
 				None => {
@@ -330,31 +388,116 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		}
 	};
 
-	reply.delete(ctx).await?;
+	// let z = selected.first().unwrap_or(&"0".to_string()).parse::<u64>()?;
+	let selid = if let Some(s) = selected.first() {
+		s.as_str()
+	} else {"0"};
 
-	let new = abby_utils::roles_from_selected(selected, ctx.guild().unwrap().roles);
-	ctx.channel_id().send_message(ctx, |b| {
-		b.content("Please choose roles from the list.")
-			.components(|c| {
-				c.create_action_row(|row| {
-					for (rid, r) in new {
-						row.create_button(|button| {
-							button.custom_id(format!("roleadd.{rid}"));
-							button.label(r.name);
-							button.style(serenity::ButtonStyle::Primary)
-						});
-					}
-					row
-				});
-				c.create_action_row(|row| {
-					row.create_button(|button| {
-						button.custom_id("edit.roles");
-						button.label("Edit Roles");
-						button.style(serenity::ButtonStyle::Secondary)
-					})
-				})
+	// let a = ctx.guild().unwrap().channels;
+	let chid = if selid != "0" {
+		Some(selid.parse::<i64>()?)
+		// Some(*serenity::ChannelId::from_str(selid)?.as_u64() as i64)
+	} else {None};
+
+	query("UPDATE roles SET channel = ? WHERE srvid = ?;")
+		.bind(chid)
+		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
+		.execute(&ctx.data().db)
+		.await?;
+
+	let chname = if let Some(x) = ctx.guild().unwrap().channels.get(&serenity::ChannelId::from_str(selid)?) {
+		concat("#", x.clone().guild().unwrap().name.as_str())
+	} else {"default announcements".to_string()};
+
+	reply.edit(ctx, |b| {
+		b.content("")
+			.embed(|e| {
+				e.title("Role Settings Confirmed!");
+				e.color(serenity::utils::Color::new(663366));
+				e.description(format!("Roles will now be managed in the {chname} channel."))
 			})
-	}).await?;
+			.components(|f| f)
+	})
+	.await?;
+
+
+
+	// let roles = abby_utils::all_roles_select(ctx, None).await?;
+
+	// let reply = ctx.send(|b| {
+	// 	b.content("Please choose roles from the list.")
+	// 		.components(|c| {
+	// 			c.create_action_row(|row| {
+	// 				row.create_select_menu(|menu| {
+	// 					menu.custom_id("setup.rolelist");
+	// 					menu.placeholder("Select a set of roles.");
+	// 					menu.min_values(0);
+	// 					menu.max_values(roles.len() as u64);
+	// 					menu.options(|f| {
+	// 						f.set_options(roles)
+	// 					})
+	// 				})
+	// 			})
+	// 		})
+	// }).await?;
+
+	// let interaction = reply
+	// 	.message()
+	// 	.await?
+	// 	.await_component_interaction(ctx)
+	// 		.author_id(ctx.author().id)
+	// 		.timeout(Duration::from_secs(300))
+	// 		.await;
+
+	// let interaction_id = match &interaction {
+	// 	Some(m) => &m.data.custom_id,
+	// 	None => {
+	// 		cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
+	// 		return Ok(());
+	// 	}
+	// };
+
+	// let selected = match interaction_id.as_str() {
+	// 	"setup.rolelist" => {
+	// 		match &interaction {
+	// 			Some(m) => m.data.values.clone(),
+	// 			None => {
+	// 				cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
+	// 				return Ok(());
+	// 			}
+	// 		}
+	// 	},
+	// 	o => {
+	// 		cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
+	// 		return Ok(());
+	// 	}
+	// };
+
+	// reply.delete(ctx).await?;
+
+	// let new = abby_utils::roles_from_selected(selected, ctx.guild().unwrap().roles);
+	// ctx.channel_id().send_message(ctx, |b| {
+	// 	b.content("Please choose roles from the list.")
+	// 		.components(|c| {
+	// 			c.create_action_row(|row| {
+	// 				for (rid, r) in new {
+	// 					row.create_button(|button| {
+	// 						button.custom_id(format!("roleadd.{rid}"));
+	// 						button.label(r.name);
+	// 						button.style(serenity::ButtonStyle::Primary)
+	// 					});
+	// 				}
+	// 				row
+	// 			});
+	// 			c.create_action_row(|row| {
+	// 				row.create_button(|button| {
+	// 					button.custom_id("edit.roles");
+	// 					button.label("Edit Roles");
+	// 					button.style(serenity::ButtonStyle::Secondary)
+	// 				})
+	// 			})
+	// 		})
+	// }).await?;
 
 	Ok(())
 }

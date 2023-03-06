@@ -50,6 +50,6 @@ pub struct ServerRoles {
 // Individual Role List Struct
 #[derive(Default, FromRow, Debug)]
 pub struct RoleList {
-	pub group: String,
+	pub grp: String,
 	pub id: i64
 }
