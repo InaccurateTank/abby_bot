@@ -1,5 +1,9 @@
 use crate::{Context, Error};
-use abby_utils::concat;
+use poise::serenity_prelude as serenity;
+use abby_utils::{
+	db_structs,
+	concat
+};
 
 // fn concat(a: &str, b: &str) -> String {
 //   let mut result: String = String::with_capacity(a.len() + b.len());
@@ -42,6 +46,21 @@ pub async fn bottomify(
   #[description = "Text to translate"]
   plead: String
 ) -> Result<(), Error> {
+	let srv_features = sqlx::query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
+		.fetch_one(&ctx.data().db)
+		.await?;
+	if !srv_features.serious {
+		ctx.send(|r| {
+			r.content("")
+			.embed(|e|{
+				e.title("Feature Not Enabled!")
+					.color(serenity::utils::Color::from_rgb(102, 51, 102))
+					.description("This command requires a feature that isn't enabled on the server.")
+			})
+		}).await?;
+		return Ok(())
+	}
   let result = plead.bytes().map(byte_to_emoji).collect::<String>();
   ctx.send(|c| {
     c.content(result)
