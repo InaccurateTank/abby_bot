@@ -33,11 +33,12 @@ pub async fn all_roles_select(ctx: Context<'_>, overlap: Option<HashMap<RoleId, 
 	Ok(list)
 }
 
-pub fn roles_from_selected(selected: Vec<String>, roles: HashMap<RoleId, Role>) -> HashMap<RoleId, Role> {
-	return roles.iter()
-		.filter_map(|(k, v)| if selected.contains(&k.to_string()) {Some((*k, v.clone()))} else {None})
-		.collect::<HashMap<RoleId, Role>>();
-}
+// THIS NEEDS TO BE POKED AT SOME POINT
+// pub fn roles_from_selected(selected: Vec<String>, roles: HashMap<RoleId, Role>) -> HashMap<RoleId, Role> {
+// 	return roles.iter()
+// 		.filter_map(|(k, v)| if selected.contains(&k.to_string()) {Some((*k, v.clone()))} else {None})
+// 		.collect::<HashMap<RoleId, Role>>();
+// }
 
 pub async fn test() -> Result<(), Error> {
 	Ok(())

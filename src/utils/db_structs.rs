@@ -47,9 +47,17 @@ pub struct ServerRoles {
 	pub channel: Option<i64>
 }
 
+// pub struct RoleList(Vec<RoleEntry>);
+// impl RoleList {
+// 	pub fn roles_iter(&self) {
+
+// 	}
+// }
+
 // Individual Role List Struct
 #[derive(Default, FromRow, Debug)]
-pub struct RoleList {
+pub struct RoleEntry {
 	pub grp: String,
-	pub id: i64
+	pub id: i64,
+	pub users: u16
 }

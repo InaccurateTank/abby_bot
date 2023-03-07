@@ -168,7 +168,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
-				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
+				e.color(serenity::utils::Color::from_rgb(253, 253, 150));
 				e.description("Processing, please wait...")
 			})
 			.components(|f| f)
@@ -258,20 +258,20 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	.await?;
 	// Changed Serious
 	// let gid = serenity::GuildId(updated.srvid as u64);
-	if updated.serious != srv_features.serious {
+	// if updated.serious != srv_features.serious {
 		// use super::bottomify;
 		// let cmds = poise::builtins::create_application_commands(&vec![
 		// 	bottomify::bottomify()
 		// ]);
-		if updated.serious {
-			// gid.set_application_commands(ctx, |c| {
-			// 	*c = cmds;
-			// 	c
-			// }).await?;
-		} else {
-			// gid.set_application_commands(ctx, |c| c).await?;
-		}
-	}
+		// if updated.serious {
+		// 	// gid.set_application_commands(ctx, |c| {
+		// 	// 	*c = cmds;
+		// 	// 	c
+		// 	// }).await?;
+		// } else {
+		// 	// gid.set_application_commands(ctx, |c| c).await?;
+		// }
+	// }
 	// Changed Roles
 	if updated.roles != srv_features.roles {
 		// use super::rolelist;
@@ -279,7 +279,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		// 	rolelist::rolelist()
 		// ]);
 		if updated.roles {
-			query(&format!("CREATE TABLE IF NOT EXISTS roles_{id} (srvid BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, id BIGINT NOT NULL);"))
+			query(&format!("CREATE TABLE IF NOT EXISTS roles_{id} (id BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, users INTEGER NOT NULL);"))
 				.execute(&ctx.data().db)
 				.await?;
 			query("INSERT INTO roles (srvid, tab) VALUES(?, ?);")
@@ -384,7 +384,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
-				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
+				e.color(serenity::utils::Color::from_rgb(253, 253, 150));
 				e.description("Processing, please wait...")
 			})
 			.components(|f| f)

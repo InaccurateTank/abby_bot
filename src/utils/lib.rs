@@ -42,9 +42,11 @@ pub async fn cmd_err(reply: &str, term: &str, ctx: Context<'_>, msg: poise::Repl
 
 pub async fn inter_err(reply: &str, term: &str, ctx: &serenity::Context, int: &serenity::MessageComponentInteraction) -> Result<(), Error> {
 	int.create_interaction_response(ctx, |f| {
-		f.kind(serenity::InteractionResponseType::UpdateMessage).interaction_response_data(|d| {
-				d.components(|c| c).content(reply)
-			})
+		f.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
+		f.interaction_response_data(|m| {
+			m.content(reply);
+			m.ephemeral(true)
+		})
 	}).await?;
 	if !term.is_empty() {
 		eprintln!("{} - {} in \"{}\"",
@@ -67,7 +69,7 @@ pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<(), Error> {
 		r.content("")
 		.embed(|e|{
 			e.title("Feature Not Enabled!")
-				.color(serenity::utils::Color::from_rgb(102, 51, 102))
+				.color(serenity::utils::Color::from_rgb(250, 128, 114))
 				.description("This command requires a feature that isn't enabled on the server. If this is a mistake, have an admin run `/setup bot` to change it.")
 		})
 	}).await?;
