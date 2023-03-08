@@ -3,16 +3,12 @@ use std::{
 	str::FromStr
 };
 use poise::serenity_prelude as serenity;
-use abby_utils::{
-	Error,
-	db_structs,
-	inter_err,
-};
+use abby_utils::{Error, db_structs, inter_err};
+use sqlx::{query, query_as};
 use crate::{EMBED_STD, EMBED_WAIT};
 
 pub async fn mci_handler(ctx: &serenity::Context, data: &abby_utils::Data, mci: &serenity::MessageComponentInteraction) -> Result<(), Error> {
-	// println!("{}", mci.data.custom_id);
-	let srv_features = sqlx::query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(*mci.guild_id.unwrap().as_u64() as i64)
 		.fetch_one(&data.db)
 		.await?;
@@ -25,29 +21,19 @@ pub async fn mci_handler(ctx: &serenity::Context, data: &abby_utils::Data, mci: 
 		},
 		_ => {}
 	}
-	// if srv_features.roles {
-	// 	roles_click(ctx, data, &mut id_vec, mci).await?;
-	// }
 	Ok(())
 }
 
 async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &serenity::MessageComponentInteraction, id_vec: &mut VecDeque<&str>) -> Result<(), Error> {
-	let mci_data = &mci.data;
-	// let (front, back) = inter_id;
-	// let (front, back) = data.custom_id.split_once('.')
-	// 	.expect("Not a splittable ID");
-
-	// match id_vec.pop_front().unwrap() {
-		// "roles" => {
-			// let (subtree, group) = back.split_once('.').unwrap();
 	let srv_id = *mci.guild_id.unwrap().as_u64();
-	let rolelist = sqlx::query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
-		.bind(id_vec.pop_back().unwrap())
+	let group = id_vec.pop_back().unwrap();
+	let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
+		.bind(group)
 		.fetch_all(&data.db)
 		.await?;
 	match id_vec.pop_front().unwrap() {
 		"pick" => {
-			let rolelist_vec: Vec<serenity::Role> = rolelist.into_iter()
+			let rolelist_vec: Vec<serenity::Role> = rolelist.iter()
 				.map(|f| serenity::RoleId(f.id as u64).to_role_cached(ctx).unwrap())
 				.collect();
 			let member = mci.member.as_ref().unwrap();
@@ -103,54 +89,119 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 						}
 					};
 
-				mci.edit_original_interaction_response(ctx, |i| {
-					i.content("");
-					i.embed(|e| {
-						e.color(EMBED_WAIT);
-						e.description("Processing, please wait...")
-					});
-					i.components(|f| f)
-				}).await?;
+			mci.edit_original_interaction_response(ctx, |i| {
+				i.content("");
+				i.embed(|e| {
+					e.color(EMBED_WAIT);
+					e.description("Processing, please wait...")
+				});
+				i.components(|f| f)
+			}).await?;
 
-				let selected_roles: Vec<serenity::RoleId> = secondary_mci.data.values.iter().map(|f| {
-					serenity::RoleId::from_str(f).unwrap()
-				}).collect();
-				for r in rolelist_vec {
-					let mem_contain = member.roles.contains(&r.id);
-					if selected_roles.contains(&r.id) && !mem_contain {
-						member.to_owned()
-							.add_role(ctx, r.id)
-							.await
-							.expect("Could not alter role");
-					} else if mem_contain {
-						member.to_owned()
-							.remove_role(ctx, r.id)
-							.await
-							.expect("Could not alter role");
-					}
+			let selected_roles: Vec<serenity::RoleId> = secondary_mci.data.values.iter().map(|f| {
+				serenity::RoleId::from_str(f).unwrap()
+			}).collect();
+			for r in rolelist_vec {
+				let mem_contain = member.roles.contains(&r.id);
+				if selected_roles.contains(&r.id) && !mem_contain {
+					member.to_owned()
+						.add_role(ctx, r.id)
+						.await
+						.expect("Could not alter role");
+					query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
+						.bind(
+							rolelist.iter().find(|f| {
+								f.id == *r.id.as_u64() as i64
+							}).unwrap()
+								.users
+								.saturating_add(1)
+						)
+						.bind(*r.id.as_u64() as i64)
+						.execute(&data.db)
+						.await?;
+				} else if mem_contain {
+					member.to_owned()
+						.remove_role(ctx, r.id)
+						.await
+						.expect("Could not alter role");
+					query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
+						.bind(
+							rolelist.iter().find(|f| {
+								f.id == *r.id.as_u64() as i64
+							}).unwrap()
+								.users
+								.saturating_sub(1)
+						)
+						.bind(*r.id.as_u64() as i64)
+						.execute(&data.db)
+						.await?;
 				}
+			}
 
-				secondary_mci.create_interaction_response(ctx, |i| {
-					i.kind(serenity::InteractionResponseType::UpdateMessage);
-					i.interaction_response_data(|m| {
-						m.content("");
-						m.embed(|e| {
-							e.title("Roles Applied!");
-							e.color(EMBED_STD);
-							e.description("Roles from the selected have been successfully applied to your server profile.")
-						});
-						m.components(|c| c)
-					})
-				}).await?;
+			secondary_mci.create_interaction_response(ctx, |i| {
+				i.kind(serenity::InteractionResponseType::UpdateMessage);
+				i.interaction_response_data(|m| {
+					m.content("");
+					m.embed(|e| {
+						e.title("Roles Applied!");
+						e.color(EMBED_STD);
+						e.description("Roles from the selected have been successfully applied to your server profile.")
+					});
+					m.components(|c| c)
+				})
+			}).await?;
+
+			let rolelist_new = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
+				.bind(group)
+				.fetch_all(&data.db)
+				.await?;
+			mci.message.to_owned().edit(ctx, |m| {
+				m.embed(|e| {
+					e.title(group);
+					e.color(serenity::utils::Color::from_rgb(102, 51, 102));
+					let mut name_str = String::new();
+					let mut user_str = String::new();
+					for r in rolelist_new {
+						name_str = abby_utils::concat(&name_str, &format!("{}\n", serenity::RoleId(r.id as u64).to_role_cached(ctx).unwrap().name));
+						user_str = abby_utils::concat(&user_str, &format!("{}\n", r.users));
+					}
+					name_str = name_str.trim_end_matches('\n').to_string();
+					user_str = user_str.trim_end_matches('\n').to_string();
+					e.field("Name", name_str, true);
+					e.field("Users", user_str, true)
+				})
+			}).await?;
 		},
 		"edit" => {
-
+			mci.create_interaction_response(ctx, |i| {
+				i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
+				i.interaction_response_data(|m| {
+					m.content("Todo")
+				})
+			}).await?;
 		},
 		"remove" => {
-
+			query(&format!("DELETE FROM roles_{srv_id} WHERE grp = ?;"))
+				.bind(group)
+				.execute(&data.db)
+				.await?;
+			mci.message.delete(ctx).await?;
+			mci.create_interaction_response(ctx, |i| {
+				i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
+				i.interaction_response_data(|m| {
+					m.content("");
+					m.ephemeral(true);
+					m.embed(|e| {
+						e.title(":white_check_mark: Success :white_check_mark:");
+						e.color(EMBED_STD);
+						e.description(format!("Role group {group} has been deleted."))
+					});
+					m.components(|c| c)
+				})
+			}).await?;
 		},
 		_ => {
-			inter_err(":warning: Unknown Interaction ID :warning:", &format!("Unknown Interaction ID {}", &mci_data.custom_id), ctx, mci).await?;
+			inter_err(":warning: Unknown Interaction ID :warning:", &format!("Unknown Interaction ID {}", &mci.data.custom_id), ctx, mci).await?;
 		}
 	}
 	Ok(())
