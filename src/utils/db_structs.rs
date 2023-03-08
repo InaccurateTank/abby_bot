@@ -5,9 +5,13 @@ use crate::concat;
 // Server Features
 #[derive(FromRow, Debug)]
 pub struct Server {
+	/// ID of the server bitcast as an [i64].
 	pub srvid: i64,
+	/// Whether the server is serious or not, defaults to `true`.
 	pub serious: bool,
+	/// Whether the bot should respond to message events, defaults to `false`.
 	pub messages: bool,
+	/// Whether the bot should manage roles, defaults to `false`.
 	pub roles: bool
 }
 impl Default for Server {
@@ -42,8 +46,11 @@ impl Server {
 // Primary Roles Managment
 #[derive(Default, FromRow, Debug)]
 pub struct ServerRoles {
+	/// ID of the server bitcast as an [i64].
 	pub srvid: i64,
+	/// Table for all the servers managed roles as a [`String`].
 	pub tab: String,
+	/// ID of the server bitcast as an [i64].
 	pub channel: Option<i64>
 }
 
@@ -57,7 +64,10 @@ pub struct ServerRoles {
 // Individual Role List Struct
 #[derive(Default, FromRow, Debug)]
 pub struct RoleEntry {
-	pub grp: String,
+	/// The ID of the role bitcast as an [i64].
 	pub id: i64,
+	/// [`String`] of the group that the role belongs to.
+	pub grp: String,
+	/// Roughly the amount of users with the role.
 	pub users: u16
 }
