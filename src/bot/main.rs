@@ -142,50 +142,6 @@ async fn main() -> Result<(), Error> {
 					// Longform Message Interactions
 					poise::Event::InteractionCreate { interaction: serenity::Interaction::MessageComponent(m) } => {
 						events::interaction::mci_handler(ctx, data, m).await?;
-						// if let serenity::Interaction::MessageComponent(m) = interaction {
-						// 	// let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
-						// 	// 	.bind(*m.guild_id.unwrap().as_u64() as i64)
-						// 	// 	.fetch_one(&data.db)
-						// 	// 	.await?;
-						// 	// let allowed = ["roles"];
-
-						// 	// let mut id_vec: VecDeque<&str> = m.data.custom_id.split_terminator('.').collect();
-						// 		// .expect("Not a splittable ID");
-						// 	// if allowed.contains(&id_vec.pop_front().unwrap()) {
-						// 	events::interaction::mci_handler(ctx, data, m).await?;
-						// 	// }
-						// }
-
-						// match interaction {
-						// 	serenity::Interaction::MessageComponent(m) => {
-						// 		let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
-						// 			.bind(*m.guild_id.unwrap().as_u64() as i64)
-						// 			.fetch_one(&data.db)
-						// 			.await?;
-						// 		let allowed = ["roles"];
-
-						// 		let inter_id: Vec<&str> = m.data.custom_id.split_terminator('.').collect();
-						// 		if allowed.contains(inter_id.first().unwrap()) {
-						// 			events::interaction::mci_handler(ctx, m, srv_features).await?;
-						// 		}
-						// 		// if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
-						// 		// 	events::interaction::mci_handler(ctx, m, srv_features).await?;
-						// 		// }
-						// 	}
-						// 	_ => {}
-						// }
-
-
-						// if let Some(mci) = &interaction.clone().message_component() {
-						// 	let inter_id = &*mci.data.custom_id;
-						// 	if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
-						// 		events::interaction::handler(ctx, interaction).await?;
-						// 	}
-
-						// 	// if !inter_id.starts_with("register") && !inter_id.starts_with("unregister") && !inter_id.starts_with("setup") {
-						// 	// 	events::roles_click(ctx, mci).await?;
-						// 	// }
-						// }
 					}
 
 					// Otherwise Nothing
