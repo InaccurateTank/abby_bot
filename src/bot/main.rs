@@ -6,19 +6,15 @@ use sqlx::{
 	sqlite::SqlitePoolOptions,
 	query, query_as
 };
-use abby_utils::{
-	Context,
-	Error,
-	Data,
-	Config,
-	db_structs
-};
+use abby_utils::{Context, Error, Data, Config, db_structs};
 
 mod commands;
 mod events;
+mod templates;
 
 const EMBED_STD: serenity::utils::Color = serenity::utils::Color::from_rgb(102, 51, 102);
 const EMBED_WAIT: serenity::utils::Color = serenity::utils::Color::from_rgb(253, 253, 150);
+const EMBED_FAIL: serenity::utils::Color = serenity::utils::Color::from_rgb(178, 34, 34);
 
 #[derive(Debug, Options)]
 struct Opts {
@@ -75,30 +71,28 @@ async fn main() -> Result<(), Error> {
 			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600))),
 			..Default::default()
 		},
-		event_handler: |ctx, event, _framework, data| {
+		event_handler: |ctx, event, framework, data| {
 			Box::pin(async move {
 				match event {
 					// Join Server
 					poise::Event::GuildCreate { guild, is_new } => {
-						if let Some(id) = guild.system_channel_id {
-							if *is_new {
-								id.send_message(ctx, |m| {
-									m.content("")
-									.embed(|e|{
-										e.title("Hello I'm Abby!")
-											.color(serenity::utils::Color::from_rgb(102, 51, 102))
-											.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-											.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-									})
-								}).await?;
-								let id = guild.id.as_u64();
-								println!("Creating database entry for server {id}.");
-								query("INSERT INTO servers (srvid) VALUES(?);")
-									.bind(*id as i64)
-									.execute(&data.db)
-									.await?;
-							}
-						};
+						if *is_new {
+							let id = guild.id.as_u64();
+							println!("Creating database entry for server {id}.");
+							query("INSERT INTO servers (srvid) VALUES(?);")
+								.bind(*id as i64)
+								.execute(&data.db)
+								.await?;
+							guild.default_channel(framework.bot_id).await.unwrap().id.send_message(ctx, |m| {
+								m.content("");
+								m.embed(|e|{
+									e.title("Hello I'm Abby!");
+									e.color(serenity::utils::Color::from_rgb(102, 51, 102));
+									e.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.");
+									e.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+								})
+							}).await?;
+						}
 					},
 
 					// Kicked from Server
@@ -130,8 +124,7 @@ async fn main() -> Result<(), Error> {
 							Some(id) => Some(query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 								.bind(*id.as_u64() as i64)
 								.fetch_one(&data.db)
-								.await
-								.unwrap()),
+								.await?),
 							None => None
 						}.unwrap_or_default();
 						if !new_message.is_own(&ctx.cache) && srv_features.messages {

@@ -45,7 +45,7 @@ pub async fn rolelist(
 					r.create_select_menu(|menu| {
 						menu.custom_id("rolelist.new");
 						menu.placeholder("Select a set of roles.");
-						menu.min_values(0);
+						menu.min_values(1);
 						menu.max_values(roles.len() as u64);
 						menu.options(|f| {
 							f.set_options(roles)
