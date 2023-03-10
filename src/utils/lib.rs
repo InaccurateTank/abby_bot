@@ -9,8 +9,6 @@ pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
 }
 
-// pub mod role_utils;
-// pub use role_utils::*;
 pub mod config;
 pub use config::Config;
 pub mod db_structs;

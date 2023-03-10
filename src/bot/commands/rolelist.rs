@@ -64,15 +64,6 @@ pub async fn rolelist(
 			})
 		})
 	}).await?;
-
-	// let interaction = reply
-	// 	.message()
-	// 	.await?
-	// 	.await_component_interaction(ctx)
-	// 		.author_id(ctx.author().id)
-	// 		.timeout(Duration::from_secs(300))
-	// 		.await;
-
 	let interaction = match reply.message().await?
 	.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
@@ -93,21 +84,6 @@ pub async fn rolelist(
 				return Ok(())
 			}
 		};
-
-	// let i = match reply.message().await?
-	// 	.await_component_interaction(ctx)
-	// 		.author_id(ctx.author().id)
-	// 		.timeout(Duration::from_secs(300))
-	// 		.await {
-	// 			Some(inter_id) => {
-	// 				inter_id.data.to_owned()
-	// 			},
-	// 			None => {
-	// 				cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
-	// 				return Ok(())
-	// 			}
-	// 		};
-
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
@@ -117,30 +93,6 @@ pub async fn rolelist(
 			.components(|f| f)
 	})
 	.await?;
-
-	// let interaction_id = match &interaction {
-	// 	Some(m) => &m.data.custom_id,
-	// 	None => {
-	// 		cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
-	// 		return Ok(());
-	// 	}
-	// };
-
-	// let selected = match interaction_id.as_str() {
-	// 	"rolelist.new" => {
-	// 		match &interaction {
-	// 			Some(m) => m.data.values.clone(),
-	// 			None => {
-	// 				cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
-	// 				return Ok(());
-	// 			}
-	// 		}
-	// 	},
-	// 	o => {
-	// 		cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
-	// 		return Ok(());
-	// 	}
-	// };
 
 	for rid in &interaction.data.values {
 		query(&format!("INSERT INTO roles_{srv_id} (id, grp, users) VALUES(?, ?, 0);"))
@@ -153,19 +105,6 @@ pub async fn rolelist(
 		.bind(&group)
 		.fetch_all(&ctx.data().db)
 		.await?;
-
-	// let mut insert_str: String = String::new();
-	// for id in &interaction.data.values {
-	// 	insert_str = concat(&insert_str, &format!("({id}, \"{group}\", 0),"));
-	// }
-	// insert_str = insert_str.trim_end_matches(',').to_string();
-	// query(&format!("INSERT INTO {} (id, grp, users) VALUES{insert_str};", role_sets.tab))
-	// 	.execute(&ctx.data().db)
-	// 	.await?;
-	// let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM {} WHERE grp = ?;", role_sets.tab))
-	// 	.bind(&group)
-	// 	.fetch_all(&ctx.data().db)
-	// 	.await?;
 
 	let channel = if let Some(c) = role_sets.channel {
 		serenity::ChannelId::from(c as u64)

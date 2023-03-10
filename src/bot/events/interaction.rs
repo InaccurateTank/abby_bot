@@ -276,11 +276,6 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 					m.content("");
 					m.ephemeral(true);
 					m.set_embed(templates::state_embed(true, &format!("Role group {group} has been deleted.")));
-					// m.embed(|e| {
-					// 	e.title(":white_check_mark: Success :white_check_mark:");
-					// 	e.color(EMBED_STD);
-					// 	e.description(format!("Role group {group} has been deleted."))
-					// });
 					m.components(|c| c)
 				})
 			}).await?;

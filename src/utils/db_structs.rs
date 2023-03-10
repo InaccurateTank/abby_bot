@@ -48,34 +48,9 @@ impl Server {
 pub struct ServerRoles {
 	/// ID of the server bitcast as an [i64].
 	pub srvid: i64,
-	// Table for all the servers managed roles as a [`String`].
-	// pub tab: String,
 	/// ID of the server bitcast as an [i64].
 	pub channel: Option<i64>
 }
-
-// #[derive(Debug)]
-// pub struct RoleList(pub Vec<RoleEntry>);
-// impl RoleList {
-// 	pub fn to_roles(&self, ctx: &serenity::Context) -> Vec<serenity::Role> {
-// 		self.0.iter()
-// 			.map(|f| serenity::RoleId(f.id as u64).to_role_cached(ctx).unwrap())
-// 			.collect()
-// 	}
-// 	pub async fn from_roleids(&self, ctx: &serenity::Context, db: &sqlx::Pool<sqlx::Sqlite>, roles: Vec<serenity::RoleId>) -> Self {
-// 		let res = Vec::new();
-// 		for rid in roles {
-// 			res.push(
-// 				sqlx::query_as::<_, RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
-// 					.bind(value)
-// 					.fetch_all(db)
-// 					.await
-// 					.unwrap();
-// 			)
-// 		}
-// 		RoleList(res)
-// 	}
-// }
 
 // Individual Role List Struct
 #[derive(Default, FromRow, Debug)]
