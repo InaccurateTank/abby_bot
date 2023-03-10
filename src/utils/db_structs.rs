@@ -48,8 +48,8 @@ impl Server {
 pub struct ServerRoles {
 	/// ID of the server bitcast as an [i64].
 	pub srvid: i64,
-	/// Table for all the servers managed roles as a [`String`].
-	pub tab: String,
+	// Table for all the servers managed roles as a [`String`].
+	// pub tab: String,
 	/// ID of the server bitcast as an [i64].
 	pub channel: Option<i64>
 }

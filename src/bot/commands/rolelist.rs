@@ -22,17 +22,17 @@ pub async fn rolelist(
 	#[description = "Name of the role group."]
 	group: String
 ) -> Result<(), Error> {
-	let id = *ctx.guild_id().unwrap().as_u64();
+	let srv_id = *ctx.guild_id().unwrap().as_u64();
 	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(id as i64)
+		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
 	if !srv_features.roles {
 		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
-	let role_sets = query_as::<_, db_structs::ServerRoles>("SELECT * FROM roles WHERE srvid = ?;")
-		.bind(id as i64)
+	let role_sets = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
 
@@ -54,7 +54,7 @@ pub async fn rolelist(
 			c.create_action_row(|r| {
 				r.create_select_menu(|menu| {
 					menu.custom_id("rolelist.new");
-					menu.placeholder("Roles.");
+					menu.placeholder("Roles");
 					menu.min_values(1);
 					menu.max_values(select.len() as u64);
 					menu.options(|f| {
@@ -141,18 +141,31 @@ pub async fn rolelist(
 	// 		return Ok(());
 	// 	}
 	// };
-	let mut insert_str: String = String::new();
-	for id in &interaction.data.values {
-		insert_str = concat(&insert_str, &format!("({id}, \"{group}\", 0),"))
+
+	for rid in &interaction.data.values {
+		query(&format!("INSERT INTO roles_{srv_id} (id, grp, users) VALUES(?, ?, 0);"))
+			.bind(rid)
+			.bind(&group)
+			.execute(&ctx.data().db)
+			.await?;
 	}
-	insert_str = insert_str.trim_end_matches(',').to_string();
-	query(&format!("INSERT INTO {} (id, grp, users) VALUES{insert_str};", role_sets.tab))
-		.execute(&ctx.data().db)
-		.await?;
-	let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM {} WHERE grp = ?;", role_sets.tab))
+	let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
 		.bind(&group)
 		.fetch_all(&ctx.data().db)
 		.await?;
+
+	// let mut insert_str: String = String::new();
+	// for id in &interaction.data.values {
+	// 	insert_str = concat(&insert_str, &format!("({id}, \"{group}\", 0),"));
+	// }
+	// insert_str = insert_str.trim_end_matches(',').to_string();
+	// query(&format!("INSERT INTO {} (id, grp, users) VALUES{insert_str};", role_sets.tab))
+	// 	.execute(&ctx.data().db)
+	// 	.await?;
+	// let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM {} WHERE grp = ?;", role_sets.tab))
+	// 	.bind(&group)
+	// 	.fetch_all(&ctx.data().db)
+	// 	.await?;
 
 	let channel = if let Some(c) = role_sets.channel {
 		serenity::ChannelId::from(c as u64)

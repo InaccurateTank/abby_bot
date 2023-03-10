@@ -282,9 +282,8 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			query(&format!("CREATE TABLE IF NOT EXISTS roles_{id} (id BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, users INTEGER NOT NULL);"))
 				.execute(&ctx.data().db)
 				.await?;
-			query("INSERT INTO roles (srvid, tab) VALUES(?, ?);")
+			query("INSERT INTO role_options (srvid) VALUES(?);")
 				.bind(updated.srvid)
-				.bind(format!("roles_{id}"))
 				.execute(&ctx.data().db)
 				.await?;
 			// gid.set_application_commands(ctx, |c| {
@@ -302,7 +301,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			query(&format!("DROP TABLE IF EXISTS roles_{id};"))
 				.execute(&ctx.data().db)
 				.await?;
-			query("DELETE FROM roles WHERE srvid = ?;")
+			query("DELETE FROM role_options WHERE srvid = ?;")
 				.bind(updated.srvid)
 				.execute(&ctx.data().db)
 				.await?;
@@ -328,7 +327,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
-	let role_opts = query_as::<_, db_structs::ServerRoles>("SELECT * FROM roles WHERE srvid = ?;")
+	let role_opts = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
 		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 		.fetch_optional(&ctx.data().db)
 		.await?
@@ -426,7 +425,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		// Some(*serenity::ChannelId::from_str(selid)?.as_u64() as i64)
 	} else {None};
 
-	query("UPDATE roles SET channel = ? WHERE srvid = ?;")
+	query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
 		.bind(chid)
 		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 		.execute(&ctx.data().db)

@@ -183,7 +183,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 						c.create_action_row(|r| {
 							r.create_select_menu(|menu| {
 								menu.custom_id("rolelist.edit");
-								menu.placeholder("Roles.");
+								menu.placeholder("Roles");
 								menu.min_values(1);
 								menu.max_values(select.len() as u64);
 								menu.options(|f| {

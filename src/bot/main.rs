@@ -71,7 +71,7 @@ async fn main() -> Result<(), Error> {
 			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600))),
 			..Default::default()
 		},
-		event_handler: |ctx, event, framework, data| {
+		event_handler: |ctx, event, _framework, data| {
 			Box::pin(async move {
 				match event {
 					// Join Server
@@ -83,7 +83,7 @@ async fn main() -> Result<(), Error> {
 								.bind(*id as i64)
 								.execute(&data.db)
 								.await?;
-							guild.default_channel(framework.bot_id).await.unwrap().id.send_message(ctx, |m| {
+							guild.system_channel_id.unwrap().send_message(ctx, |m| {
 								m.content("");
 								m.embed(|e|{
 									e.title("Hello I'm Abby!");
@@ -103,7 +103,7 @@ async fn main() -> Result<(), Error> {
 							.bind(*id as i64)
 							.execute(&data.db)
 							.await?;
-						query("DELETE FROM roles WHERE srvid = ?;")
+						query("DELETE FROM role_options WHERE srvid = ?;")
 							.bind(*id as i64)
 							.execute(&data.db)
 							.await?;
