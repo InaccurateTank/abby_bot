@@ -82,8 +82,9 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 							mci.create_interaction_response(ctx, |f| {
 								f.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
 								f.interaction_response_data(|m| {
-									m.content("Interaction timed out, please try again.");
-									m.ephemeral(true)
+									m.content("");
+									m.ephemeral(true);
+									m.set_embed(templates::state_embed(false, "Interaction timed out, please try again."))
 								})
 							}).await?;
 							return Ok(())
@@ -174,11 +175,15 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				i.interaction_response_data(|m| {
 					m.content("");
 					m.ephemeral(true);
+					m.embed(|e| {
+						e.color(EMBED_STD);
+						e.description("Please select a set of roles for the group below.")
+					});
 					m.components(|c| {
 						c.create_action_row(|r| {
 							r.create_select_menu(|menu| {
 								menu.custom_id("rolelist.edit");
-								menu.placeholder("Select a set of roles.");
+								menu.placeholder("Roles.");
 								menu.min_values(1);
 								menu.max_values(select.len() as u64);
 								menu.options(|f| {
@@ -202,8 +207,9 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 							mci.create_interaction_response(ctx, |f| {
 								f.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
 								f.interaction_response_data(|m| {
-									m.content("Interaction timed out, please try again.");
-									m.ephemeral(true)
+									m.content("");
+									m.ephemeral(true);
+									m.set_embed(templates::state_embed(false, "Interaction timed out, please try again."))
 								})
 							}).await?;
 							return Ok(())

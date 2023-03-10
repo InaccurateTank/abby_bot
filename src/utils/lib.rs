@@ -9,8 +9,8 @@ pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
 }
 
-pub mod role_utils;
-pub use role_utils::*;
+// pub mod role_utils;
+// pub use role_utils::*;
 pub mod config;
 pub use config::Config;
 pub mod db_structs;
@@ -66,11 +66,11 @@ pub fn concat(a: &str, b: &str) -> String {
 
 pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<(), Error> {
 	ctx.send(|r| {
-		r.content("")
-		.embed(|e|{
-			e.title("Feature Not Enabled!")
-				.color(serenity::utils::Color::from_rgb(250, 128, 114))
-				.description("This command requires a feature that isn't enabled on the server. If this is a mistake, have an admin run `/setup bot` to change it.")
+		r.content("");
+		r.embed(|e|{
+			e.title(":warning: Failure :warning:");
+			e.color(serenity::utils::Color::from_rgb(178, 34, 34));
+			e.description("This command requires a feature that isn't enabled on the server. If this is a mistake, have an admin run `/setup bot` to change it.")
 		})
 	}).await?;
 	Ok(())

@@ -1,4 +1,3 @@
-use std::time::Duration;
 use poise::serenity_prelude as serenity;
 use sqlx::{
 	query,
@@ -7,9 +6,9 @@ use sqlx::{
 use abby_utils::{
 	db_structs,
 	concat,
-	cmd_err
+	// cmd_err
 };
-use crate::{Context, Error};
+use crate::{Context, Error, templates, EMBED_FAIL, EMBED_WAIT, EMBED_STD};
 
 /// Creates a list of roles.
 #[poise::command(
@@ -37,31 +36,63 @@ pub async fn rolelist(
 		.fetch_one(&ctx.data().db)
 		.await?;
 
-	let roles = abby_utils::all_roles_select(ctx, None).await?;
+	let select: Vec<serenity::CreateSelectMenuOption> = ctx.guild().unwrap().roles
+	.iter().filter_map(|(rid, r)| {
+		if r.name != "@everyone" {
+			return Some(serenity::CreateSelectMenuOption::new(&r.name, rid)
+			.to_owned())
+		}
+		None
+	}).collect();
 	let reply = ctx.send(|b| {
-		b.content("Please choose roles from the list.")
-			.components(|c| {
-				c.create_action_row(|r| {
-					r.create_select_menu(|menu| {
-						menu.custom_id("rolelist.new");
-						menu.placeholder("Select a set of roles.");
-						menu.min_values(1);
-						menu.max_values(roles.len() as u64);
-						menu.options(|f| {
-							f.set_options(roles)
-						})
+		b.content("");
+		b.embed(|e| {
+			e.color(EMBED_STD);
+			e.description("Please select a set of roles for the group below.")
+		});
+		b.components(|c| {
+			c.create_action_row(|r| {
+				r.create_select_menu(|menu| {
+					menu.custom_id("rolelist.new");
+					menu.placeholder("Roles.");
+					menu.min_values(1);
+					menu.max_values(select.len() as u64);
+					menu.options(|f| {
+						f.set_options(select)
 					})
 				})
 			})
+		})
 	}).await?;
 
-	let interaction = reply
-		.message()
-		.await?
-		.await_component_interaction(ctx)
-			.author_id(ctx.author().id)
-			.timeout(Duration::from_secs(300))
-			.await;
+	// let interaction = reply
+	// 	.message()
+	// 	.await?
+	// 	.await_component_interaction(ctx)
+	// 		.author_id(ctx.author().id)
+	// 		.timeout(Duration::from_secs(300))
+	// 		.await;
+
+	let interaction = match reply.message().await?
+	.await_component_interaction(ctx)
+		.author_id(ctx.author().id)
+		.timeout(std::time::Duration::from_secs(300))
+		.await {
+			Some(i) => {
+				i
+			},
+			None => {
+				reply.edit(ctx, |f| {
+					f.embed(|e| {
+						e.title(":warning: Failure :warning:");
+						e.color(EMBED_FAIL);
+						e.description("Interaction timed out, please try again.")
+					})
+				}).await?;
+
+				return Ok(())
+			}
+		};
 
 	// let i = match reply.message().await?
 	// 	.await_component_interaction(ctx)
@@ -80,43 +111,41 @@ pub async fn rolelist(
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
-				e.color(serenity::utils::Color::from_rgb(253, 253, 150));
+				e.color(EMBED_WAIT);
 				e.description("Processing, please wait...")
 			})
 			.components(|f| f)
 	})
 	.await?;
 
-	let interaction_id = match &interaction {
-		Some(m) => &m.data.custom_id,
-		None => {
-			cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
-			return Ok(());
-		}
-	};
+	// let interaction_id = match &interaction {
+	// 	Some(m) => &m.data.custom_id,
+	// 	None => {
+	// 		cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
+	// 		return Ok(());
+	// 	}
+	// };
 
-	let selected = match interaction_id.as_str() {
-		"rolelist.new" => {
-			match &interaction {
-				Some(m) => m.data.values.clone(),
-				None => {
-					cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
-					return Ok(());
-				}
-			}
-		},
-		o => {
-			cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
-			return Ok(());
-		}
-	};
+	// let selected = match interaction_id.as_str() {
+	// 	"rolelist.new" => {
+	// 		match &interaction {
+	// 			Some(m) => m.data.values.clone(),
+	// 			None => {
+	// 				cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
+	// 				return Ok(());
+	// 			}
+	// 		}
+	// 	},
+	// 	o => {
+	// 		cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
+	// 		return Ok(());
+	// 	}
+	// };
 	let mut insert_str: String = String::new();
-
-	for id in &selected {
+	for id in &interaction.data.values {
 		insert_str = concat(&insert_str, &format!("({id}, \"{group}\", 0),"))
 	}
 	insert_str = insert_str.trim_end_matches(',').to_string();
-
 	query(&format!("INSERT INTO {} (id, grp, users) VALUES{insert_str};", role_sets.tab))
 		.execute(&ctx.data().db)
 		.await?;
@@ -133,20 +162,7 @@ pub async fn rolelist(
 	};
 	channel.send_message(ctx, |m| {
 		m.content("");
-		m.embed(|e|{
-			e.title(&group);
-			e.color(serenity::utils::Color::from_rgb(102, 51, 102));
-			let mut name_str = String::new();
-			let mut user_str = String::new();
-			for r in rolelist {
-				name_str = concat(&name_str, &format!("{}\n", serenity::RoleId(r.id as u64).to_role_cached(ctx).unwrap().name));
-				user_str = concat(&user_str, &format!("{}\n", r.users));
-			}
-			name_str = name_str.trim_end_matches('\n').to_string();
-			user_str = user_str.trim_end_matches('\n').to_string();
-			e.field("Name", name_str, true);
-			e.field("Users", user_str, true)
-		});
+		m.set_embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist));
 		m.components(|c| {
 			c.create_action_row(|row| {
 				row.create_button(|button| {
@@ -165,6 +181,13 @@ pub async fn rolelist(
 					button.style(serenity::ButtonStyle::Danger)
 				})
 			})
+		})
+	}).await?;
+	reply.edit(ctx, |m| {
+		m.embed(|e| {
+			e.title(":white_check_mark: Success :white_check_mark:");
+			e.color(EMBED_STD);
+			e.description(format!("Rolelist for group {group} has been created."))
 		})
 	}).await?;
 	Ok(())
