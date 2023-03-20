@@ -107,8 +107,9 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 			}).collect();
 			for r in rolelist_vec {
 				let mem_contain = member.roles.contains(&r.id);
+				let selected_contain = selected_roles.contains(&r.id);
 				let current_users = rolelist.iter().find(|f| f.id == *r.id.as_u64() as i64).unwrap().users;
-				if selected_roles.contains(&r.id) && !mem_contain {
+				if selected_contain && !mem_contain {
 					member.to_owned()
 						.add_role(ctx, r.id)
 						.await
@@ -118,7 +119,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 						.bind(*r.id.as_u64() as i64)
 						.execute(&data.db)
 						.await?;
-				} else if mem_contain {
+				} else if !selected_contain && mem_contain {
 					member.to_owned()
 						.remove_role(ctx, r.id)
 						.await
