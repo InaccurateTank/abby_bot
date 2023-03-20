@@ -87,10 +87,10 @@ async fn main() -> Result<(), Error> {
 				tokio::spawn(async move {
 					tokio::signal::ctrl_c()
 						.await
-						.expect("Failed to listen for Ctrl+C");
+						.expect("Failed to listen for closing signal");
 					print!("Shutting Down");
-					sm.lock().await.shutdown_all().await;
 					db.close().await;
+					sm.lock().await.shutdown_all().await;
 				});
 				Ok(Data {
 					db: pool
