@@ -3,11 +3,7 @@ use sqlx::{
 	query,
 	query_as
 };
-use abby_utils::{
-	db_structs,
-	concat,
-	// cmd_err
-};
+use abby_utils::db_structs;
 use crate::{Context, Error, templates, EMBED_FAIL, EMBED_WAIT, EMBED_STD};
 
 /// Creates a list of roles.
@@ -115,25 +111,7 @@ pub async fn rolelist(
 	channel.send_message(ctx, |m| {
 		m.content("");
 		m.set_embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist));
-		m.components(|c| {
-			c.create_action_row(|row| {
-				row.create_button(|button| {
-					button.custom_id(concat("roles.pick.", group.as_str()));
-					button.label("Pick");
-					button.style(serenity::ButtonStyle::Primary)
-				});
-				row.create_button(|button| {
-					button.custom_id(concat("roles.edit.", group.as_str()));
-					button.label("Edit");
-					button.style(serenity::ButtonStyle::Secondary)
-				});
-				row.create_button(|button| {
-					button.custom_id(concat("roles.remove.", group.as_str()));
-					button.label("Remove");
-					button.style(serenity::ButtonStyle::Danger)
-				})
-			})
-		})
+		m.set_components(templates::rolelist_components(&group))
 	}).await?;
 	reply.edit(ctx, |m| {
 		m.embed(|e| {
