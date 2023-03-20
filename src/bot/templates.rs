@@ -23,14 +23,22 @@ pub fn processing_embed() -> serenity::CreateEmbed {
 }
 
 pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db_structs::RoleEntry>) -> serenity::CreateEmbed {
+	let mut rolelist: Vec<(String, u16)> = rolelist.into_iter().map(|r|
+		(serenity::RoleId(r.id as u64).to_role_cached(&ctx).unwrap().name, r.users)
+	).collect();
+	rolelist.sort_by(|a, b| {
+		let a_l = a.0.to_lowercase();
+		let b_l = b.0.to_lowercase();
+		a_l.cmp(&b_l)
+	});
 	let mut e = serenity::CreateEmbed::default();
 	e.title(group);
 	e.color(EMBED_STD);
 	let mut name_str = String::new();
 	let mut user_str = String::new();
-	for r in rolelist {
-		name_str = abby_utils::concat(&name_str, &format!("{}\n", serenity::RoleId(r.id as u64).to_role_cached(&ctx).unwrap().name));
-		user_str = abby_utils::concat(&user_str, &format!("{:^7}\n", r.users.to_string()));
+	for (name, id) in rolelist {
+		name_str = abby_utils::concat(&name_str, &format!("{name}\n"));
+		user_str = abby_utils::concat(&user_str, &format!("{id}\n"));
 	}
 	name_str = name_str.trim_end_matches('\n').to_string();
 	user_str = user_str.trim_end_matches('\n').to_string();

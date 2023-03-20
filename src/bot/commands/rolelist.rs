@@ -11,6 +11,7 @@ use crate::{Context, Error, templates, EMBED_FAIL, EMBED_WAIT, EMBED_STD};
 	guild_only,
 	slash_command,
 	required_permissions="MANAGE_ROLES",
+	category="Administration",
 	ephemeral
 )]
 pub async fn rolelist(
@@ -32,14 +33,22 @@ pub async fn rolelist(
 		.fetch_one(&ctx.data().db)
 		.await?;
 
-	let select: Vec<serenity::CreateSelectMenuOption> = ctx.guild().unwrap().roles
-	.iter().filter_map(|(rid, r)| {
+	// Select sorting
+	let mut select: Vec<serenity::Role> = ctx.guild().unwrap().roles
+		.into_iter().map(|(_, r)| r).collect();
+	select.sort_by(|a, b| {
+		let a_l = a.name.to_lowercase();
+		let b_l = b.name.to_lowercase();
+		return a_l.cmp(&b_l)
+	});
+	let select: Vec<serenity::CreateSelectMenuOption> = select.into_iter().filter_map(|r| {
 		if r.name != "@everyone" {
-			return Some(serenity::CreateSelectMenuOption::new(&r.name, rid)
+			return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id)
 			.to_owned())
 		}
 		None
 	}).collect();
+
 	let reply = ctx.send(|b| {
 		b.content("");
 		b.embed(|e| {
