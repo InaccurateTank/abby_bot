@@ -34,9 +34,14 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 	match id_vec.pop_front().unwrap() {
 		// Rolelist Pick
 		"pick" => {
-			let rolelist_vec: Vec<serenity::Role> = rolelist.iter()
+			let mut rolelist_vec: Vec<serenity::Role> = rolelist.iter()
 				.map(|f| serenity::RoleId(f.id as u64).to_role_cached(ctx).unwrap())
 				.collect();
+			rolelist_vec.sort_by(|a, b| {
+				let a_l = a.name.to_lowercase();
+				let b_l = b.name.to_lowercase();
+				a_l.cmp(&b_l)
+			});
 			let member = mci.member.as_ref().unwrap();
 
 			mci.create_interaction_response(&ctx, |i| {
