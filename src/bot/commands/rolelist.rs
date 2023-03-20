@@ -35,16 +35,16 @@ pub async fn rolelist(
 
 	// Select sorting
 	let mut select: Vec<serenity::Role> = ctx.guild().unwrap().roles
-		.into_iter().map(|(_, r)| r).collect();
+		.into_values()
+		.collect();
 	select.sort_by(|a, b| {
 		let a_l = a.name.to_lowercase();
 		let b_l = b.name.to_lowercase();
-		return a_l.cmp(&b_l)
+		a_l.cmp(&b_l)
 	});
 	let select: Vec<serenity::CreateSelectMenuOption> = select.into_iter().filter_map(|r| {
 		if r.name != "@everyone" {
-			return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id)
-			.to_owned())
+			return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id))
 		}
 		None
 	}).collect();

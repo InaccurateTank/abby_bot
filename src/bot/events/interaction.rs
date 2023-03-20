@@ -165,35 +165,25 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				return Ok(());
 			}
 
+			// Select menu sorting
 			let mut select: Vec<serenity::Role> = mci.guild_id.unwrap().to_guild_cached(ctx).unwrap().roles
-				.into_iter().map(|(_, r)| r).collect();
+				.into_values()
+				.collect();
 			select.sort_by(|a, b| {
 				let a_l = a.name.to_lowercase();
 				let b_l = b.name.to_lowercase();
-				return a_l.cmp(&b_l)
+				a_l.cmp(&b_l)
 			});
 			let select: Vec<serenity::CreateSelectMenuOption> = select.into_iter().filter_map(|r| {
 					if r.name != "@everyone" {
 						return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id)
 						.default_selection(rolelist.iter()
-							.find(|f| r.id == serenity::RoleId(f.id as u64))
-							.is_some())
+							.any(|f| r.id == serenity::RoleId(f.id as u64)))
 						.to_owned())
 					}
 					None
 				}).collect();
 
-			// let select: Vec<serenity::CreateSelectMenuOption> = mci.guild_id.unwrap().to_guild_cached(ctx).unwrap().roles
-			// 	.iter().filter_map(|(rid, r)| {
-			// 		if r.name != "@everyone" {
-			// 			return Some(serenity::CreateSelectMenuOption::new(&r.name, rid)
-			// 			.default_selection(rolelist.iter()
-			// 				.find(|f| rid == &serenity::RoleId(f.id as u64))
-			// 				.is_some())
-			// 			.to_owned())
-			// 		}
-			// 		None
-			// 	}).collect();
 			mci.create_interaction_response(ctx, |i| {
 				i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
 				i.interaction_response_data(|m| {
@@ -253,7 +243,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				query(&format!("INSERT INTO roles_{srv_id} (id, grp, users) VALUES(?, ?, ?);"))
 					.bind(selected.parse::<i64>().unwrap())
 					.bind(group)
-					.bind(rolelist.iter().find_map(|f| if &f.id.to_string() == selected {return Some(f.users)} else {None}).unwrap_or(0))
+					.bind(rolelist.iter().find_map(|f| if &f.id.to_string() == selected {Some(f.users)} else {None}).unwrap_or(0))
 					.execute(&data.db)
 					.await.unwrap();
 			}

@@ -24,7 +24,7 @@ pub fn processing_embed() -> serenity::CreateEmbed {
 
 pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db_structs::RoleEntry>) -> serenity::CreateEmbed {
 	let mut rolelist: Vec<(String, u16)> = rolelist.into_iter().map(|r|
-		(serenity::RoleId(r.id as u64).to_role_cached(&ctx).unwrap().name, r.users)
+		(serenity::RoleId(r.id as u64).to_role_cached(ctx).unwrap().name, r.users)
 	).collect();
 	rolelist.sort_by(|a, b| {
 		let a_l = a.0.to_lowercase();
