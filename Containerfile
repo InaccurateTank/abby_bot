@@ -2,11 +2,11 @@ FROM docker.io/rust:1.68-bullseye as builder
 WORKDIR /build
 COPY . .
 
-RUN cargo build --release
+RUN mkdir /data &&\
+	cargo build --release
 
-FROM docker.io/debian:bullseye-slim
-RUN mkdir -p /abby_bot/data
-COPY --from=builder /build/target/release/abby_bot /abby_bot/bot
-WORKDIR /abby_bot
+FROM gcr.io/distroless/cc-debian11
+COPY --from=builder /build/target/release/abby_bot /bot
+COPY --from=builder /data /data
 
-ENTRYPOINT [ "/abby_bot/bot" ]
+ENTRYPOINT [ "/bot" ]
