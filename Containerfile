@@ -8,5 +8,6 @@ RUN mkdir /data &&\
 FROM gcr.io/distroless/cc-debian11
 COPY --from=builder /build/target/release/abby_bot /bot
 COPY --from=builder /data /data
+VOLUME [ "/data" ]
 
 ENTRYPOINT [ "/bot" ]
