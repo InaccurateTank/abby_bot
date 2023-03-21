@@ -49,6 +49,7 @@ pub async fn rolelist(
 		None
 	}).collect();
 
+	// The role selection menu.
 	let reply = ctx.send(|b| {
 		b.content("");
 		b.embed(|e| {
@@ -89,6 +90,8 @@ pub async fn rolelist(
 				return Ok(())
 			}
 		};
+
+	// Processing
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
@@ -99,6 +102,7 @@ pub async fn rolelist(
 	})
 	.await?;
 
+	// Calculating
 	for rid in &interaction.data.values {
 		query(&format!("INSERT INTO roles_{srv_id} (id, grp, users) VALUES(?, ?, 0);"))
 			.bind(rid)
