@@ -49,7 +49,7 @@ pub async fn bottomify(
 		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
-	if !srv_features.serious {
+	if srv_features.serious {
 		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
