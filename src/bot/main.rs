@@ -85,9 +85,26 @@ async fn main() -> Result<(), Error> {
 				let sm = framework.shard_manager().clone();
 				let db = pool.clone();
 				tokio::spawn(async move {
-					tokio::signal::ctrl_c()
-						.await
-						.expect("Failed to listen for closing signal");
+					#[cfg(target_os = "linux")]
+					{
+						use tokio::signal::unix::{signal, SignalKind};
+						let mut sigint = signal(SignalKind::interrupt()).unwrap();
+						let mut sigterm = signal(SignalKind::terminate()).unwrap();
+						tokio::select! {
+							_ = sigint.recv() => {},
+							_ = sigterm.recv() => {}
+						}
+					}
+					#[cfg(target_os = "windows")]
+					{
+						use tokio::signal::windows::{ctrl_c, ctrl_close};
+						let mut c = ctrl_c().unwrap();
+						let mut close = ctrl_close().unwrap();
+						tokio::select! {
+							_ = c.recv() => {},
+							_ = close.recv() => {}
+						}
+					}
 					print!("Shutting Down");
 					db.close().await;
 					sm.lock().await.shutdown_all().await;
