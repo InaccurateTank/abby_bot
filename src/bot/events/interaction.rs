@@ -266,64 +266,6 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				m.set_embed(templates::rolelist_embed(ctx, group, rolelist_new))
 			}).await?;
 		},
-
-		// Rolelist Remove
-		// "remove" => {
-		// 	// Perms Check
-		// 	if !mci.member.as_ref().unwrap().permissions(ctx).unwrap().manage_roles() {
-		// 		mci.create_interaction_response(ctx, |i| {
-		// 			i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
-		// 			i.interaction_response_data(|m| {
-		// 				m.content("");
-		// 				m.ephemeral(true);
-		// 				m.set_embed(templates::state_embed(false, "You do not have the required permissions for this!"));
-		// 				m.components(|c| c)
-		// 			})
-		// 		}).await?;
-		// 		return Ok(());
-		// 	}
-
-		// 	// Info Gathering
-		// 	let group_msg = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
-		// 		.bind(group)
-		// 		.fetch_one(&data.db)
-		// 		.await?;
-		// 	let group_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
-		// 		.bind(srv_id as i64)
-		// 		.fetch_one(&data.db)
-		// 		.await?
-		// 		.channel
-		// 		.unwrap_or(*mci.guild_id
-		// 			.unwrap()
-		// 			.to_guild_cached(ctx)
-		// 			.unwrap()
-		// 			.system_channel_id
-		// 			.unwrap()
-		// 			.as_u64() as i64
-		// 		);
-
-		// 	// Deletions
-		// 	ctx.http.delete_message(group_channel as u64, group_msg.msg as u64).await?;
-		// 	query(&format!("DELETE FROM rgroups_{srv_id} WHERE name = ?;"))
-		// 		.bind(group)
-		// 		.execute(&data.db)
-		// 		.await?;
-		// 	query(&format!("DELETE FROM roles_{srv_id} WHERE grp = ?;"))
-		// 		.bind(group)
-		// 		.execute(&data.db)
-		// 		.await?;
-
-		// 	// Respond
-		// 	mci.create_interaction_response(ctx, |i| {
-		// 		i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
-		// 		i.interaction_response_data(|m| {
-		// 			m.content("");
-		// 			m.ephemeral(true);
-		// 			m.set_embed(templates::state_embed(true, &format!("Role group {group} has been deleted.")));
-		// 			m.components(|c| c)
-		// 		})
-		// 	}).await?;
-		// },
 		_ => {
 			inter_err(":warning: Unknown Interaction ID :warning:", &format!("Unknown Interaction ID {}", &mci.data.custom_id), ctx, mci).await?;
 		}

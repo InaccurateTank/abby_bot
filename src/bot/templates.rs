@@ -6,14 +6,6 @@ use crate::{EMBED_STD, EMBED_WAIT, EMBED_FAIL};
 pub fn state_embed(success: bool, text: &str) -> serenity::CreateEmbed {
 	let mut e = serenity::CreateEmbed::default();
 	builder_state_embed(&mut e, success, text);
-	// if success {
-	// 	e.title(":white_check_mark: Success :white_check_mark:");
-	// 	e.color(EMBED_STD);
-	// } else {
-	// 	e.title(":warning: Failure :warning:");
-	// 	e.color(EMBED_FAIL);
-	// }
-	// e.description(text);
 	e
 }
 
@@ -33,8 +25,6 @@ pub fn builder_state_embed(e: &mut serenity::CreateEmbed, success: bool, text: &
 pub fn processing_embed() -> serenity::CreateEmbed {
 	let mut e = serenity::CreateEmbed::default();
 	builder_processing_embed(&mut e);
-	// e.color(EMBED_WAIT);
-	// e.description("Processing, please wait...");
 	e
 }
 

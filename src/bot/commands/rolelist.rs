@@ -69,16 +69,13 @@ async fn delete(
 		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
+
 	// Info Gathering
-	// let group_msg = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
-	// 	.bind(&group)
-	// 	.fetch_optional(&ctx.data().db)
-	// 	.await?;
 	let group_msg = if let Some(rgroup) = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
 		.bind(&group)
 		.fetch_optional(&ctx.data().db)
 		.await? {
-			rgroup
+		  rgroup
 	} else {
 		ctx.send(|m| {
 			m.content("");
@@ -123,17 +120,6 @@ async fn delete(
 			e
 		})
 	}).await?;
-
-	// Respond
-	// mci.create_interaction_response(ctx, |i| {
-	// 	i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
-	// 	i.interaction_response_data(|m| {
-	// 		m.content("");
-	// 		m.ephemeral(true);
-	// 		m.set_embed(templates::state_embed(true, &format!("Role group {group} has been deleted.")));
-	// 		m.components(|c| c)
-	// 	})
-	// }).await?;
 	Ok(())
 }
 
@@ -216,9 +202,6 @@ async fn create(
 					f.embed(|e| {
 						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
 						e
-						// e.title(":warning: Failure :warning:");
-						// e.color(EMBED_FAIL);
-						// e.description("Interaction timed out, please try again.")
 					})
 				}).await?;
 
@@ -232,8 +215,6 @@ async fn create(
 			.embed(|e| {
 				templates::builder_processing_embed(e);
 				e
-				// e.color(EMBED_WAIT);
-				// e.description("Processing, please wait...")
 			})
 			.components(|f| f)
 	})
@@ -279,9 +260,6 @@ async fn create(
 		m.embed(|e| {
 			templates::builder_state_embed(e, true, &format!("Rolelist for group {group} has been created."));
 			e
-			// e.title(":white_check_mark: Success :white_check_mark:");
-			// e.color(EMBED_STD);
-			// e.description(format!("Rolelist for group {group} has been created."))
 		})
 	}).await?;
 	Ok(())

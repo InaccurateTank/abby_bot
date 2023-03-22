@@ -1,5 +1,4 @@
 use std::{
-	// time::Duration,
 	collections::HashMap,
 	str::FromStr
 };
@@ -7,12 +6,10 @@ use poise::serenity_prelude::{self as serenity, CacheHttp};
 use abby_utils::{
 	Context,
 	Error,
-	// cmd_err,
 	concat,
 	db_structs
 };
 use sqlx::{
-	// FromRow,
 	query,
 	query_as
 };
@@ -79,14 +76,6 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			})
 	}).await?;
 
-	// let interaction = reply
-	// 	.message()
-	// 	.await?
-	// 	.await_component_interaction(ctx)
-	// 		.author_id(ctx.author().id)
-	// 		.timeout(Duration::from_secs(300))
-	// 	.await;
-
 	let interaction = match reply.message().await?
 	.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
@@ -100,9 +89,6 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 					f.embed(|e| {
 						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
 						e
-						// e.title(":warning: Failure :warning:");
-						// e.color(EMBED_FAIL);
-						// e.description("Interaction timed out, please try again.")
 					})
 				}).await?;
 
@@ -119,30 +105,6 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		m.components(|f| f)
 	})
 	.await?;
-
-	// let interaction_id = match &interaction {
-	// 	Some(m) => &m.data.custom_id,
-	// 	None => {
-	// 		cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
-	// 		return Ok(());
-	// 	}
-	// };
-
-	// let selected = match interaction_id.as_str() {
-	// 	"setup.bot" => {
-	// 		match &interaction {
-	// 			Some(m) => m.data.values.to_owned(),
-	// 			None => {
-	// 				cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
-	// 				return Ok(());
-	// 			}
-	// 		}
-	// 	},
-	// 	o => {
-	// 		cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
-	// 		return Ok(());
-	// 	}
-	// };
 
 	let set_string = srv_features.as_array()
 		.map(|(name, _)| {
@@ -304,14 +266,6 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			})
 	}).await?;
 
-	// let interaction = reply
-	// 	.message()
-	// 	.await?
-	// 	.await_component_interaction(ctx)
-	// 		.author_id(ctx.author().id)
-	// 		.timeout(Duration::from_secs(300))
-	// 	.await;
-
 	let interaction = match reply.message().await?
 	.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
@@ -325,9 +279,6 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 					f.embed(|e| {
 						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
 						e
-						// e.title(":warning: Failure :warning:");
-						// e.color(EMBED_FAIL);
-						// e.description("Interaction timed out, please try again.")
 					})
 				}).await?;
 
@@ -340,47 +291,15 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		b.embed(|e| {
 			templates::builder_processing_embed(e);
 			e
-			// e.color(EMBED_WAIT);
-			// e.description("Processing, please wait...");
-			// e
-				// e.color(serenity::utils::Color::from_rgb(253, 253, 150));
-				// e.description("Processing, please wait...")
 		}).components(|f| f)
 	})
 	.await?;
-
-	// let selected = &interaction.data.values;
-
-	// let interaction_id = match &interaction {
-	// 	Some(m) => &m.data.custom_id,
-	// 	None => {
-	// 		cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
-	// 		return Ok(());
-	// 	}
-	// };
-
-	// let selected = match interaction_id.as_str() {
-	// 	"setup.roles" => {
-	// 		match &interaction {
-	// 			Some(m) => m.data.values.to_owned(),
-	// 			None => {
-	// 				cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
-	// 				return Ok(());
-	// 			}
-	// 		}
-	// 	},
-	// 	o => {
-	// 		cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
-	// 		return Ok(());
-	// 	}
-	// };
 
 	let selid = if let Some(s) = interaction.data.values.first() {
 		s.as_str()
 	} else {"0"};
 	let chid = if selid != "0" {
 		Some(selid.parse::<i64>()?)
-		// Some(*serenity::ChannelId::from_str(selid)?.as_u64() as i64)
 	} else {None};
 
 	query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
