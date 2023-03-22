@@ -35,7 +35,7 @@ fn byte_to_emoji(value: u8) -> String {
 
 /// Use your words I don't speak bottom.
 ///
-/// Technically just translates messages into bytecode. Not that this is any less accurate of a bottom translator than, say, a wild guess.
+/// Listen this is literally just a bytecode translator. That's it. I don't know what to tell ya.
 #[poise::command(
   slash_command,
   category = "Misc"

@@ -6,6 +6,9 @@ use sqlx::{
 use abby_utils::db_structs;
 use crate::{Context, Error, templates, EMBED_STD};
 
+/// Creates or deletes a list of roles to select from.
+///
+/// Using `setup roles` before using the create subcommend is *highly* recommended. Otherwise this command just dumps everything in the system channel.
 #[poise::command(
 	guild_only,
 	slash_command,
