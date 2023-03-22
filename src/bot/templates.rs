@@ -72,11 +72,6 @@ pub fn rolelist_components(group: &str) -> serenity::CreateComponents {
 			button.label("Edit");
 			button.style(serenity::ButtonStyle::Secondary)
 		})
-		// row.create_button(|button| {
-		// 	button.custom_id(concat("roles.remove.", group));
-		// 	button.label("Remove");
-		// 	button.style(serenity::ButtonStyle::Danger)
-		// })
 	});
 	c
 }
