@@ -2,8 +2,7 @@ use poise::serenity_prelude as serenity;
 use sqlx::FromRow;
 use crate::concat;
 
-// Server Features
-/// Entry in the server manager
+/// Database feature entry
 #[derive(FromRow, Debug)]
 pub struct Server {
 	/// ID of the server bitcast as an [i64].
@@ -44,7 +43,7 @@ impl Server {
 	}
 }
 
-/// Table of per-server role settings. Currently just the channel the roles will be cast to.
+/// Database role feature settings entry.
 #[derive(Default, FromRow, Debug)]
 pub struct ServerRoles {
 	/// ID of the server bitcast as an [i64].
@@ -53,7 +52,7 @@ pub struct ServerRoles {
 	pub channel: Option<i64>
 }
 
-/// Individual entries for roles in the role list.
+/// Database per-server role entry.
 #[derive(Default, FromRow, Debug)]
 pub struct RoleEntry {
 	/// The ID of the role bitcast as an [i64].
@@ -64,7 +63,7 @@ pub struct RoleEntry {
 	pub users: u16
 }
 
-/// Seperate table of groups for [`RoleEntry`] structs.
+/// Database per-server group management.
 #[derive(Default, FromRow, Debug)]
 pub struct RoleGroup {
 	/// [`String`] name of the role group.
