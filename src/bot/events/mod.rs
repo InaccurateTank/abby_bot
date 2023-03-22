@@ -36,6 +36,8 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 				.bind(*id as i64)
 				.execute(&data.db)
 				.await?;
+
+			// Can't purge the messages so just remove the roles.
 			query("DELETE FROM role_options WHERE srvid = ?;")
 				.bind(*id as i64)
 				.execute(&data.db)

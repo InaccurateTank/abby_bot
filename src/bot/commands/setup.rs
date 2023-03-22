@@ -3,7 +3,7 @@ use std::{
 	collections::HashMap,
 	str::FromStr
 };
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, CacheHttp};
 use abby_utils::{
 	Context,
 	Error,
@@ -17,7 +17,7 @@ use sqlx::{
 	query_as
 };
 
-use crate::{EMBED_WAIT, EMBED_FAIL, EMBED_STD};
+use crate::{EMBED_WAIT, EMBED_STD, templates};
 
 /// Administrates the bot on a per-server basis.
 ///
@@ -33,8 +33,8 @@ use crate::{EMBED_WAIT, EMBED_FAIL, EMBED_STD};
 	subcommands("roles", "bot")
 )]
 pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.say("You shouldn't be here?").await?;
-    Ok(())
+	ctx.say("You shouldn't be here?").await?;
+	Ok(())
 }
 
 /// Sets up various settings for the bot on the server.
@@ -96,9 +96,11 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			None => {
 				reply.edit(ctx, |f| {
 					f.embed(|e| {
-						e.title(":warning: Failure :warning:");
-						e.color(EMBED_FAIL);
-						e.description("Interaction timed out, please try again.")
+						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
+						e
+						// e.title(":warning: Failure :warning:");
+						// e.color(EMBED_FAIL);
+						// e.description("Interaction timed out, please try again.")
 					})
 				}).await?;
 
@@ -106,13 +108,13 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			}
 		};
 
-	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
-				e.color(EMBED_WAIT);
-				e.description("Processing, please wait...")
-			})
-			.components(|f| f)
+	reply.edit(ctx, |m| {
+		m.content("");
+		m.embed(|e| {
+			templates::builder_processing_embed(e);
+			e
+		});
+		m.components(|f| f)
 	})
 	.await?;
 
@@ -152,18 +154,18 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
-	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
-				e.title("Feature Changes Confirmed!");
-				e.color(EMBED_STD);
-				e.description("Your new settings are:");
-				for (name, value) in updated.as_array() {
-					e.field(name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false);
-				}
-				e
-			})
-			.components(|f| f)
+	reply.edit(ctx, |m| {
+		m.content("");
+		m.embed(|e| {
+			e.title("Feature Changes Confirmed!");
+			e.color(EMBED_STD);
+			e.description("Your new settings are:");
+			for (name, value) in updated.as_array() {
+				e.field(name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false);
+			}
+			e
+		});
+		m.components(|f| f)
 	})
 	.await?;
 	// Changed Serious
@@ -195,22 +197,43 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 				.bind(updated.srvid)
 				.execute(&ctx.data().db)
 				.await?;
-			ctx.send(|b| {
-				b.content("")
-					.embed(|e| {
-						e.description("Note that using the default channel for roles is not advised. It is recommended to run `/setup roles` now.");
-						e.color(EMBED_WAIT)
-					})
+			ctx.send(|m| {
+				m.content("");
+				m.embed(|e| {
+					e.description("Note that using the default channel for roles is not advised. It is recommended to run `/setup roles` now.");
+					e.color(EMBED_WAIT)
+				})
 			}).await?;
 		} else {
+			// Delete messages
+			let group_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+				.bind(srv_id as i64)
+				.fetch_one(&ctx.data().db)
+				.await?
+				.channel
+				.unwrap_or(*ctx.guild_id()
+					.unwrap()
+					.to_guild_cached(ctx)
+					.unwrap()
+					.system_channel_id
+					.unwrap()
+					.as_u64() as i64
+				);
+			for grp in query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id}"))
+				.fetch_all(&ctx.data().db)
+				.await? {
+				ctx.http().delete_message(group_channel as u64, grp.msg as u64).await?;
+			}
+
+			// Purge Database
 			query(&format!("DROP TABLE IF EXISTS roles_{srv_id};"))
-				.execute(&ctx.data().db)
-				.await?;
-			query(&format!("DROP TABLE IF EXISTS rgroups_{srv_id};"))
 				.execute(&ctx.data().db)
 				.await?;
 			query("DELETE FROM role_options WHERE srvid = ?;")
 				.bind(updated.srvid)
+				.execute(&ctx.data().db)
+				.await?;
+			query(&format!("DROP TABLE IF EXISTS rgroups_{srv_id};"))
 				.execute(&ctx.data().db)
 				.await?;
 		}
@@ -298,9 +321,11 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			None => {
 				reply.edit(ctx, |f| {
 					f.embed(|e| {
-						e.title(":warning: Failure :warning:");
-						e.color(EMBED_FAIL);
-						e.description("Interaction timed out, please try again.")
+						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
+						e
+						// e.title(":warning: Failure :warning:");
+						// e.color(EMBED_FAIL);
+						// e.description("Interaction timed out, please try again.")
 					})
 				}).await?;
 
@@ -311,9 +336,11 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	reply.edit(ctx, |b| {
 		b.content("");
 		b.embed(|e| {
-			e.color(EMBED_WAIT);
-			e.description("Processing, please wait...");
+			templates::builder_processing_embed(e);
 			e
+			// e.color(EMBED_WAIT);
+			// e.description("Processing, please wait...");
+			// e
 				// e.color(serenity::utils::Color::from_rgb(253, 253, 150));
 				// e.description("Processing, please wait...")
 		}).components(|f| f)

@@ -2,8 +2,23 @@ use poise::serenity_prelude as serenity;
 use abby_utils::{db_structs, concat};
 use crate::{EMBED_STD, EMBED_WAIT, EMBED_FAIL};
 
+/// Makes a [`serenity::CreateEmbed`] and fills it out using the builder function.
 pub fn state_embed(success: bool, text: &str) -> serenity::CreateEmbed {
 	let mut e = serenity::CreateEmbed::default();
+	builder_state_embed(&mut e, success, text);
+	// if success {
+	// 	e.title(":white_check_mark: Success :white_check_mark:");
+	// 	e.color(EMBED_STD);
+	// } else {
+	// 	e.title(":warning: Failure :warning:");
+	// 	e.color(EMBED_FAIL);
+	// }
+	// e.description(text);
+	e
+}
+
+/// Sets the [`serenity::CreateEmbed`] with the state_embed values.
+pub fn builder_state_embed(e: &mut serenity::CreateEmbed, success: bool, text: &str) {
 	if success {
 		e.title(":white_check_mark: Success :white_check_mark:");
 		e.color(EMBED_STD);
@@ -12,14 +27,21 @@ pub fn state_embed(success: bool, text: &str) -> serenity::CreateEmbed {
 		e.color(EMBED_FAIL);
 	}
 	e.description(text);
+}
+
+/// Makes a [`serenity::CreateEmbed`] and fills it out using the builder function.
+pub fn processing_embed() -> serenity::CreateEmbed {
+	let mut e = serenity::CreateEmbed::default();
+	builder_processing_embed(&mut e);
+	// e.color(EMBED_WAIT);
+	// e.description("Processing, please wait...");
 	e
 }
 
-pub fn processing_embed() -> serenity::CreateEmbed {
-	let mut e = serenity::CreateEmbed::default();
+/// Sets the [`serenity::CreateEmbed`] with the processing_embed values.
+pub fn builder_processing_embed(e: &mut serenity::CreateEmbed) {
 	e.color(EMBED_WAIT);
 	e.description("Processing, please wait...");
-	e
 }
 
 pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db_structs::RoleEntry>) -> serenity::CreateEmbed {
@@ -59,12 +81,12 @@ pub fn rolelist_components(group: &str) -> serenity::CreateComponents {
 			button.custom_id(concat("roles.edit.", group));
 			button.label("Edit");
 			button.style(serenity::ButtonStyle::Secondary)
-		});
-		row.create_button(|button| {
-			button.custom_id(concat("roles.remove.", group));
-			button.label("Remove");
-			button.style(serenity::ButtonStyle::Danger)
 		})
+		// row.create_button(|button| {
+		// 	button.custom_id(concat("roles.remove.", group));
+		// 	button.label("Remove");
+		// 	button.style(serenity::ButtonStyle::Danger)
+		// })
 	});
 	c
 }
