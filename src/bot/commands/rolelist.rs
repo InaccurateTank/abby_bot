@@ -75,8 +75,8 @@ async fn delete(
 		ctx.send(|m| {
 			m.content("");
 			m.ephemeral(true);
-			m.embed(|mut e| {
-				templates::builder_state_embed(&mut e, false, &format!("Role group \"{group}\" does not exist."));
+			m.embed(|e| {
+				templates::builder_state_embed(e, false, &format!("Role group \"{group}\" does not exist."));
 				e
 			})
 		}).await?;
@@ -110,8 +110,8 @@ async fn delete(
 	ctx.send(|m| {
 		m.content("");
 		m.ephemeral(true);
-		m.embed(|mut e| {
-			templates::builder_state_embed(&mut e, true, &format!("Role group \"{group}\" has been deleted."));
+		m.embed(|e| {
+			templates::builder_state_embed(e, true, &format!("Role group \"{group}\" has been deleted."));
 			e
 		})
 	}).await?;
