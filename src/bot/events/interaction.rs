@@ -109,23 +109,26 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				let mem_contain = member.roles.contains(&r.id);
 				let selected_contain = selected_roles.contains(&r.id);
 				let current_users = rolelist.iter().find(|f| f.id == *r.id.as_u64() as i64).unwrap().users;
+				println!("{}: {current_users}", r.name);
 				if selected_contain && !mem_contain {
+					let current_users = current_users.saturating_add(1);
 					member.to_owned()
 						.add_role(ctx, r.id)
 						.await
 						.expect("Could not alter role");
 					query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
-						.bind(current_users.saturating_add(1))
+						.bind(current_users)
 						.bind(*r.id.as_u64() as i64)
 						.execute(&data.db)
 						.await?;
 				} else if !selected_contain && mem_contain {
+					let current_users = current_users.saturating_sub(1);
 					member.to_owned()
 						.remove_role(ctx, r.id)
 						.await
 						.expect("Could not alter role");
 					query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
-						.bind(current_users.saturating_sub(1))
+						.bind(current_users)
 						.bind(*r.id.as_u64() as i64)
 						.execute(&data.db)
 						.await?;
@@ -267,6 +270,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 
 		// Rolelist Remove
 		"remove" => {
+			// Perms Check
 			if !mci.member.as_ref().unwrap().permissions(ctx).unwrap().manage_roles() {
 				mci.create_interaction_response(ctx, |i| {
 					i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
@@ -279,11 +283,38 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				}).await?;
 				return Ok(());
 			}
+
+			// Info Gathering
+			let group_msg = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
+				.bind(group)
+				.fetch_one(&data.db)
+				.await?;
+			let group_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+				.bind(srv_id as i64)
+				.fetch_one(&data.db)
+				.await?
+				.channel
+				.unwrap_or(*mci.guild_id
+					.unwrap()
+					.to_guild_cached(ctx)
+					.unwrap()
+					.system_channel_id
+					.unwrap()
+					.as_u64() as i64
+				);
+
+			// Deletions
+			ctx.http.delete_message(group_channel as u64, group_msg.msg as u64).await?;
+			query(&format!("DELETE FROM rgroups_{srv_id} WHERE name = ?;"))
+				.bind(group)
+				.execute(&data.db)
+				.await?;
 			query(&format!("DELETE FROM roles_{srv_id} WHERE grp = ?;"))
 				.bind(group)
 				.execute(&data.db)
 				.await?;
-			mci.message.delete(ctx).await?;
+
+			// Respond
 			mci.create_interaction_response(ctx, |i| {
 				i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
 				i.interaction_response_data(|m| {

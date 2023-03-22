@@ -3,6 +3,7 @@ use sqlx::FromRow;
 use crate::concat;
 
 // Server Features
+/// Entry in the server manager
 #[derive(FromRow, Debug)]
 pub struct Server {
 	/// ID of the server bitcast as an [i64].
@@ -43,7 +44,7 @@ impl Server {
 	}
 }
 
-// Primary Roles Managment
+/// Table of per-server role settings. Currently just the channel the roles will be cast to.
 #[derive(Default, FromRow, Debug)]
 pub struct ServerRoles {
 	/// ID of the server bitcast as an [i64].
@@ -52,7 +53,7 @@ pub struct ServerRoles {
 	pub channel: Option<i64>
 }
 
-// Individual Role List Struct
+/// Individual entries for roles in the role list.
 #[derive(Default, FromRow, Debug)]
 pub struct RoleEntry {
 	/// The ID of the role bitcast as an [i64].
@@ -61,4 +62,13 @@ pub struct RoleEntry {
 	pub grp: String,
 	/// Roughly the amount of users with the role.
 	pub users: u16
+}
+
+/// Seperate table of groups for [`RoleEntry`] structs.
+#[derive(Default, FromRow, Debug)]
+pub struct RoleGroup {
+	/// [`String`] name of the role group.
+	pub name: String,
+	/// ID of the message that holds the group.
+	pub msg: i64
 }

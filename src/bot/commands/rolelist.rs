@@ -70,6 +70,8 @@ pub async fn rolelist(
 			})
 		})
 	}).await?;
+
+	// Await interaction
 	let interaction = match reply.message().await?
 	.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
@@ -91,7 +93,7 @@ pub async fn rolelist(
 			}
 		};
 
-	// Processing
+	// Processing message
 	reply.edit(ctx, |b| {
 		b.content("")
 			.embed(|e| {
@@ -102,7 +104,7 @@ pub async fn rolelist(
 	})
 	.await?;
 
-	// Calculating
+	// Insert roles into database.
 	for rid in &interaction.data.values {
 		query(&format!("INSERT INTO roles_{srv_id} (id, grp, users) VALUES(?, ?, 0);"))
 			.bind(rid)
@@ -110,22 +112,34 @@ pub async fn rolelist(
 			.execute(&ctx.data().db)
 			.await?;
 	}
+
+	// Channel from new rolelist
 	let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
 		.bind(&group)
 		.fetch_all(&ctx.data().db)
 		.await?;
-
 	let channel = if let Some(c) = role_sets.channel {
 		serenity::ChannelId::from(c as u64)
 	} else {
 		let default = ctx.guild().unwrap();
 		default.default_channel(ctx.framework().bot_id).await.unwrap().id
 	};
-	channel.send_message(ctx, |m| {
+
+	// Generate list
+	let msg = channel.send_message(ctx, |m| {
 		m.content("");
 		m.set_embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist));
 		m.set_components(templates::rolelist_components(&group))
 	}).await?;
+
+	// Add msg to group table
+	query(&format!("INSERT INTO rgroups_{srv_id} (name, msg) VALUES (?, ?)"))
+		.bind(&group)
+		.bind(*msg.id.as_u64() as i64)
+		.execute(&ctx.data().db)
+		.await?;
+
+	// Notify Success
 	reply.edit(ctx, |m| {
 		m.embed(|e| {
 			e.title(":white_check_mark: Success :white_check_mark:");

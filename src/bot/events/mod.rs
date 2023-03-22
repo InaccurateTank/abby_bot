@@ -43,6 +43,9 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 			query(&format!("DROP TABLE IF EXISTS roles_{id};"))
 				.execute(&data.db)
 				.await?;
+			query(&format!("DROP TABLE IF EXISTS rgroups_{id};"))
+				.execute(&data.db)
+				.await?;
 		},
 
 		// On Login
