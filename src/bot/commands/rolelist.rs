@@ -8,7 +8,12 @@ use crate::{Context, Error, templates, EMBED_STD};
 
 /// Creates or deletes a list of roles to select from.
 ///
-/// Using `setup roles` before using the create subcommend is *highly* recommended. Otherwise this command just dumps everything in the system channel.
+/// ```Subcommands:
+/// 	create      Creates a new role list.
+/// 	delete      Deletes a role list.
+/// ```
+/// All subcommands are ephemeral and require the `MANAGE ROLES` permission.
+/// Using `/setup roles` before using the create subcommend is *highly* recommended. Otherwise this command just dumps everything in the system channel.
 #[poise::command(
 	guild_only,
 	slash_command,

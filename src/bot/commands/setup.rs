@@ -21,9 +21,11 @@ use crate::{EMBED_WAIT, EMBED_STD, templates};
 
 /// Administrates the bot on a per-server basis.
 ///
-/// This command has various subcommands that aid in bot administration.
-/// All subcommands are ephemeral, meaning they only show up for the person that invokes them.
-/// They also only work for people with the correct permissions.
+/// ```Subcommands:
+///  bot      Manages serverwide bot features.
+///  roles    Manages the settings of the roles feature.
+/// ```
+/// All subcommands are ephemeral and require the `ADMINISTRATOR` permission.
 #[poise::command(
 	guild_only,
 	slash_command,
