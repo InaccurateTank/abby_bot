@@ -263,7 +263,8 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				})
 			}).await?;
 			mci.message.to_owned().edit(ctx, |m| {
-				m.set_embed(templates::rolelist_embed(ctx, group, rolelist_new))
+				m.set_embed(templates::rolelist_embed(ctx, group, rolelist_new));
+				m.set_components(templates::rolelist_components(group))
 			}).await?;
 		},
 		_ => {
