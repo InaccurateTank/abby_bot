@@ -50,7 +50,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 					m.content("");
 					m.ephemeral(true);
 					m.embed(|e| {
-						e.title("Test");
+						e.title("");
 						e.color(EMBED_STD);
 						e.description("Pick roles from the list below. Roles you already have will be preselected.")
 					});
