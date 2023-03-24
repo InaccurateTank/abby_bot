@@ -170,6 +170,7 @@ async fn create(
 	let reply = ctx.send(|b| {
 		b.content("");
 		b.embed(|e| {
+			e.title("");
 			e.color(EMBED_STD);
 			e.description("Please select a set of roles for the group below.")
 		});
