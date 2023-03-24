@@ -3,7 +3,7 @@ use std::{
 	str::FromStr
 };
 use poise::serenity_prelude as serenity;
-use abby_utils::{Error, db_structs, inter_err};
+use abby_utils::{Error, db_structs};
 use sqlx::{query, query_as};
 use crate::{EMBED_STD, templates};
 
@@ -268,7 +268,15 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 			}).await?;
 		},
 		_ => {
-			inter_err(":warning: Unknown Interaction ID :warning:", &format!("Unknown Interaction ID {}", &mci.data.custom_id), ctx, mci).await?;
+			println!("Unknown Interaction ID {}", &mci.data.custom_id);
+			mci.create_interaction_response(ctx, |f| {
+				f.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
+				f.interaction_response_data(|m| {
+					m.content("");
+					m.ephemeral(true);
+					m.set_embed(templates::state_embed(false, "Unknown Interaction ID"))
+				})
+			}).await?;
 		}
 	}
 	Ok(())
