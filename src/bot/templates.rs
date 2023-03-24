@@ -64,13 +64,13 @@ pub fn rolelist_components(group: &str) -> serenity::CreateComponents {
 	c.create_action_row(|row| {
 		row.create_button(|button| {
 			button.custom_id(concat("roles.pick.", group));
-			button.label("Pick");
+			button.label("Choose");
 			button.style(serenity::ButtonStyle::Primary)
 		});
 		row.create_button(|button| {
 			button.custom_id(concat("roles.edit.", group));
-			button.label("Edit");
-			button.style(serenity::ButtonStyle::Secondary)
+			button.label("Modify");
+			button.style(serenity::ButtonStyle::Danger)
 		})
 	});
 	c
