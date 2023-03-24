@@ -153,6 +153,9 @@ async fn create(
 	// Select sorting
 	let mut select: Vec<serenity::Role> = ctx.guild().unwrap().roles
 		.into_values()
+		.filter(|r| {
+			abby_utils::role_filter(r)
+		})
 		.collect();
 	select.sort_by(|a, b| {
 		let a_l = a.name.to_lowercase();
@@ -172,7 +175,7 @@ async fn create(
 		b.embed(|e| {
 			e.title("");
 			e.color(EMBED_STD);
-			e.description("Please select a set of roles for the group below.")
+			e.description("Please select a set of roles for the group below. Note that roles with permissions to modify the server are not available.")
 		});
 		b.components(|c| {
 			c.create_action_row(|r| {

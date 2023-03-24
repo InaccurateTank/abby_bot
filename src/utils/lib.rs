@@ -73,3 +73,20 @@ pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<(), Error> {
 	}).await?;
 	Ok(())
 }
+
+/// Abby should never assign roles to people that could potentially modify the server.
+pub fn role_filter(role: &serenity::Role) -> bool {
+	if role.has_permission(serenity::Permissions::ADMINISTRATOR)
+	|| role.has_permission(serenity::Permissions::MANAGE_CHANNELS)
+	|| role.has_permission(serenity::Permissions::MANAGE_EMOJIS_AND_STICKERS)
+	|| role.has_permission(serenity::Permissions::MANAGE_EVENTS)
+	|| role.has_permission(serenity::Permissions::MANAGE_GUILD)
+	|| role.has_permission(serenity::Permissions::MANAGE_MESSAGES)
+	|| role.has_permission(serenity::Permissions::MANAGE_NICKNAMES)
+	|| role.has_permission(serenity::Permissions::MANAGE_ROLES)
+	|| role.has_permission(serenity::Permissions::MANAGE_THREADS)
+	|| role.has_permission(serenity::Permissions::MANAGE_WEBHOOKS) {
+		return false
+	}
+	true
+}
