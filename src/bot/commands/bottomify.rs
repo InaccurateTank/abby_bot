@@ -35,7 +35,7 @@ fn byte_to_emoji(value: u8) -> String {
 
 /// Use your words I don't speak bottom.
 ///
-/// Technically just translates messages into bytecode. Not that this is any less accurate of a bottom translator than, say, a wild guess.
+/// Listen this is literally just a bytecode translator. That's it. I don't know what to tell ya.
 #[poise::command(
   slash_command,
   category = "Misc"
@@ -49,7 +49,7 @@ pub async fn bottomify(
 		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
-	if !srv_features.serious {
+	if srv_features.serious {
 		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}

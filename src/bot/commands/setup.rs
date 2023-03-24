@@ -1,27 +1,28 @@
 use std::{
-	time::Duration,
 	collections::HashMap,
 	str::FromStr
 };
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, CacheHttp};
 use abby_utils::{
 	Context,
 	Error,
-	cmd_err,
 	concat,
 	db_structs
 };
 use sqlx::{
-	// FromRow,
 	query,
 	query_as
 };
 
+use crate::{EMBED_WAIT, EMBED_STD, templates};
+
 /// Administrates the bot on a per-server basis.
 ///
-/// This command has various subcommands that aid in bot administration.
-/// All subcommands are ephemeral, meaning they only show up for the person that invokes them.
-/// They also only work for people with the correct permissions.
+/// ```Subcommands:
+///  bot      Manages serverwide bot features.
+///  roles    Manages the settings of the roles feature.
+/// ```
+/// All subcommands are ephemeral and require the `ADMINISTRATOR` permission.
 #[poise::command(
 	guild_only,
 	slash_command,
@@ -31,8 +32,8 @@ use sqlx::{
 	subcommands("roles", "bot")
 )]
 pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.say("You shouldn't be here?").await?;
-    Ok(())
+	ctx.say("You shouldn't be here?").await?;
+	Ok(())
 }
 
 /// Sets up various settings for the bot on the server.
@@ -43,10 +44,10 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 	ephemeral
 )]
 async fn bot(ctx: Context<'_>) -> Result<(), Error> {
-	let id = *ctx.guild_id().unwrap().as_u64();
+	let srv_id = *ctx.guild_id().unwrap().as_u64();
 
 	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(id as i64)
+		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
 
@@ -75,72 +76,60 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			})
 	}).await?;
 
-	let interaction = reply
-		.message()
-		.await?
-		.await_component_interaction(ctx)
-			.author_id(ctx.author().id)
-			.timeout(Duration::from_secs(300))
-		.await;
+	let interaction = match reply.message().await?
+	.await_component_interaction(ctx)
+		.author_id(ctx.author().id)
+		.timeout(std::time::Duration::from_secs(300))
+		.await {
+			Some(i) => {
+				i
+			},
+			None => {
+				reply.edit(ctx, |f| {
+					f.embed(|e| {
+						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
+						e
+					})
+				}).await?;
 
-	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
-				e.color(serenity::utils::Color::from_rgb(253, 253, 150));
-				e.description("Processing, please wait...")
-			})
-			.components(|f| f)
+				return Ok(())
+			}
+		};
+
+	reply.edit(ctx, |m| {
+		m.content("");
+		m.embed(|e| {
+			templates::builder_processing_embed(e);
+			e
+		});
+		m.components(|f| f)
 	})
 	.await?;
 
-	let interaction_id = match &interaction {
-		Some(m) => &m.data.custom_id,
-		None => {
-			cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
-			return Ok(());
-		}
-	};
-
-	let selected = match interaction_id.as_str() {
-		"setup.bot" => {
-			match &interaction {
-				Some(m) => m.data.values.to_owned(),
-				None => {
-					cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
-					return Ok(());
-				}
-			}
-		},
-		o => {
-			cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
-			return Ok(());
-		}
-	};
-
 	let set_string = srv_features.as_array()
 		.map(|(name, _)| {
-			format!("{name} = {}", selected.contains(&concat("enable_", name)))
+			format!("{name} = {}", interaction.data.values.contains(&concat("enable_", name)))
 		}).join(",");
 	query(&format!("UPDATE servers SET {set_string} WHERE srvid = {};", srv_features.srvid))
 		.execute(&ctx.data().db)
 		.await?;
 
 	let updated = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(id as i64)
+		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
-	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
-				e.title("Feature Changes Confirmed!");
-				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
-				e.description("Your new settings are:");
-				for (name, value) in updated.as_array() {
-					e.field(name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false);
-				}
-				e
-			})
-			.components(|f| f)
+	reply.edit(ctx, |m| {
+		m.content("");
+		m.embed(|e| {
+			e.title("Feature Changes Confirmed!");
+			e.color(EMBED_STD);
+			e.description("Your new settings are:");
+			for (name, value) in updated.as_array() {
+				e.field(name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false);
+			}
+			e
+		});
+		m.components(|f| f)
 	})
 	.await?;
 	// Changed Serious
@@ -162,26 +151,53 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	// Changed Roles
 	if updated.roles != srv_features.roles {
 		if updated.roles {
-			query(&format!("CREATE TABLE IF NOT EXISTS roles_{id} (id BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, users INTEGER NOT NULL);"))
+			query(&format!("CREATE TABLE IF NOT EXISTS roles_{srv_id} (id BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, users INTEGER NOT NULL);"))
+				.execute(&ctx.data().db)
+				.await?;
+			query(&format!("CREATE TABLE IF NOT EXISTS rgroups_{srv_id} (name TEXT PRIMARY KEY NOT NULL, msg BIGINT NOT NULL);"))
 				.execute(&ctx.data().db)
 				.await?;
 			query("INSERT INTO role_options (srvid) VALUES(?);")
 				.bind(updated.srvid)
 				.execute(&ctx.data().db)
 				.await?;
-			ctx.send(|b| {
-				b.content("")
-					.embed(|e| {
-						e.description("Note that using the default channel for roles is not advised. It is recommended to run `/setup roles` now.");
-						e.color(serenity::utils::Color::from_rgb(250,128,114))
-					})
+			ctx.send(|m| {
+				m.content("");
+				m.embed(|e| {
+					e.description("Note that using the default channel for roles is not advised. It is recommended to run `/setup roles` now.");
+					e.color(EMBED_WAIT)
+				})
 			}).await?;
 		} else {
-			query(&format!("DROP TABLE IF EXISTS roles_{id};"))
+			// Delete messages
+			let group_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+				.bind(srv_id as i64)
+				.fetch_one(&ctx.data().db)
+				.await?
+				.channel
+				.unwrap_or(*ctx.guild_id()
+					.unwrap()
+					.to_guild_cached(ctx)
+					.unwrap()
+					.system_channel_id
+					.unwrap()
+					.as_u64() as i64
+				);
+			for grp in query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id}"))
+				.fetch_all(&ctx.data().db)
+				.await? {
+				ctx.http().delete_message(group_channel as u64, grp.msg as u64).await?;
+			}
+
+			// Purge Database
+			query(&format!("DROP TABLE IF EXISTS roles_{srv_id};"))
 				.execute(&ctx.data().db)
 				.await?;
 			query("DELETE FROM role_options WHERE srvid = ?;")
 				.bind(updated.srvid)
+				.execute(&ctx.data().db)
+				.await?;
+			query(&format!("DROP TABLE IF EXISTS rgroups_{srv_id};"))
 				.execute(&ctx.data().db)
 				.await?;
 		}
@@ -250,54 +266,40 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			})
 	}).await?;
 
-	let interaction = reply
-		.message()
-		.await?
-		.await_component_interaction(ctx)
-			.author_id(ctx.author().id)
-			.timeout(Duration::from_secs(300))
-		.await;
+	let interaction = match reply.message().await?
+	.await_component_interaction(ctx)
+		.author_id(ctx.author().id)
+		.timeout(std::time::Duration::from_secs(300))
+		.await {
+			Some(i) => {
+				i
+			},
+			None => {
+				reply.edit(ctx, |f| {
+					f.embed(|e| {
+						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
+						e
+					})
+				}).await?;
+
+				return Ok(())
+			}
+		};
 
 	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
-				e.color(serenity::utils::Color::from_rgb(253, 253, 150));
-				e.description("Processing, please wait...")
-			})
-			.components(|f| f)
+		b.content("");
+		b.embed(|e| {
+			templates::builder_processing_embed(e);
+			e
+		}).components(|f| f)
 	})
 	.await?;
 
-	let interaction_id = match &interaction {
-		Some(m) => &m.data.custom_id,
-		None => {
-			cmd_err("Interaction timed out, please try again.", "", ctx, reply).await?;
-			return Ok(());
-		}
-	};
-
-	let selected = match interaction_id.as_str() {
-		"setup.roles" => {
-			match &interaction {
-				Some(m) => m.data.values.to_owned(),
-				None => {
-					cmd_err(":warning: Interaction Has No Data :warning:", "Interaction Has No Data", ctx, reply).await?;
-					return Ok(());
-				}
-			}
-		},
-		o => {
-			cmd_err(":warning: Unknown Interaction ID :warning:", format!("Unknown Interaction ID {o}").as_str(), ctx, reply).await?;
-			return Ok(());
-		}
-	};
-
-	let selid = if let Some(s) = selected.first() {
+	let selid = if let Some(s) = interaction.data.values.first() {
 		s.as_str()
 	} else {"0"};
 	let chid = if selid != "0" {
 		Some(selid.parse::<i64>()?)
-		// Some(*serenity::ChannelId::from_str(selid)?.as_u64() as i64)
 	} else {None};
 
 	query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
