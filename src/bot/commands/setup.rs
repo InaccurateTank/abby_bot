@@ -314,7 +314,8 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			b.embed(|e| {
 				templates::builder_state_embed(e, false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel.");
 				e
-			})
+			});
+			b.components(|f| f)
 		}).await?;
 		return Ok(());
 	}
