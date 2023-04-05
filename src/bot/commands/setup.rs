@@ -26,7 +26,7 @@ use crate::{EMBED_WAIT, EMBED_STD, templates};
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="ADMINISTRATOR",
+	required_permissions="MANAGE_GUILD",
 	category="Administration",
 	ephemeral,
 	subcommands("roles", "bot")
@@ -40,7 +40,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="ADMINISTRATOR",
+	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
 async fn bot(ctx: Context<'_>) -> Result<(), Error> {
@@ -209,7 +209,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="ADMINISTRATOR",
+	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
 async fn roles(ctx: Context<'_>) -> Result<(), Error> {
