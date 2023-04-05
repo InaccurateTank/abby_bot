@@ -90,3 +90,41 @@ pub fn role_filter(role: &serenity::Role) -> bool {
 	}
 	true
 }
+
+/// Selects either the system messages channel or, if that isn't an option, the default channel. Returns [`None`] if the channel isn't writeable.
+pub async fn default_bot_channel(
+	ctx: impl serenity::CacheHttp + Copy,
+	guild: serenity::Guild,
+	botuser: serenity::UserId
+) -> Option<serenity::ChannelId> {
+	// Get a the channel
+	let channel = guild.system_channel_id
+		.unwrap_or(guild
+			.default_channel(botuser)
+			.await
+			.unwrap()
+			.id);
+	// Can messages even be sent in the channel?
+	if !can_post(ctx, channel, botuser).await {
+		// If not return none
+		return None
+	}
+	// Return the channel
+	Some(channel)
+}
+
+/// Detects if a user can post to the provided [`serenity::Channel`]
+pub async fn can_post(
+	ctx: impl serenity::CacheHttp + Copy,
+	channel: serenity::ChannelId,
+	user: serenity::UserId
+) -> bool {
+	channel.to_channel(ctx)
+		.await
+		.unwrap()
+		.guild()
+		.unwrap()
+		.permissions_for_user(ctx.cache().unwrap(), user)
+		.unwrap()
+		.send_messages()
+}
