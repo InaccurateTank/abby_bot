@@ -302,6 +302,23 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		Some(selid.parse::<i64>()?)
 	} else {None};
 
+	if !serenity::ChannelId::from(chid.unwrap() as u64)
+		.to_channel(ctx)
+		.await?
+		.guild()
+		.unwrap()
+		.permissions_for_user(ctx, ctx.framework().bot_id)?
+		.send_messages() {
+		reply.edit(ctx, |b| {
+			b.content("");
+			b.embed(|e| {
+				templates::builder_state_embed(e, false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel.");
+				e
+			})
+		}).await?;
+		return Ok(());
+	}
+
 	query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
 		.bind(chid)
 		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
@@ -313,13 +330,13 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	} else {"default announcements".to_string()};
 
 	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
-				e.title("Role Settings Confirmed!");
-				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
-				e.description(format!("Roles will now be managed in the {chname} channel."))
-			})
-			.components(|f| f)
+		b.content("");
+		b.embed(|e| {
+			e.title("Role Settings Confirmed!");
+			e.color(serenity::utils::Color::from_rgb(102, 51, 102));
+			e.description(format!("Roles will now be managed in the {chname} channel."))
+		});
+		b.components(|f| f)
 	})
 	.await?;
 	Ok(())
