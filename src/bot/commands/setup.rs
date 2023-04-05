@@ -212,6 +212,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	ephemeral
 )]
 async fn roles(ctx: Context<'_>) -> Result<(), Error> {
+	// Data gathering
 	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 		.fetch_one(&ctx.data().db)
@@ -225,7 +226,6 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		.fetch_optional(&ctx.data().db)
 		.await?
 		.unwrap_or_default();
-
 	let channels = ctx.guild().unwrap().channels.into_iter().filter(|(_, c)| {
 		if let serenity::Channel::Guild(gc) = c {
 			if let serenity::ChannelType::Text = gc.kind {
@@ -243,6 +243,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			.to_owned())
 	}
 
+	// Channel select
 	let reply = ctx.send(|b| {
 		b.content("")
 			.embed(|e| {
