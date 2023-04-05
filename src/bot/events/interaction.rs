@@ -50,7 +50,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 					i.interaction_response_data(|m| {
 						m.content("");
 						m.ephemeral(true);
-						m.set_embed(templates::state_embed(false, "For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself."))
+						m.set_embed(templates::state_embed(false, "For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself. If you cannot assign them to yourself then I can't assign them to anyone anyway."))
 					})
 				}).await?;
 				return Ok(())
