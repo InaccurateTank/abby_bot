@@ -44,6 +44,18 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 			});
 			let member = mci.member.as_ref().unwrap();
 
+			if member.permissions(ctx).unwrap().manage_roles() {
+				mci.create_interaction_response(ctx, |i| {
+					i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
+					i.interaction_response_data(|m| {
+						m.content("");
+						m.ephemeral(true);
+						m.set_embed(templates::state_embed(false, "For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself."))
+					})
+				}).await?;
+				return Ok(())
+			}
+
 			mci.create_interaction_response(&ctx, |i| {
 				i.kind(serenity::InteractionResponseType::ChannelMessageWithSource);
 				i.interaction_response_data(|m| {
