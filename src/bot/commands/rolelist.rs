@@ -71,7 +71,7 @@ async fn delete(
 	}
 
 	// Info Gathering
-	let group_msg = if let Some(rgroup) = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
+	let group_entry = if let Some(rgroup) = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
 		.bind(&group)
 		.fetch_optional(&ctx.data().db)
 		.await? {
@@ -96,12 +96,26 @@ async fn delete(
 			.to_guild_cached(ctx)
 			.unwrap()
 			.system_channel_id
-			.unwrap()
+			.unwrap_or(ctx.guild()
+				.unwrap()
+				.default_channel(ctx.framework().bot_id)
+				.await
+				.unwrap()
+				.id)
 			.as_u64() as i64
 		);
 
 	// Deletions
-	ctx.http().delete_message(group_channel as u64, group_msg.msg as u64).await?;
+	if let Err(_) = ctx.http().delete_message(group_channel as u64, group_entry.msg as u64).await {
+		ctx.send(|m| {
+			m.content("");
+			m.ephemeral(true);
+			m.embed(|e| {
+				templates::builder_state_embed(e, false, &format!("Either can't find or can't delete the message for the role group selected. Entries will be removed from the database, but the message will need to be deleted manually."));
+				e
+			})
+		}).await?;
+	}
 	query(&format!("DELETE FROM rgroups_{srv_id} WHERE name = ?;"))
 		.bind(&group)
 		.execute(&ctx.data().db)
