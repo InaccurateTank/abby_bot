@@ -275,12 +275,6 @@ async fn create(
 		.bind(&group)
 		.fetch_all(&ctx.data().db)
 		.await?;
-	// let channel = if let Some(c) = role_sets.channel {
-	// 	serenity::ChannelId::from(c as u64)
-	// } else {
-	// 	let default = ctx.guild().unwrap();
-	// 	default.default_channel(ctx.framework().bot_id).await.unwrap().id
-	// };
 
 	// Generate list with the channel stored for the check
 	let msg = channel.unwrap().send_message(ctx, |m| {

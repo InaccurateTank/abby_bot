@@ -319,9 +319,6 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 
 		// Get channel name from the id
 		let chname = format!("#{}", ctx.guild().unwrap().channels.get(&chid).unwrap().clone().guild().unwrap().name());
-		// let chname = if let Some(x) = ctx.guild().unwrap().channels.get(&chid) {
-		// 	concat("#", x.clone().guild().unwrap().name.as_str())
-		// } else {"default announcements".to_string()};
 
 		// Send confirm
 		reply.edit(ctx, |b| {
@@ -345,44 +342,5 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			b.components(|f| f)
 		}).await?;
 	}
-
-	// if !serenity::ChannelId::from(*selected.unwrap().as_u64())
-	// 	.to_channel(ctx)
-	// 	.await?
-	// 	.guild()
-	// 	.unwrap()
-	// 	.permissions_for_user(ctx, ctx.framework().bot_id)?
-	// 	.send_messages() {
-	// 	reply.edit(ctx, |b| {
-	// 		b.content("");
-	// 		b.embed(|e| {
-	// 			templates::builder_state_embed(e, false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel.");
-	// 			e
-	// 		});
-	// 		b.components(|f| f)
-	// 	}).await?;
-	// 	return Ok(());
-	// }
-
-	// query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
-	// 	.bind(selid)
-	// 	.bind(*ctx.guild_id().unwrap().as_u64() as i64)
-	// 	.execute(&ctx.data().db)
-	// 	.await?;
-
-	// let chname = if let Some(x) = ctx.guild().unwrap().channels.get(&serenity::ChannelId::from(selid.unwrap() as u64)) {
-	// 	concat("#", x.clone().guild().unwrap().name.as_str())
-	// } else {"default announcements".to_string()};
-
-	// reply.edit(ctx, |b| {
-	// 	b.content("");
-	// 	b.embed(|e| {
-	// 		e.title("Role Settings Confirmed!");
-	// 		e.color(serenity::utils::Color::from_rgb(102, 51, 102));
-	// 		e.description(format!("Roles will now be managed in the {chname} channel."))
-	// 	});
-	// 	b.components(|f| f)
-	// })
-	// .await?;
 	Ok(())
 }

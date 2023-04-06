@@ -28,15 +28,6 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 						})
 					}).await?;
 				}
-				// guild.system_channel_id.unwrap_or(guild.default_channel_guaranteed().unwrap().id).send_message(ctx, |m| {
-				// 	m.content("");
-				// 	m.embed(|e|{
-				// 		e.title("Hello I'm Abby!");
-				// 		e.color(serenity::utils::Color::from_rgb(102, 51, 102));
-				// 		e.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.");
-				// 		e.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-				// 	})
-				// }).await?;
 			}
 		},
 
