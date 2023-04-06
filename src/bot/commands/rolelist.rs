@@ -111,7 +111,7 @@ async fn delete(
 			m.content("");
 			m.ephemeral(true);
 			m.embed(|e| {
-				templates::builder_state_embed(e, false, &format!("Either can't find or can't delete the message for the role group selected. Entries will be removed from the database, but the message will need to be deleted manually."));
+				templates::builder_state_embed(e, false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually."));
 				e
 			})
 		}).await?;
