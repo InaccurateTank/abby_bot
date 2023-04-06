@@ -1,8 +1,7 @@
 use std::{
-	collections::HashMap,
-	str::FromStr
+	collections::HashMap
 };
-use poise::serenity_prelude::{self as serenity, CacheHttp};
+use poise::serenity_prelude::{self as serenity, CacheHttp, cache::FromStrAndCache};
 use abby_utils::{
 	Context,
 	Error,
@@ -26,7 +25,7 @@ use crate::{EMBED_WAIT, EMBED_STD, templates};
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="ADMINISTRATOR",
+	required_permissions="MANAGE_GUILD",
 	category="Administration",
 	ephemeral,
 	subcommands("roles", "bot")
@@ -40,7 +39,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="ADMINISTRATOR",
+	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
 async fn bot(ctx: Context<'_>) -> Result<(), Error> {
@@ -209,10 +208,11 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="ADMINISTRATOR",
+	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
 async fn roles(ctx: Context<'_>) -> Result<(), Error> {
+	// Data gathering
 	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 		.fetch_one(&ctx.data().db)
@@ -226,7 +226,6 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		.fetch_optional(&ctx.data().db)
 		.await?
 		.unwrap_or_default();
-
 	let channels = ctx.guild().unwrap().channels.into_iter().filter(|(_, c)| {
 		if let serenity::Channel::Guild(gc) = c {
 			if let serenity::ChannelType::Text = gc.kind {
@@ -244,6 +243,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			.to_owned())
 	}
 
+	// Channel select
 	let reply = ctx.send(|b| {
 		b.content("")
 			.embed(|e| {
@@ -266,6 +266,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			})
 	}).await?;
 
+	// Await interaction
 	let interaction = match reply.message().await?
 	.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
@@ -286,6 +287,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			}
 		};
 
+	// Processing message
 	reply.edit(ctx, |b| {
 		b.content("");
 		b.embed(|e| {
@@ -295,32 +297,50 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	})
 	.await?;
 
-	let selid = if let Some(s) = interaction.data.values.first() {
-		s.as_str()
-	} else {"0"};
-	let chid = if selid != "0" {
-		Some(selid.parse::<i64>()?)
-	} else {None};
+	// Return either selected
+	let selected = if let Some(s) = interaction.data.values.first() {
+		let id = serenity::ChannelId::from_str(ctx, s)?;
+		if abby_utils::can_post(ctx, id, ctx.framework().bot_id).await {
+			Some(id)
+		} else {
+			None
+		}
+	} else {
+		abby_utils::default_bot_channel(ctx, ctx.guild().unwrap(), ctx.framework().bot_id).await
+	};
 
-	query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
-		.bind(chid)
-		.bind(*ctx.guild_id().unwrap().as_u64() as i64)
-		.execute(&ctx.data().db)
-		.await?;
+	if let Some(chid) = selected {
+		// Update the database with the new channel
+		query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
+			.bind(*chid.as_u64() as i64)
+			.bind(*ctx.guild_id().unwrap().as_u64() as i64)
+			.execute(&ctx.data().db)
+			.await?;
 
-	let chname = if let Some(x) = ctx.guild().unwrap().channels.get(&serenity::ChannelId::from_str(selid)?) {
-		concat("#", x.clone().guild().unwrap().name.as_str())
-	} else {"default announcements".to_string()};
+		// Get channel name from the id
+		let chname = format!("#{}", ctx.guild().unwrap().channels.get(&chid).unwrap().clone().guild().unwrap().name());
 
-	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
+		// Send confirm
+		reply.edit(ctx, |b| {
+			b.content("");
+			b.embed(|e| {
 				e.title("Role Settings Confirmed!");
 				e.color(serenity::utils::Color::from_rgb(102, 51, 102));
 				e.description(format!("Roles will now be managed in the {chname} channel."))
-			})
-			.components(|f| f)
-	})
-	.await?;
+			});
+			b.components(|f| f)
+		})
+		.await?;
+	// If selected is none, that means the channel can't be posted to.
+	} else {
+		reply.edit(ctx, |b| {
+			b.content("");
+			b.embed(|e| {
+				templates::builder_state_embed(e, false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel.");
+				e
+			});
+			b.components(|f| f)
+		}).await?;
+	}
 	Ok(())
 }

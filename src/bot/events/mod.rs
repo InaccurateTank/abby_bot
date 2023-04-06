@@ -5,7 +5,7 @@ use sqlx::{query, query_as};
 mod message;
 mod interaction;
 
-pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>, _framework: poise::FrameworkContext<'a, Data, Error>, data: &Data) -> Result<(), Error> {
+pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>, framework: poise::FrameworkContext<'a, Data, Error>, data: &Data) -> Result<(), Error> {
 	match event {
 		// Join Server
 		poise::Event::GuildCreate { guild, is_new } => {
@@ -16,15 +16,18 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 					.bind(*id as i64)
 					.execute(&data.db)
 					.await?;
-				guild.system_channel_id.unwrap().send_message(ctx, |m| {
-					m.content("");
-					m.embed(|e|{
-						e.title("Hello I'm Abby!");
-						e.color(serenity::utils::Color::from_rgb(102, 51, 102));
-						e.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.");
-						e.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-					})
-				}).await?;
+				// If the bot can post in a default channel, do so. Better to disclose the join than not.
+				if let Some(chid) = abby_utils::default_bot_channel(ctx, guild.clone(), framework.bot_id).await {
+					chid.send_message(ctx, |m| {
+						m.content("");
+						m.embed(|e|{
+							e.title("Hello I'm Abby!");
+							e.color(serenity::utils::Color::from_rgb(102, 51, 102));
+							e.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.");
+							e.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+						})
+					}).await?;
+				}
 			}
 		},
 
