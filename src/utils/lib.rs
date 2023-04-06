@@ -116,10 +116,10 @@ pub async fn default_bot_channel(
 /// Detects if a user can post to the provided [`serenity::Channel`]
 pub async fn can_post(
 	ctx: impl serenity::CacheHttp + Copy,
-	channel: serenity::ChannelId,
+	chid: serenity::ChannelId,
 	user: serenity::UserId
 ) -> bool {
-	channel.to_channel(ctx)
+	chid.to_channel(ctx)
 		.await
 		.unwrap()
 		.guild()
