@@ -155,6 +155,7 @@ async fn create(
 		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
+	// If the feature doesn't exist, quit.
 	if !srv_features.roles {
 		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
@@ -163,6 +164,28 @@ async fn create(
 		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
+	// Check if the channel can be posted in.
+	let channel = if let Some(id) = role_sets.channel {
+		let chid = serenity::ChannelId::from(id as u64);
+		if abby_utils::can_post(ctx, chid, ctx.framework().bot_id).await {
+			Some(chid)
+		} else {
+			None
+		}
+	} else {
+		abby_utils::default_bot_channel(ctx, ctx.guild().unwrap(), ctx.framework().bot_id).await
+	};
+	if channel.is_none() {
+		ctx.send(|b| {
+			b.content("");
+			b.embed(|e| {
+				templates::builder_state_embed(e, false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel.");
+				e
+			});
+			b.components(|f| f)
+		}).await?;
+		return Ok(());
+	}
 
 	// Select sorting
 	let mut select: Vec<serenity::Role> = ctx.guild().unwrap().roles
@@ -247,20 +270,20 @@ async fn create(
 			.await?;
 	}
 
-	// Channel from new rolelist
+	// Fetch new rolelist
 	let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
 		.bind(&group)
 		.fetch_all(&ctx.data().db)
 		.await?;
-	let channel = if let Some(c) = role_sets.channel {
-		serenity::ChannelId::from(c as u64)
-	} else {
-		let default = ctx.guild().unwrap();
-		default.default_channel(ctx.framework().bot_id).await.unwrap().id
-	};
+	// let channel = if let Some(c) = role_sets.channel {
+	// 	serenity::ChannelId::from(c as u64)
+	// } else {
+	// 	let default = ctx.guild().unwrap();
+	// 	default.default_channel(ctx.framework().bot_id).await.unwrap().id
+	// };
 
-	// Generate list
-	let msg = channel.send_message(ctx, |m| {
+	// Generate list with the channel stored for the check
+	let msg = channel.unwrap().send_message(ctx, |m| {
 		m.content("");
 		m.set_embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist));
 		m.set_components(templates::rolelist_components(&group))
