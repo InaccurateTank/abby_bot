@@ -105,7 +105,7 @@ pub async fn default_bot_channel(
 			.unwrap()
 			.id);
 	// Can messages even be sent in the channel?
-	if !can_post(ctx, channel, botuser).await {
+	if !can_post(ctx, channel, botuser).await || channel.to_channel(ctx).await.unwrap().guild().unwrap().kind != serenity::ChannelType::Text {
 		// If not return none
 		return None
 	}
