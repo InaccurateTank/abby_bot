@@ -137,12 +137,6 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 						},
 						Err(e) => error_list.push(format!("Error applying role \"{}\": {}", r.name, e))
 					}
-					//	.expect("Could not alter role");
-					// query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
-					// 	.bind(current_users)
-					// 	.bind(*r.id.as_u64() as i64)
-					// 	.execute(&data.db)
-					// 	.await?;
 				} else if !selected_contain && mem_contain {
 					let current_users = current_users.saturating_sub(1);
 					match member.to_owned()
@@ -157,12 +151,6 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 						},
 						Err(e) => error_list.push(format!("Error removing role \"{}\": {}", r.name, e))
 					}
-					// 	.expect("Could not alter role");
-					// query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
-					// 	.bind(current_users)
-					// 	.bind(*r.id.as_u64() as i64)
-					// 	.execute(&data.db)
-					// 	.await?;
 				}
 			}
 
