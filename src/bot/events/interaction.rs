@@ -114,6 +114,8 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				i.components(|f| f)
 			}).await?;
 
+			let mut error_list = Vec::<String>::new();
+
 			let selected_roles: Vec<serenity::RoleId> = secondary_mci.data.values.iter().map(|f| {
 				serenity::RoleId::from_str(f).unwrap()
 			}).collect();
@@ -122,27 +124,35 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				let selected_contain = selected_roles.contains(&r.id);
 				let current_users = rolelist.iter().find(|f| f.id == *r.id.as_u64() as i64).unwrap().users;
 				if selected_contain && !mem_contain {
+					// Add Role to Member
 					let current_users = current_users.saturating_add(1);
-					member.to_owned()
+					match member.to_owned()
 						.add_role(ctx, r.id)
-						.await
-						.expect("Could not alter role");
-					query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
-						.bind(current_users)
-						.bind(*r.id.as_u64() as i64)
-						.execute(&data.db)
-						.await?;
+						.await {
+						Ok(_) => {
+							query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
+								.bind(current_users)
+								.bind(*r.id.as_u64() as i64)
+								.execute(&data.db)
+								.await?;
+						},
+						Err(e) => error_list.push(format!("Error applying role \"{}\": {}", r.name, e))
+					}
 				} else if !selected_contain && mem_contain {
+					// Remove Role from Member
 					let current_users = current_users.saturating_sub(1);
-					member.to_owned()
+					match member.to_owned()
 						.remove_role(ctx, r.id)
-						.await
-						.expect("Could not alter role");
-					query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
-						.bind(current_users)
-						.bind(*r.id.as_u64() as i64)
-						.execute(&data.db)
-						.await?;
+						.await {
+						Ok(_) => {
+							query(&format!("UPDATE roles_{srv_id} SET users = ? WHERE id = ?;"))
+								.bind(current_users)
+								.bind(*r.id.as_u64() as i64)
+								.execute(&data.db)
+								.await?;
+						},
+						Err(e) => error_list.push(format!("Error removing role \"{}\": {}", r.name, e))
+					}
 				}
 			}
 
@@ -150,7 +160,11 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				i.kind(serenity::InteractionResponseType::UpdateMessage);
 				i.interaction_response_data(|m| {
 					m.content("");
-					m.set_embed(templates::state_embed(true, "Roles selected have been successfully applied to your server profile."));
+					if error_list.is_empty() {
+						m.set_embed(templates::state_embed(true, "Roles selected have been successfully applied to your server profile."));
+					} else {
+						m.set_embed(templates::state_embed(false, &format!("An error has been encountered on at least one role. Please contact the server administrator.\n\n{}", error_list.join("\n"))));
+					}
 					m.components(|c| c)
 				})
 			}).await?;
