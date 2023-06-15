@@ -1,9 +1,9 @@
 [package]
 name = "abby_workshop"
-authors = ["InaccurateTank (Tank#1623)"]
+authors = ["inaccuratetank"]
 description = "A poorly assembled custom chatbot"
 repository = "https://git.inaccuratetank.gay/inaccuratetank/abby_bot"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 
 [dependencies]
