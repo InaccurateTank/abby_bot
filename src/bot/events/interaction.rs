@@ -124,6 +124,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 				let selected_contain = selected_roles.contains(&r.id);
 				let current_users = rolelist.iter().find(|f| f.id == *r.id.as_u64() as i64).unwrap().users;
 				if selected_contain && !mem_contain {
+					// Add Role to Member
 					let current_users = current_users.saturating_add(1);
 					match member.to_owned()
 						.add_role(ctx, r.id)
@@ -138,6 +139,7 @@ async fn roles_click(ctx: &serenity::Context, data: &abby_utils::Data, mci: &ser
 						Err(e) => error_list.push(format!("Error applying role \"{}\": {}", r.name, e))
 					}
 				} else if !selected_contain && mem_contain {
+					// Remove Role from Member
 					let current_users = current_users.saturating_sub(1);
 					match member.to_owned()
 						.remove_role(ctx, r.id)
