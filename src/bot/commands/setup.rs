@@ -311,7 +311,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	})
 	.await?;
 
-	// Return either selected
+	// Return either selected or default channel
 	let selected = if let Some(s) = interaction.data.values.first() {
 		let id = serenity::ChannelId::from_str(ctx, s)?;
 		if abby_utils::can_post(ctx, id, ctx.framework().bot_id).await {
@@ -324,6 +324,40 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	};
 
 	if let Some(chid) = selected {
+		// Fetch old group messages
+		let old_lists = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{};", ctx.guild_id().unwrap().as_u64()))
+			.fetch_all(&ctx.data().db)
+			.await?;
+
+		// Migrates if there are role messages in the old channel
+		if !old_lists.is_empty() {
+			let old_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ? ")
+				.bind(*ctx.guild_id().unwrap().as_u64() as i64)
+				.fetch_one(&ctx.data().db)
+				.await?
+				.channel
+				.unwrap() as u64;
+			for entry in old_lists {
+				let old_message = ctx.http().get_message(old_channel, entry.msg as u64).await?;
+				let new_message = chid.send_message(ctx, |m| {
+					// Copy embed
+					let embed = serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned());
+					m.set_embed(embed);
+					// Add components
+					m.set_components(templates::rolelist_components(&entry.name))
+				})
+				.await?;
+				// Update database with new message
+				query(&format!("UPDATE rgroups_{} SET msg = ? WHERE name = ?", ctx.guild_id().unwrap().as_u64()))
+					.bind(*new_message.id.as_u64() as i64)
+					.bind(entry.name)
+					.execute(&ctx.data().db)
+					.await?;
+				// Delete old message
+				ctx.http().delete_message(old_channel, entry.msg as u64).await?;
+			}
+		}
+
 		// Update the database with the new channel
 		query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
 			.bind(*chid.as_u64() as i64)
