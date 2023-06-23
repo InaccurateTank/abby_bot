@@ -331,7 +331,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 
 		// Migrates if there are role messages in the old channel
 		if !old_lists.is_empty() {
-			let old_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ? ")
+			let old_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
 				.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 				.fetch_one(&ctx.data().db)
 				.await?
@@ -348,7 +348,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 				})
 				.await?;
 				// Update database with new message
-				query(&format!("UPDATE rgroups_{} SET msg = ? WHERE name = ?", ctx.guild_id().unwrap().as_u64()))
+				query(&format!("UPDATE rgroups_{} SET msg = ? WHERE name = ?;", ctx.guild_id().unwrap().as_u64()))
 					.bind(*new_message.id.as_u64() as i64)
 					.bind(entry.name)
 					.execute(&ctx.data().db)
