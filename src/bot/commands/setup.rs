@@ -182,7 +182,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 				m.embed(|e| {
 					if let Some(name) = default_name {
 						// Default channel exists
-						e.description(format!("Note that the default channel for role lists is `{name}`. If this is not wanted, please run `/setup roles` now."));
+						e.description(format!("The current default channel for role lists is `{name}`. If this is not wanted, please run `/setup roles` now."));
 						e.color(EMBED_WAIT)
 					} else {
 						// Default channel does not exist
