@@ -101,11 +101,9 @@ pub async fn default_bot_channel(
 	let channel = if let Some(system_channel) = guild.system_channel_id {
 		Some(system_channel)
 	} else {
-		if let Some(default_channel) = guild.default_channel(botuser).await {
-			Some(default_channel.id)
-		} else {
-			None
-		}
+		guild.default_channel(botuser)
+			.await
+			.map(|f| f.id)
 	};
 	// If a channel was returned at all, which there should be but you never really know?
 	if let Some(c) = channel {
