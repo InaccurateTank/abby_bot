@@ -160,32 +160,43 @@ async fn create(
 		abby_utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
-	let role_sets = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+
+	// ChannelId from role settings
+	let channel = match query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
 		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
-		.await?;
-	// Check if the channel can be posted in.
-	let channel = if let Some(id) = role_sets.channel {
-		let chid = serenity::ChannelId::from(id as u64);
-		if abby_utils::can_post(ctx, chid, ctx.framework().bot_id).await {
-			Some(chid)
-		} else {
-			None
+		.await?
+		.channel
+		.map(|id| serenity::ChannelId::from(id as u64)) {
+		Some(chid) => {
+			// If exists but can't be posted in just stop and error
+			if !abby_utils::can_post(ctx, chid, ctx.framework().bot_id).await {
+				let name = chid.name(ctx).await.unwrap();
+				ctx.send(|b| {
+					b.content("");
+					b.embed(|e| {
+						templates::builder_state_embed(e, false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel."));
+						e
+					});
+					b.components(|f| f)
+				}).await?;
+				return Ok(());
+			}
+			chid
+		},
+		None => {
+			// If it doesn't exist at all
+			ctx.send(|b| {
+				b.content("");
+				b.embed(|e| {
+					templates::builder_state_embed(e, false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`.");
+					e
+				});
+				b.components(|f| f)
+			}).await?;
+			return Ok(());
 		}
-	} else {
-		abby_utils::default_bot_channel(ctx, ctx.guild().unwrap(), ctx.framework().bot_id).await
 	};
-	if channel.is_none() {
-		ctx.send(|b| {
-			b.content("");
-			b.embed(|e| {
-				templates::builder_state_embed(e, false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel.");
-				e
-			});
-			b.components(|f| f)
-		}).await?;
-		return Ok(());
-	}
 
 	// Select sorting
 	let mut select: Vec<serenity::Role> = ctx.guild().unwrap().roles
@@ -277,7 +288,7 @@ async fn create(
 		.await?;
 
 	// Generate list with the channel stored for the check
-	let msg = channel.unwrap().send_message(ctx, |m| {
+	let msg = channel.send_message(ctx, |m| {
 		m.content("");
 		m.set_embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist));
 		m.set_components(templates::rolelist_components(&group))
