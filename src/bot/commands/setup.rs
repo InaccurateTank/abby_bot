@@ -13,7 +13,7 @@ use sqlx::{
 	query_as
 };
 
-use crate::{EMBED_WAIT, EMBED_STD, templates};
+use crate::{EMBED_WAIT, EMBED_STD, templates, EMBED_FAIL};
 
 /// Administrates the bot on a per-server basis.
 ///
@@ -156,15 +156,39 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			query(&format!("CREATE TABLE IF NOT EXISTS rgroups_{srv_id} (name TEXT PRIMARY KEY NOT NULL, msg BIGINT NOT NULL);"))
 				.execute(&ctx.data().db)
 				.await?;
-			query("INSERT INTO role_options (srvid) VALUES(?);")
+			// Find default channel in i64 form (for database)
+			let default = if let Some(c) = abby_utils::default_bot_channel(ctx, ctx.guild().unwrap(), ctx.framework().bot_id).await {
+				Some(*c.as_u64() as i64)
+			} else {
+				None
+			};
+			// Insert into role_options
+			query("INSERT INTO role_options (srvid, channel) VALUES(?, ?);")
 				.bind(updated.srvid)
+				.bind(default)
 				.execute(&ctx.data().db)
 				.await?;
+			// Name of channel (From default)
+			let default_name = if let Some(c) = default {
+				Some(serenity::ChannelId::from(c as u64).name(ctx)
+					.await
+					.unwrap())
+			} else {
+				None
+			};
+			// Send message
 			ctx.send(|m| {
 				m.content("");
 				m.embed(|e| {
-					e.description("Note that using the default channel for roles is not advised. It is recommended to run `/setup roles` now.");
-					e.color(EMBED_WAIT)
+					if let Some(name) = default_name {
+						// Default channel exists
+						e.description(format!("Note that the default channel for role lists is `{name}`. If this is not wanted, please run `/setup roles` now."));
+						e.color(EMBED_WAIT)
+					} else {
+						// Default channel does not exist
+						e.description(format!("Could not setup a default channel for roles. Before creating any lists running `/setup roles` is needed."));
+						e.color(EMBED_FAIL)
+					}
 				})
 			}).await?;
 		} else {
