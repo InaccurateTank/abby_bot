@@ -157,11 +157,9 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 				.execute(&ctx.data().db)
 				.await?;
 			// Find default channel in i64 form (for database)
-			let default = if let Some(c) = abby_utils::default_bot_channel(ctx, ctx.guild().unwrap(), ctx.framework().bot_id).await {
-				Some(*c.as_u64() as i64)
-			} else {
-				None
-			};
+			let default = abby_utils::default_bot_channel(ctx, ctx.guild().unwrap(), ctx.framework().bot_id)
+				.await
+				.map(|f| *f.as_u64() as i64);
 			// Insert into role_options
 			query("INSERT INTO role_options (srvid, channel) VALUES(?, ?);")
 				.bind(updated.srvid)
@@ -186,7 +184,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 						e.color(EMBED_WAIT)
 					} else {
 						// Default channel does not exist
-						e.description(format!("Could not setup a default channel for roles. Before creating any lists running `/setup roles` is needed."));
+						e.description("Could not setup a default channel for roles. Before creating any lists running `/setup roles` is needed.");
 						e.color(EMBED_FAIL)
 					}
 				})
@@ -355,30 +353,50 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 
 		// Migrates if there are role messages in the old channel
 		if !old_lists.is_empty() {
-			let old_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+			if let Some(c) = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
 				.bind(*ctx.guild_id().unwrap().as_u64() as i64)
 				.fetch_one(&ctx.data().db)
 				.await?
-				.channel
-				.unwrap() as u64;
-			for entry in old_lists {
-				let old_message = ctx.http().get_message(old_channel, entry.msg as u64).await?;
-				let new_message = chid.send_message(ctx, |m| {
-					// Copy embed
-					let embed = serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned());
-					m.set_embed(embed);
-					// Add components
-					m.set_components(templates::rolelist_components(&entry.name))
-				})
-				.await?;
-				// Update database with new message
-				query(&format!("UPDATE rgroups_{} SET msg = ? WHERE name = ?;", ctx.guild_id().unwrap().as_u64()))
-					.bind(*new_message.id.as_u64() as i64)
-					.bind(entry.name)
-					.execute(&ctx.data().db)
-					.await?;
-				// Delete old message
-				ctx.http().delete_message(old_channel, entry.msg as u64).await?;
+				.channel {
+				for entry in old_lists {
+					// If the old message can't even be reached then no point trying anyway.
+					if let Ok(old_message) = ctx.http().get_message(c as u64, entry.msg as u64).await {
+						let new_message = chid.send_message(ctx, |m| {
+							// Copy embed
+							let embed = serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned());
+							m.set_embed(embed);
+							// Add components
+							m.set_components(templates::rolelist_components(&entry.name))
+						})
+						.await?;
+						// Update database with new message
+						query(&format!("UPDATE rgroups_{} SET msg = ? WHERE name = ?;", ctx.guild_id().unwrap().as_u64()))
+							.bind(*new_message.id.as_u64() as i64)
+							.bind(entry.name)
+							.execute(&ctx.data().db)
+							.await?;
+						// Delete old message
+						old_message.delete(ctx).await?;
+					} else {
+						ctx.send(|b| {
+							b.content("");
+							b.embed(|e| {
+								templates::builder_state_embed(e, false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name));
+								e
+							});
+							b.components(|f| f)
+						}).await?;
+					}
+				}
+			} else {
+				ctx.send(|b| {
+					b.content("");
+					b.embed(|e| {
+						templates::builder_state_embed(e, false, "Role lists were detected but no channel is stored for them. Existing role messages will still function, however the nature of this error means that they can't be deleted properly or migrated. In order to fix this make sure correct permissions are set on the channel where the old role lists are and then select that channel using this command.");
+						e
+					});
+					b.components(|f| f)
+				}).await?;
 			}
 		}
 
