@@ -28,6 +28,9 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 						})
 					}).await?;
 				}
+			} else {
+				// Re-register commands on login to keep up with updates
+				poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
 			}
 		},
 
@@ -57,10 +60,6 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 		poise::Event::Ready { data_about_bot } => {
 			println!("{} is connected!", data_about_bot.user.name);
 			ctx.set_activity(serenity::Activity::watching("Everything")).await;
-			// Re-register commands on login to keep up with updates
-			for guild in &data_about_bot.guilds {
-				poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
-			}
 		},
 
 		// On Message in Channel
