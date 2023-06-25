@@ -58,8 +58,6 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 			if *is_new {
 				intro(guild, ctx, framework.bot_id, &data.db).await?;
 			} else {
-				// Re-register commands on login to keep up with updates
-				poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
 				// If server has been added between logins, run the intro.
 				if query("SELECT * FROM servers WHERE srvid = ?;")
 					.bind(*guild.id.as_u64() as i64)
@@ -69,6 +67,8 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &poise::Event<'a>
 					intro(guild, ctx, framework.bot_id, &data.db).await?;
 				}
 			}
+			// Auto-register commands to keep up with updates
+			poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
 		},
 
 		// Kicked from Server
