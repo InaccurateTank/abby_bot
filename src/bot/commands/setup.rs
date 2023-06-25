@@ -13,7 +13,7 @@ use sqlx::{
 	query_as
 };
 
-use crate::{EMBED_WAIT, EMBED_STD, templates};
+use crate::{EMBED_WAIT, EMBED_STD, templates, EMBED_FAIL};
 
 /// Administrates the bot on a per-server basis.
 ///
@@ -156,15 +156,37 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			query(&format!("CREATE TABLE IF NOT EXISTS rgroups_{srv_id} (name TEXT PRIMARY KEY NOT NULL, msg BIGINT NOT NULL);"))
 				.execute(&ctx.data().db)
 				.await?;
-			query("INSERT INTO role_options (srvid) VALUES(?);")
+			// Find default channel in i64 form (for database)
+			let default = abby_utils::default_bot_channel(ctx, ctx.guild().unwrap(), ctx.framework().bot_id)
+				.await
+				.map(|f| *f.as_u64() as i64);
+			// Insert into role_options
+			query("INSERT INTO role_options (srvid, channel) VALUES(?, ?);")
 				.bind(updated.srvid)
+				.bind(default)
 				.execute(&ctx.data().db)
 				.await?;
+			// Name of channel (From default)
+			let default_name = if let Some(c) = default {
+				Some(serenity::ChannelId::from(c as u64).name(ctx)
+					.await
+					.unwrap())
+			} else {
+				None
+			};
+			// Send message
 			ctx.send(|m| {
 				m.content("");
 				m.embed(|e| {
-					e.description("Note that using the default channel for roles is not advised. It is recommended to run `/setup roles` now.");
-					e.color(EMBED_WAIT)
+					if let Some(name) = default_name {
+						// Default channel exists
+						e.description(format!("The current default channel for role lists is `{name}`. If this is not wanted, please run `/setup roles` now."));
+						e.color(EMBED_WAIT)
+					} else {
+						// Default channel does not exist
+						e.description("Could not setup a default channel for roles. Before creating any lists running `/setup roles` is needed.");
+						e.color(EMBED_FAIL)
+					}
 				})
 			}).await?;
 		} else {
@@ -311,7 +333,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	})
 	.await?;
 
-	// Return either selected
+	// Return either selected or default channel
 	let selected = if let Some(s) = interaction.data.values.first() {
 		let id = serenity::ChannelId::from_str(ctx, s)?;
 		if abby_utils::can_post(ctx, id, ctx.framework().bot_id).await {
@@ -324,6 +346,60 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	};
 
 	if let Some(chid) = selected {
+		// Fetch old group messages
+		let old_lists = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{};", ctx.guild_id().unwrap().as_u64()))
+			.fetch_all(&ctx.data().db)
+			.await?;
+
+		// Migrates if there are role messages in the old channel
+		if !old_lists.is_empty() {
+			if let Some(c) = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+				.bind(*ctx.guild_id().unwrap().as_u64() as i64)
+				.fetch_one(&ctx.data().db)
+				.await?
+				.channel {
+				for entry in old_lists {
+					// If the old message can't even be reached then no point trying anyway.
+					if let Ok(old_message) = ctx.http().get_message(c as u64, entry.msg as u64).await {
+						let new_message = chid.send_message(ctx, |m| {
+							// Copy embed
+							let embed = serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned());
+							m.set_embed(embed);
+							// Add components
+							m.set_components(templates::rolelist_components(&entry.name))
+						})
+						.await?;
+						// Update database with new message
+						query(&format!("UPDATE rgroups_{} SET msg = ? WHERE name = ?;", ctx.guild_id().unwrap().as_u64()))
+							.bind(*new_message.id.as_u64() as i64)
+							.bind(entry.name)
+							.execute(&ctx.data().db)
+							.await?;
+						// Delete old message
+						old_message.delete(ctx).await?;
+					} else {
+						ctx.send(|b| {
+							b.content("");
+							b.embed(|e| {
+								templates::builder_state_embed(e, false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name));
+								e
+							});
+							b.components(|f| f)
+						}).await?;
+					}
+				}
+			} else {
+				ctx.send(|b| {
+					b.content("");
+					b.embed(|e| {
+						templates::builder_state_embed(e, false, "Role lists were detected but no channel is stored for them. Existing role messages will still function, however the nature of this error means that they can't be deleted properly or migrated. In order to fix this make sure correct permissions are set on the channel where the old role lists are and then select that channel using this command.");
+						e
+					});
+					b.components(|f| f)
+				}).await?;
+			}
+		}
+
 		// Update the database with the new channel
 		query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
 			.bind(*chid.as_u64() as i64)

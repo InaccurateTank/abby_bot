@@ -97,20 +97,24 @@ pub async fn default_bot_channel(
 	guild: serenity::Guild,
 	botuser: serenity::UserId
 ) -> Option<serenity::ChannelId> {
-	// Get a the channel
-	let channel = guild.system_channel_id
-		.unwrap_or(guild
-			.default_channel(botuser)
+	// Get the channel
+	let channel = if let Some(system_channel) = guild.system_channel_id {
+		Some(system_channel)
+	} else {
+		guild.default_channel(botuser)
 			.await
-			.unwrap()
-			.id);
-	// Can messages even be sent in the channel?
-	if !can_post(ctx, channel, botuser).await || channel.to_channel(ctx).await.unwrap().guild().unwrap().kind != serenity::ChannelType::Text {
-		// If not return none
-		return None
+			.map(|f| f.id)
+	};
+	// If a channel was returned at all, which there should be but you never really know?
+	if let Some(c) = channel {
+		// Can messages even be sent in the channel?
+		if can_post(ctx, c, botuser).await || c.to_channel(ctx).await.unwrap().guild().unwrap().kind == serenity::ChannelType::Text {
+			// If so return it
+			return Some(c)
+		}
 	}
-	// Return the channel
-	Some(channel)
+	// Default return None
+	None
 }
 
 /// Detects if a user can post to the provided [`serenity::Channel`]
