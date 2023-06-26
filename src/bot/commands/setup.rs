@@ -21,7 +21,7 @@ use crate::{EMBED_WAIT, EMBED_STD, templates, EMBED_FAIL};
 ///  bot      Manages serverwide bot features.
 ///  roles    Manages the settings of the roles feature.
 /// ```
-/// All subcommands are ephemeral and require the `ADMINISTRATOR` permission.
+/// All subcommands are ephemeral and require the `Administrator` permission.
 #[poise::command(
 	guild_only,
 	slash_command,
