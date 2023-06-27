@@ -61,7 +61,7 @@ async fn autocomplete_category<'a>(
 		}).collect::<Vec<String>>()
 }
 
-/// Adds a new text channel to the server.
+/// Adds a new channel to the server.
 #[poise::command(
 	guild_only,
 	slash_command,
