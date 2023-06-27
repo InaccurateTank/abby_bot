@@ -4,8 +4,8 @@ use crate::{Context, Error, templates};
 /// A set of commands to quickly add things to the server. Less powerful than discords standard options.
 ///
 /// ```Subcommands:
-///  channel	Adds a channel to the server, with optional role lock.
-///  role			Adds a role to the server that is guaranteed to be below the bot in permissions.
+///  channel  Adds a channel to the server, with optional role lock.
+///  role     Adds a role to the server that is guaranteed to be below the bot in permissions.
 /// ```
 /// All subcommands are ephemeral and require the `Manage Server` permission.
 #[poise::command(
