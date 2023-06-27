@@ -74,9 +74,10 @@ async fn channel(
 	name: String,
 	#[description = "Kind of channel."]
 	kind: ChannelKind,
-	#[description = "Name of the new channel."]
+	#[description = "Role to be used as a filter for private channel purposes."]
 	#[autocomplete = "autocomplete_roles"]
 	role_filter: Option<String>,
+	#[description = "Category for the new channel to go under."]
 	#[autocomplete = "autocomplete_category"]
 	category: Option<String>
 ) -> Result<(), Error> {
@@ -193,8 +194,35 @@ async fn role(
 	#[description = "Name of the new role."]
 	name: String
 ) -> Result<(), Error> {
-	// ctx.guild_id().unwrap().create_role(ctx, |f| {
-	// 	f.name(name)
-	// }).await?;
+	if ctx.guild()
+		.unwrap()
+		.roles
+		.into_iter()
+		.find(|(_, r)| {
+			&r.name.to_lowercase() == &name
+		}).is_some() {
+		ctx.send(|m| {
+			m.content("");
+			m.ephemeral(true);
+			m.embed(|e| {
+				templates::builder_state_embed(e, false, "Role with identical name already exists.");
+				e
+			})
+		}).await?;
+		return Ok(())
+	}
+	ctx.guild_id()
+		.unwrap()
+		.create_role(ctx, |f| {
+		f.name(&name)
+	}).await?;
+	ctx.send(|m| {
+		m.content("");
+		m.ephemeral(true);
+		m.embed(|e| {
+			templates::builder_state_embed(e, true, &format!("Role {name} has been successfully created."));
+			e
+		})
+	}).await?;
 	Ok(())
 }
