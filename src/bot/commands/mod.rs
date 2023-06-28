@@ -12,3 +12,6 @@ pub use rolelist::*;
 
 mod snap;
 pub use snap::*;
+
+mod rewind;
+pub use rewind::*;
