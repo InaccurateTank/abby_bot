@@ -197,9 +197,9 @@ async fn role(
 	if ctx.guild()
 		.unwrap()
 		.roles
-		.into_iter()
-		.find(|(_, r)| {
-			&r.name.to_lowercase() == &name
+		.values()
+		.find(|f| {
+			f.name.to_lowercase() == name
 		}).is_some() {
 		ctx.send(|m| {
 			m.content("");
