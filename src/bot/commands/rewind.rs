@@ -1,6 +1,6 @@
 use std::borrow::Cow;
-use poise::serenity_prelude::{self as serenity, CacheHttp};
-use crate::{Context, Error, templates};
+use poise::{serenity_prelude::{self as serenity, CacheHttp}, Modal};
+use crate::{Data, Error, templates};
 
 fn id_split(url: String) -> Result<[u64;2], Error> {
 	// Need to check if everything is in the correct format first
@@ -19,6 +19,13 @@ fn id_split(url: String) -> Result<[u64;2], Error> {
 	Ok([chres, msgres])
 }
 
+#[derive(Debug, poise::Modal)]
+#[name = "Continue with mass delete?"]
+struct ConfirmModal {
+	#[placeholder = "Insert the final id in the URL to continue"]
+	confirm: String
+}
+
 /// Mass message removal tool. Please read the detailed help instructions before use.
 ///
 /// Rewind is an administrative tool used to mass delete entire conversations within a channel.
@@ -35,7 +42,7 @@ fn id_split(url: String) -> Result<[u64;2], Error> {
 	ephemeral
 )]
 pub async fn rewind(
-	ctx: Context<'_>,
+	ctx: poise::ApplicationContext<'_, Data, Error>,
 	#[description = "Ident of the message to start deleting from."]
 	from: String,
 	#[description = "Ident of the message to stop deletions at."]
@@ -58,9 +65,29 @@ pub async fn rewind(
 		}
 	};
 
+	// Confirm
+	let conf = ConfirmModal::execute(ctx).await?.and_then(|f| {
+		if f.confirm != from_id.to_string() {
+			return None
+		}
+		Some(f)
+	}).is_none();
+	if conf {
+		// Confirm failure
+		ctx.send(|m| {
+			m.content("");
+			m.ephemeral(true);
+			m.embed(|e| {
+				templates::builder_state_embed(e, false, "Confirmation failed, aborting.");
+				e
+			})
+		}).await?;
+		return Ok(());
+	}
+
 	// Fetch messages, including the message selected.
 	let mut messages = match serenity::ChannelId(from_channel)
-		.messages(ctx, |retriever| {
+		.messages(ctx.serenity_context(), |retriever| {
 			retriever.after(from_id)
 		}).await {
 		Ok(value) => value,
@@ -77,7 +104,7 @@ pub async fn rewind(
 			return Ok(());
 		}
 	};
-	messages.push(ctx.http().get_message(from_channel, from_id).await?);
+	messages.push(ctx.serenity_context().http().get_message(from_channel, from_id).await?);
 
 	if let Some(until_value) = until {
 		let [until_channel, until_id] = match id_split(until_value) {
@@ -138,7 +165,7 @@ pub async fn rewind(
 	let archive_name = format!("Archive-{}-{}.txt", ctx.guild().unwrap().name, time::OffsetDateTime::now_utc().format(&time::format_description::well_known::Iso8601::DEFAULT)?);
 
 	// Delete and Confirm
-	// serenity::ChannelId(from_channel).delete_messages(ctx, &messages).await?;
+	serenity::ChannelId(from_channel).delete_messages(ctx.serenity_context(), &messages).await?;
 	ctx.send(|m| {
 		m.content("");
 		m.ephemeral(true);
