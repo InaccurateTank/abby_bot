@@ -22,7 +22,7 @@ fn id_split(url: String) -> Result<[u64;2], Error> {
 #[derive(Debug, poise::Modal)]
 #[name = "Continue with mass delete?"]
 struct ConfirmModal {
-	#[placeholder = "Insert the final id in the URL to continue"]
+	#[placeholder = "Insert the final number in the from URL to continue"]
 	confirm: String
 }
 
@@ -164,7 +164,7 @@ pub async fn rewind(
 		}).collect::<Vec<u8>>());
 	let archive_name = format!("Archive-{}-{}.txt", ctx.guild().unwrap().name, time::OffsetDateTime::now_utc().format(&time::format_description::well_known::Iso8601::DEFAULT)?);
 
-	// Delete and Confirm
+	// Delete and Display
 	serenity::ChannelId(from_channel).delete_messages(ctx.serenity_context(), &messages).await?;
 	ctx.send(|m| {
 		m.content("");
