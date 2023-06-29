@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use poise::serenity_prelude::{self as serenity, CacheHttp};
 use sqlx::{
 	query,
@@ -199,23 +200,26 @@ async fn create(
 	};
 
 	// Select sorting
-	let mut select: Vec<serenity::Role> = ctx.guild().unwrap().roles
+	let mut initial_rolelist: Vec<serenity::Role> = ctx.guild()
+		.unwrap()
+		.roles
 		.into_values()
 		.filter(|r| {
 			abby_utils::role_filter(r)
 		})
 		.collect();
-	select.sort_by(|a, b| {
+	initial_rolelist.sort_by(|a, b| {
 		let a_l = a.name.to_lowercase();
 		let b_l = b.name.to_lowercase();
 		a_l.cmp(&b_l)
 	});
-	let select: Vec<serenity::CreateSelectMenuOption> = select.into_iter().filter_map(|r| {
-		if r.name != "@everyone" {
-			return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id))
-		}
-		None
-	}).collect();
+	let select_menu: Vec<serenity::CreateSelectMenuOption> = initial_rolelist.into_iter()
+		.filter_map(|r| {
+			if r.name != "@everyone" {
+				return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id))
+			}
+			None
+		}).collect();
 
 	// The role selection menu.
 	let reply = ctx.send(|b| {
@@ -231,9 +235,9 @@ async fn create(
 					menu.custom_id("rolelist.new");
 					menu.placeholder("Roles");
 					menu.min_values(1);
-					menu.max_values(select.len() as u64);
+					menu.max_values(select_menu.len() as u64);
 					menu.options(|f| {
-						f.set_options(select)
+						f.set_options(select_menu)
 					})
 				})
 			})
@@ -274,9 +278,21 @@ async fn create(
 
 	// Insert roles into database.
 	for rid in &interaction.data.values {
-		query(&format!("INSERT INTO roles_{srv_id} (id, grp, users) VALUES(?, ?, 0);"))
+		let users = ctx.guild_id()
+			.unwrap()
+			.members(ctx, None, None)
+			.await?
+			.into_iter()
+			.filter_map(|f| {
+				if f.roles.contains(&serenity::RoleId::from_str(rid).unwrap()) {
+					return Some(f)
+				}
+				None
+			}).count();
+		query(&format!("INSERT INTO roles_{srv_id} (id, grp, users) VALUES(?, ?, ?);"))
 			.bind(rid)
 			.bind(&group)
+			.bind(users as i64)
 			.execute(&ctx.data().db)
 			.await?;
 	}
