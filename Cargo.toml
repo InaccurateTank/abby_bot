@@ -7,14 +7,14 @@ version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-poise = { version = "0.5" }
+poise = { version = "0.6.0" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 regex = { version = "1.7" }
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 gumdrop = { version = "0.8" }
-sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls", "sqlite" ] }
+sqlx = { version = "0.7.3", features = [ "runtime-tokio-native-tls", "sqlite" ] }
 serde = { version = "1" }
-toml = { version = "0.7" }
+toml = { version = "0.8.8" }
 
 [dev-dependencies]
 brunch = "0.4"
