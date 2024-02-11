@@ -1,4 +1,5 @@
 use poise::serenity_prelude as serenity;
+use serenity::{ CreateActionRow, CreateButton };
 use abby_utils::{db_structs, concat};
 use crate::{EMBED_STD, EMBED_WAIT, EMBED_FAIL};
 
@@ -36,7 +37,7 @@ pub fn builder_processing_embed(e: &mut serenity::CreateEmbed) {
 
 pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db_structs::RoleEntry>) -> serenity::CreateEmbed {
 	let mut rolelist: Vec<(String, u16)> = rolelist.into_iter().map(|r|
-		(serenity::RoleId(r.id as u64).to_role_cached(ctx).unwrap().name, r.users)
+		(serenity::RoleId::new(r.id as u64).to_role_cached(ctx).unwrap().name, r.users)
 	).collect();
 	rolelist.sort_by(|a, b| {
 		let a_l = a.0.to_lowercase();
@@ -49,8 +50,8 @@ pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db_str
 	let mut name_str = String::new();
 	let mut user_str = String::new();
 	for (name, id) in rolelist {
-		name_str = abby_utils::concat(&name_str, &format!("{name}\n"));
-		user_str = abby_utils::concat(&user_str, &format!("{id}\n"));
+		name_str = concat(&name_str, &format!("{name}\n"));
+		user_str = concat(&user_str, &format!("{id}\n"));
 	}
 	name_str = name_str.trim_end_matches('\n').to_string();
 	user_str = user_str.trim_end_matches('\n').to_string();
@@ -59,19 +60,14 @@ pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db_str
 	e
 }
 
-pub fn rolelist_components(group: &str) -> serenity::CreateComponents {
-	let mut c = serenity::CreateComponents::default();
-	c.create_action_row(|row| {
-		row.create_button(|button| {
-			button.custom_id(concat("roles.pick.", group));
-			button.label("Choose");
-			button.style(serenity::ButtonStyle::Primary)
-		});
-		row.create_button(|button| {
-			button.custom_id(concat("roles.edit.", group));
-			button.label("Modify");
-			button.style(serenity::ButtonStyle::Danger)
-		})
-	});
+pub fn rolelist_components(group: &str) -> serenity::CreateActionRow {
+	let c = CreateActionRow::Buttons(vec![
+		CreateButton::new(concat("roles.pick.", group))
+			.label("Choose")
+			.style(serenity::ButtonStyle::Primary),
+		CreateButton::new(concat("roles.edit.", group))
+			.label("Modify")
+			.style(serenity::ButtonStyle::Danger)
+	]);
 	c
 }

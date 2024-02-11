@@ -11,9 +11,9 @@ mod commands;
 mod events;
 mod templates;
 
-const EMBED_STD: serenity::utils::Color = serenity::utils::Color::from_rgb(102, 51, 102);
-const EMBED_WAIT: serenity::utils::Color = serenity::utils::Color::from_rgb(253, 253, 150);
-const EMBED_FAIL: serenity::utils::Color = serenity::utils::Color::from_rgb(178, 34, 34);
+const EMBED_STD: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
+const EMBED_WAIT: serenity::Color = serenity::Color::from_rgb(253, 253, 150);
+const EMBED_FAIL: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
 
 #[derive(Debug, Options)]
 struct Opts {
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Error> {
 		],
 		prefix_options: poise::PrefixFrameworkOptions {
 			prefix: Some("~".into()),
-			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600))),
+			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600)).into()),
 			..Default::default()
 		},
 		event_handler: |ctx, event, framework, data| Box::pin(events::event_handler(ctx, event, framework, data)),
@@ -80,9 +80,7 @@ async fn main() -> Result<(), Error> {
 	// Bot Setup
 	let framework = poise::Framework::builder()
 		.options(options)
-		.token(&*config.token)
-		.intents(intents)
-		.setup(move |_ctx, _ready, framework| {
+		.setup(move |ctx, _ready, framework| {
 			Box::pin(async move {
 				let sm = framework.shard_manager().clone();
 				let db = pool.clone();
@@ -109,16 +107,20 @@ async fn main() -> Result<(), Error> {
 					}
 					print!("Shutting Down");
 					db.close().await;
-					sm.lock().await.shutdown_all().await;
+					sm.shutdown_all().await;
 				});
 				Ok(Data {
 					db: pool
 				})
 			})
-		});
+		})
+		.build();
 
-	// Start Bot
-	if let Err(why) = framework.run().await {
+	let client = serenity::ClientBuilder::new(config.token, intents)
+		.framework(framework)
+		.await?;
+
+	if let Err(why) = client.start().await {
 		println!("Client error: {why:?}");
 	}
 	Ok(())
