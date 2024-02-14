@@ -5,15 +5,25 @@ use sqlx::{
 	Sqlite,
 	sqlite::SqlitePoolOptions
 };
-use abby_utils::{Context, Error, Data, Config, db_structs};
 
 mod commands;
 mod events;
+mod structs;
 mod templates;
+mod utils;
+
+use structs::Config;
 
 const EMBED_STD: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
 const EMBED_WAIT: serenity::Color = serenity::Color::from_rgb(253, 253, 150);
 const EMBED_FAIL: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
+
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Context<'a> = poise::Context<'a, Data, Error>;
+
+pub struct Data {
+	pub db: sqlx::Pool<sqlx::Sqlite>
+}
 
 #[derive(Debug, Options)]
 struct Opts {
@@ -29,7 +39,7 @@ async fn main() -> Result<(), Error> {
 
 	// Data Folder From Opts
 	let data_folder = if !opts.data.ends_with('/') {
-		abby_utils::concat(&opts.data, "/")
+		utils::concat(&opts.data, "/")
 	} else {
 		opts.data
 	};
@@ -61,11 +71,11 @@ async fn main() -> Result<(), Error> {
 			commands::help(),
 			commands::about(),
 			commands::register(),
-			commands::setup(),
-			commands::bottomify(),
+			// commands::setup(),
+			// commands::bottomify(),
 			commands::rolelist(),
-			commands::snap(),
-			commands::rewind()
+			// commands::snap(),
+			// commands::rewind()
 		],
 		prefix_options: poise::PrefixFrameworkOptions {
 			prefix: Some("~".into()),
@@ -80,7 +90,7 @@ async fn main() -> Result<(), Error> {
 	// Bot Setup
 	let framework = poise::Framework::builder()
 		.options(options)
-		.setup(move |ctx, _ready, framework| {
+		.setup(move |_ctx, _ready, framework| {
 			Box::pin(async move {
 				let sm = framework.shard_manager().clone();
 				let db = pool.clone();
@@ -116,9 +126,15 @@ async fn main() -> Result<(), Error> {
 		})
 		.build();
 
-	let client = serenity::ClientBuilder::new(config.token, intents)
+	let mut client = match serenity::ClientBuilder::new(config.token, intents)
 		.framework(framework)
-		.await?;
+		.await {
+		Ok(c) => c,
+		Err(e) => {
+			println!("Error assembling client: {e:?}");
+			return Ok(())
+		}
+	};
 
 	if let Err(why) = client.start().await {
 		println!("Client error: {why:?}");

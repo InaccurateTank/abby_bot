@@ -23,9 +23,9 @@ brunch = "0.5"
 name = "abby_bot"
 path = "src/bot/main.rs"
 
-[lib]
-name = "abby_utils"
-path = "src/utils/lib.rs"
+# [lib]
+# name = "abby_utils"
+# path = "src/utils/lib.rs"
 
 [[bench]]
 name = "concat"

@@ -2,7 +2,9 @@ use std::collections::HashSet;
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateMessage, CreateEmbed };
 use sqlx::{query, query_as};
-use crate::{ EMBED_STD, db_structs, Error, Data};
+use crate::{ EMBED_STD, Error, Data };
+use crate::structs::db;
+use crate::utils;
 
 mod message;
 mod interaction;
@@ -16,7 +18,7 @@ async fn intro(guild: &serenity::Guild, ctx: &serenity::Context, bot_id: serenit
 		.execute(db)
 		.await?;
 	// If the bot can post in a default channel, do so. Better to disclose the join than not.
-	if let Some(chid) = abby_utils::default_bot_channel(ctx, guild.clone(), bot_id).await {
+	if let Some(chid) = utils::default_bot_channel(ctx, guild.clone(), bot_id).await {
 		chid.send_message(ctx, CreateMessage::new()
 			.embed(CreateEmbed::new()
 				.title("Hello I'm Abby!")
@@ -87,7 +89,7 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 			};
 			ctx.set_activity(Some(status));
 			// If servers have been removed, run a purge
-			let db_servers: HashSet<u64> = query_as::<_, db_structs::Server>("SELECT * FROM servers;")
+			let db_servers: HashSet<u64> = query_as::<_, db::Server>("SELECT * FROM servers;")
 				.fetch_all(&data.db)
 				.await?
 				.into_iter()
@@ -105,7 +107,7 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 		// On Message in Channel
 		serenity::FullEvent::Message { new_message } => {
 			let srv_features = match new_message.guild_id {
-				Some(id) => Some(query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+				Some(id) => Some(query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
 					.bind(id.get() as i64)
 					.fetch_one(&data.db)
 					.await?),
