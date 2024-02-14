@@ -1,4 +1,4 @@
-use poise::serenity_prelude::{self as serenity, model::guild};
+use poise::serenity_prelude as serenity;
 use crate::{Context, Error};
 
 pub fn concat(a: &str, b: &str) -> String {
@@ -20,7 +20,7 @@ pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<(), Error> {
 	Ok(())
 }
 
-/// Abby should never assign roles to people that could potentially modify the server.
+/// Abby should never assign moderation roles and should never show @everyone.
 pub fn role_filter(role: &serenity::Role) -> bool {
 	if role.has_permission(serenity::Permissions::ADMINISTRATOR)
 	|| role.has_permission(serenity::Permissions::MANAGE_CHANNELS)
@@ -32,6 +32,9 @@ pub fn role_filter(role: &serenity::Role) -> bool {
 	|| role.has_permission(serenity::Permissions::MANAGE_ROLES)
 	|| role.has_permission(serenity::Permissions::MANAGE_THREADS)
 	|| role.has_permission(serenity::Permissions::MANAGE_WEBHOOKS) {
+		return false
+	}
+	if role.name == "@everyone" {
 		return false
 	}
 	true

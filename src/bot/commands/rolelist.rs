@@ -5,8 +5,7 @@ use sqlx::{
 };
 use crate::{
 	structs::db,
-	utils,
-	templates,
+	utils, templates,
 	Context, Error,
 	EMBED_STD
 };
@@ -196,11 +195,8 @@ async fn create(
 		a_l.cmp(&b_l)
 	});
 	let select_menu: Vec<serenity::CreateSelectMenuOption> = initial_rolelist.into_iter()
-		.filter_map(|r| {
-			if r.name != "@everyone" {
-				return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id.to_string()))
-			}
-			None
+		.map(|r| {
+			serenity::CreateSelectMenuOption::new(&r.name, r.id.to_string())
 		}).collect();
 
 	// The role selection menu.
