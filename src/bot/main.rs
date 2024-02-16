@@ -71,7 +71,7 @@ async fn main() -> Result<(), Error> {
 			commands::help(),
 			commands::about(),
 			commands::register(),
-			// commands::setup(),
+			commands::setup(),
 			// commands::bottomify(),
 			commands::rolelist(),
 			// commands::snap(),

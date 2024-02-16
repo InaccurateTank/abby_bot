@@ -105,7 +105,7 @@ async fn delete(
 		) as u64);
 
 	// Deletions
-	if let Err(_) = ctx.http().delete_message(group_channel, serenity::MessageId::new(group_entry.msg as u64), Some(&format!("Deleting Role List {}", group_entry.name))).await {
+	if ctx.http().delete_message(group_channel, serenity::MessageId::new(group_entry.msg as u64), Some(&format!("Deleting Role List {}", group_entry.name))).await.is_err() {
 		ctx.send(poise::CreateReply::default()
 			.ephemeral(true)
 			.embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually.")))
@@ -141,7 +141,7 @@ async fn create(
 	#[description = "Name of the role group."]
 	group: String
 ) -> Result<(), Error> {
-	let srv_id = ctx.guild_id().unwrap().get() as u64;
+	let srv_id = ctx.guild_id().unwrap().get();
 	let srv_features = query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
@@ -161,7 +161,7 @@ async fn create(
 		.map(|id| serenity::ChannelId::from(id as u64)) {
 		Some(chid) => {
 			// If exists but can't be posted in just stop and error
-			if !utils::can_post(ctx, chid, ctx.framework().bot_id).await {
+			if !utils::can_post(ctx, &chid, ctx.framework().bot_id).await {
 				let name = chid.name(ctx).await.unwrap();
 				ctx.send(poise::CreateReply::default()
 					.embed(templates::state_embed(false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel.")))

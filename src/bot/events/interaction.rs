@@ -15,6 +15,8 @@ pub async fn mci_handler(ctx: &serenity::Context, data: &Data, mci: &serenity::C
 		.await
 		.unwrap();
 	let mut mci_id: VecDeque<&str> = mci.data.custom_id.split_terminator('.').collect();
+
+	// Interaction futureproof
 	match mci_id.pop_front().unwrap() {
 		"roles" => {
 			if srv_features.roles {
@@ -95,8 +97,8 @@ async fn roles_click(ctx: &serenity::Context, data: &Data, mci: &serenity::Compo
 			).await?;
 
 			let selected_roles: Vec<serenity::RoleId> = match &sec_mci.data.kind {
-				serenity::ComponentInteractionDataKind::StringSelect { values } => values.into_iter()
-					.map(|s| serenity::RoleId::from_str(&s).unwrap())
+				serenity::ComponentInteractionDataKind::StringSelect { values } => values.iter()
+					.map(|s| serenity::RoleId::from_str(s).unwrap())
 					.collect(),
 				_ => {
 					sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()

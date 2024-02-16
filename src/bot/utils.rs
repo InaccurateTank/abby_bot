@@ -56,7 +56,7 @@ pub async fn default_bot_channel(
 	// If a channel was returned at all, which there should be but you never really know?
 	if let Some(c) = channel {
 		// Can messages even be sent in the channel?
-		if can_post(ctx, c, botuser).await || c.to_channel(ctx).await.unwrap().guild().unwrap().kind == serenity::ChannelType::Text {
+		if can_post(ctx, &c, botuser).await || c.to_channel(ctx).await.unwrap().guild().unwrap().kind == serenity::ChannelType::Text {
 			// If so return it
 			return Some(c)
 		}
@@ -68,7 +68,7 @@ pub async fn default_bot_channel(
 /// Detects if a user can post to the provided [`serenity::Channel`]
 pub async fn can_post(
 	ctx: impl serenity::CacheHttp + Copy,
-	chid: serenity::ChannelId,
+	chid: &serenity::ChannelId,
 	user: serenity::UserId
 ) -> bool {
 	chid.to_channel(ctx)
