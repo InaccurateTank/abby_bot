@@ -72,7 +72,7 @@ async fn main() -> Result<(), Error> {
 			commands::about(),
 			commands::register(),
 			commands::setup(),
-			// commands::bottomify(),
+			commands::bottomify(),
 			commands::rolelist(),
 			// commands::snap(),
 			// commands::rewind()
