@@ -10,8 +10,8 @@ pub use setup::*;
 mod rolelist;
 pub use rolelist::*;
 
-// mod snap;
-// pub use snap::*;
+mod snap;
+pub use snap::*;
 
 // mod rewind;
 // pub use rewind::*;

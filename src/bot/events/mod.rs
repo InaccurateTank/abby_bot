@@ -57,7 +57,7 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 	match event {
 		// Join Server
 		serenity::FullEvent::GuildCreate { guild, is_new } => {
-			if is_new.unwrap() {
+			if is_new.is_some_and(|x| x) {
 				intro(guild, ctx, framework.bot_id, &data.db).await?;
 			} else {
 				// If server has been added between logins, run the intro.
