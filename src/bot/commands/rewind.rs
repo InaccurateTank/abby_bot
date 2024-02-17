@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use poise::{serenity_prelude::{self as serenity, CacheHttp}, Modal};
+use poise::{serenity_prelude as serenity, Modal};
 use crate::{Data, Error, templates};
 
 fn id_split(url: String) -> Result<[u64;2], Error> {
@@ -49,18 +49,14 @@ pub async fn rewind(
 	until: Option<String>
 ) -> Result<(), Error> {
 	// Parse from values
-	let [from_channel, from_id] = match id_split(from) {
-		Ok([chid, msgid]) => [chid, msgid],
+	let (from_channel, from_id) = match id_split(from) {
+		Ok([chid, msgid]) => (serenity::ChannelId::new(chid), serenity::MessageId::new(msgid)),
 		Err(err_box) => {
 			// Input failure
-			ctx.send(|m| {
-				m.content("");
-				m.ephemeral(true);
-				m.embed(|e| {
-					templates::builder_state_embed(e, false, &format!("from: {}", err_box));
-					e
-				})
-			}).await?;
+			ctx.send(poise::CreateReply::default()
+				.ephemeral(true)
+				.embed(templates::state_embed(false, &format!("from: {}", err_box)))
+			).await?;
 			return Ok(())
 		}
 	};
@@ -74,64 +70,45 @@ pub async fn rewind(
 	}).is_none();
 	if conf {
 		// Confirm failure
-		ctx.send(|m| {
-			m.content("");
-			m.ephemeral(true);
-			m.embed(|e| {
-				templates::builder_state_embed(e, false, "Confirmation failed, aborting.");
-				e
-			})
-		}).await?;
+		ctx.send(poise::CreateReply::default()
+			.ephemeral(true)
+			.embed(templates::state_embed(false, "Confirmation failed, aborting."))
+		).await?;
 		return Ok(());
 	}
 
 	// Fetch messages, including the message selected.
-	let mut messages = match serenity::ChannelId(from_channel)
-		.messages(ctx.serenity_context(), |retriever| {
-			retriever.after(from_id)
-		}).await {
+	let mut messages = match from_channel.messages(ctx, serenity::GetMessages::new().after(from_id)).await {
 		Ok(value) => value,
 		Err(_) => {
 			// from message Id is bad
-			ctx.send(|m| {
-				m.content("");
-				m.ephemeral(true);
-				m.embed(|e| {
-					templates::builder_state_embed(e, false, "from: Input is parseable but isn't valid. Either the id was entered incorrectly or doesn't exist in this server.");
-					e
-				})
-			}).await?;
-			return Ok(());
+			ctx.send(poise::CreateReply::default()
+				.ephemeral(true)
+				.embed(templates::state_embed(false, "Input `from` is parseable but isn't valid. Either the id was entered incorrectly or doesn't exist in this server."))
+			).await?;
+			return Ok(())
 		}
 	};
-	messages.push(ctx.serenity_context().http().get_message(from_channel, from_id).await?);
+	messages.push(ctx.http().get_message(from_channel, from_id).await?);
 
 	if let Some(until_value) = until {
 		let [until_channel, until_id] = match id_split(until_value) {
 			Ok([chid, msgid]) => [chid, msgid],
 			Err(err_box) => {
 				// Input failure
-				ctx.send(|m| {
-					m.content("");
-					m.ephemeral(true);
-					m.embed(|e| {
-						templates::builder_state_embed(e, false, &format!("until: {}", err_box));
-						e
-					})
-				}).await?;
+				ctx.send(poise::CreateReply::default()
+					.ephemeral(true)
+					.embed(templates::state_embed(false, &format!("until: {}", err_box)))
+				).await?;
 				return Ok(())
 			}
 		};
 		// If they arn't from the same channel
 		if from_channel != until_channel {
-			ctx.send(|m| {
-				m.content("");
-				m.ephemeral(true);
-				m.embed(|e| {
-					templates::builder_state_embed(e, false, "Inputs are not in the same channel as each other. Aborting.");
-					e
-				})
-			}).await?;
+			ctx.send(poise::CreateReply::default()
+				.ephemeral(true)
+				.embed(templates::state_embed(false, "Inputs are not in the same channel as each other. Aborting."))
+			).await?;
 			return Ok(())
 		}
 		// Find the position of the until message
@@ -141,14 +118,10 @@ pub async fn rewind(
 			Some(v) => v,
 			None => {
 				// until message id is bad
-				ctx.send(|m| {
-					m.content("");
-					m.ephemeral(true);
-					m.embed(|e| {
-						templates::builder_state_embed(e, false, "until: Input is parseable but isn't valid. Either the id was entered incorrectly or doesn't exist in this server.");
-						e
-					})
-				}).await?;
+				ctx.send(poise::CreateReply::default()
+					.ephemeral(true)
+					.embed(templates::state_embed(false, "until: Input is parseable but isn't valid. Either the id was entered incorrectly or doesn't exist in this server."))
+				).await?;
 				return Ok(());
 			}
 		};
@@ -165,15 +138,11 @@ pub async fn rewind(
 	let archive_name = format!("Archive-{}-{}.txt", ctx.guild().unwrap().name, time::OffsetDateTime::now_utc().format(&time::format_description::well_known::Iso8601::DEFAULT)?);
 
 	// Delete and Display
-	serenity::ChannelId(from_channel).delete_messages(ctx.serenity_context(), &messages).await?;
-	ctx.send(|m| {
-		m.content("");
-		m.ephemeral(true);
-		m.attachment(serenity::AttachmentType::Bytes { data: archive, filename: archive_name });
-		m.embed(|e| {
-			templates::builder_state_embed(e, true, &format!("Messages {} through {} successfully deleted. An archive of the deleted messages has been attached for moderation purposes.", &messages.first().unwrap().id, &messages.last().unwrap().id));
-			e
-		})
-	}).await?;
+	from_channel.delete_messages(ctx.serenity_context(), &messages).await?;
+	ctx.send(poise::CreateReply::default()
+		.ephemeral(true)
+		.attachment(serenity::CreateAttachment::bytes(archive, archive_name))
+		.embed(templates::state_embed(true, &format!("Messages {} through {} successfully deleted. An archive of the deleted messages has been attached for moderation purposes.", &messages.first().unwrap().id, &messages.last().unwrap().id)))
+	).await?;
 	Ok(())
 }
