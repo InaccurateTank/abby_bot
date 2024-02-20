@@ -1,4 +1,4 @@
-FROM docker.io/rust:1.68-bullseye as builder
+FROM docker.io/rust:1.76-bullseye as builder
 WORKDIR /build
 COPY . .
 
