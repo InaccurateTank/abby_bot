@@ -1,31 +1,23 @@
 [package]
-name = "abby_workshop"
+name = "abby_bot"
 authors = ["inaccuratetank"]
 description = "A poorly assembled custom chatbot"
 repository = "https://git.inaccuratetank.gay/inaccuratetank/abby_bot"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 [dependencies]
-poise = { version = "0.5" }
+poise = { version = "0.6" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
-regex = { version = "1.7" }
+regex = { version = "1.10" }
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 gumdrop = { version = "0.8" }
-sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls", "sqlite" ] }
+sqlx = { version = "0.7", features = [ "runtime-tokio-native-tls", "sqlite" ] }
 serde = { version = "1" }
-toml = { version = "0.7" }
+toml = { version = "0.8" }
 
 [dev-dependencies]
-brunch = "0.4"
-
-[[bin]]
-name = "abby_bot"
-path = "src/bot/main.rs"
-
-[lib]
-name = "abby_utils"
-path = "src/utils/lib.rs"
+brunch = "0.5"
 
 [[bench]]
 name = "concat"

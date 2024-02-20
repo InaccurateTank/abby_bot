@@ -36,20 +36,15 @@ If this is used as a prefix command, the invoking message can be edited to chang
 pub async fn about(
 	ctx:Context<'_>
 ) -> Result<(), Error> {
-	ctx.send(|b| {
-		b.content("")
-		.embed(|e|{
-			e.title("Hello I'm Abby!")
-				.color(serenity::utils::Color::new(663366))
-				.description(DESCRIPTION)
-				.field("Creator", AUTHORS.replace(':', "\n"), true)
-				.field("Version", VERSION, true)
-				.field("Repository", REPO, false)
-				.footer(|f| {
-					f.text("Made with incompetence")
-				})
-		})
-	}).await?;
+	ctx.send(poise::CreateReply::default()
+		.embed(serenity::CreateEmbed::new()
+			.color(serenity::Color::new(663366))
+			.description(DESCRIPTION)
+			.field("Creator", AUTHORS.replace(':', "\n"), true)
+			.field("Version", VERSION, true)
+			.field("Repository", REPO, false)
+			.footer(serenity::CreateEmbedFooter::new("Made with incompetence")))
+	).await?;
 	Ok(())
 }
 

@@ -1,11 +1,14 @@
-use std::str::FromStr;
-use poise::serenity_prelude::{self as serenity, CacheHttp};
+use poise::serenity_prelude as serenity;
 use sqlx::{
 	query,
 	query_as
 };
-use abby_utils::db_structs;
-use crate::{Context, Error, templates, EMBED_STD};
+use crate::{
+	structs::db,
+	utils, templates,
+	Context, Error,
+	EMBED_STD
+};
 
 /// Creates or deletes a list of roles to select from.
 ///
@@ -35,7 +38,7 @@ async fn autocomplete_groups<'a>(
 	partial: &'a str
 ) -> Vec<String> {
 	let srv_id = ctx.guild_id().unwrap();
-	let groups = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id};"))
+	let groups = query_as::<_, db::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id};"))
 		.fetch_all(&ctx.data().db)
 		.await
 		.unwrap();
@@ -62,60 +65,51 @@ async fn delete(
 	group: String
 ) -> Result<(), Error> {
 	let srv_id = ctx.guild_id().unwrap();
-	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(*srv_id.as_u64() as i64)
+	let srv_features = query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
+		.bind(srv_id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
 	if !srv_features.roles {
-		abby_utils::feature_not_enabled(ctx).await?;
+		utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
 
 	// Info Gathering
-	let group_entry = if let Some(rgroup) = query_as::<_, db_structs::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
+	let group_entry = if let Some(rgroup) = query_as::<_, db::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
 		.bind(&group)
 		.fetch_optional(&ctx.data().db)
 		.await? {
 		  rgroup
 	} else {
-		ctx.send(|m| {
-			m.content("");
-			m.ephemeral(true);
-			m.embed(|e| {
-				templates::builder_state_embed(e, false, &format!("Role group \"{group}\" does not exist."));
-				e
-			})
-		}).await?;
+		ctx.send(poise::CreateReply::default()
+			.ephemeral(true)
+			.embed(templates::state_embed(false, &format!("Role group \"{group}\" does not exist.")))
+		).await?;
 		return Ok(())
 	};
-	let group_channel = query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
-		.bind(*srv_id.as_u64() as i64)
+
+	let group_channel = serenity::ChannelId::new(query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+		.bind(srv_id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?
 		.channel
-		.unwrap_or(*srv_id
-			.to_guild_cached(ctx)
+		.unwrap_or(srv_id.to_guild_cached(&ctx)
 			.unwrap()
 			.system_channel_id
 			.unwrap_or(ctx.guild()
 				.unwrap()
 				.default_channel(ctx.framework().bot_id)
-				.await
 				.unwrap()
-				.id)
-			.as_u64() as i64
-		);
+				.id
+			).get() as i64
+		) as u64);
 
 	// Deletions
-	if let Err(_) = ctx.http().delete_message(group_channel as u64, group_entry.msg as u64).await {
-		ctx.send(|m| {
-			m.content("");
-			m.ephemeral(true);
-			m.embed(|e| {
-				templates::builder_state_embed(e, false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually."));
-				e
-			})
-		}).await?;
+	if ctx.http().delete_message(group_channel, serenity::MessageId::new(group_entry.msg as u64), Some(&format!("Deleting Role List {}", group_entry.name))).await.is_err() {
+		ctx.send(poise::CreateReply::default()
+			.ephemeral(true)
+			.embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually.")))
+		).await?;
 	}
 	query(&format!("DELETE FROM rgroups_{srv_id} WHERE name = ?;"))
 		.bind(&group)
@@ -127,14 +121,10 @@ async fn delete(
 		.await?;
 
 	// Respond
-	ctx.send(|m| {
-		m.content("");
-		m.ephemeral(true);
-		m.embed(|e| {
-			templates::builder_state_embed(e, true, &format!("Role group \"{group}\" has been deleted."));
-			e
-		})
-	}).await?;
+	ctx.send(poise::CreateReply::default()
+		.ephemeral(true)
+		.embed(templates::state_embed(true, &format!("Role group \"{group}\" has been deleted.")))
+	).await?;
 	Ok(())
 }
 
@@ -151,19 +141,19 @@ async fn create(
 	#[description = "Name of the role group."]
 	group: String
 ) -> Result<(), Error> {
-	let srv_id = *ctx.guild_id().unwrap().as_u64();
-	let srv_features = query_as::<_, db_structs::Server>("SELECT * FROM servers WHERE srvid = ?;")
+	let srv_id = ctx.guild_id().unwrap().get();
+	let srv_features = query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
 		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
 	// If the feature doesn't exist, quit.
 	if !srv_features.roles {
-		abby_utils::feature_not_enabled(ctx).await?;
+		utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
 
 	// ChannelId from role settings
-	let channel = match query_as::<_, db_structs::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+	let channel = match query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
 		.bind(srv_id as i64)
 		.fetch_one(&ctx.data().db)
 		.await?
@@ -171,30 +161,20 @@ async fn create(
 		.map(|id| serenity::ChannelId::from(id as u64)) {
 		Some(chid) => {
 			// If exists but can't be posted in just stop and error
-			if !abby_utils::can_post(ctx, chid, ctx.framework().bot_id).await {
+			if !utils::can_post(ctx, &chid, ctx.framework().bot_id).await {
 				let name = chid.name(ctx).await.unwrap();
-				ctx.send(|b| {
-					b.content("");
-					b.embed(|e| {
-						templates::builder_state_embed(e, false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel."));
-						e
-					});
-					b.components(|f| f)
-				}).await?;
+				ctx.send(poise::CreateReply::default()
+					.embed(templates::state_embed(false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel.")))
+				).await?;
 				return Ok(());
 			}
 			chid
 		},
 		None => {
 			// If it doesn't exist at all
-			ctx.send(|b| {
-				b.content("");
-				b.embed(|e| {
-					templates::builder_state_embed(e, false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`.");
-					e
-				});
-				b.components(|f| f)
-			}).await?;
+			ctx.send(poise::CreateReply::default()
+				.embed(templates::state_embed(false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`."))
+			).await?;
 			return Ok(());
 		}
 	};
@@ -203,9 +183,10 @@ async fn create(
 	let mut initial_rolelist: Vec<serenity::Role> = ctx.guild()
 		.unwrap()
 		.roles
+		.clone()
 		.into_values()
 		.filter(|r| {
-			abby_utils::role_filter(r)
+			utils::role_filter(r)
 		})
 		.collect();
 	initial_rolelist.sort_by(|a, b| {
@@ -214,35 +195,21 @@ async fn create(
 		a_l.cmp(&b_l)
 	});
 	let select_menu: Vec<serenity::CreateSelectMenuOption> = initial_rolelist.into_iter()
-		.filter_map(|r| {
-			if r.name != "@everyone" {
-				return Some(serenity::CreateSelectMenuOption::new(&r.name, r.id))
-			}
-			None
+		.map(|r| {
+			serenity::CreateSelectMenuOption::new(&r.name, r.id.to_string())
 		}).collect();
 
 	// The role selection menu.
-	let reply = ctx.send(|b| {
-		b.content("");
-		b.embed(|e| {
-			e.title("");
-			e.color(EMBED_STD);
-			e.description("Please select a set of roles for the group below. Note that roles with permissions to modify the server are not available.")
-		});
-		b.components(|c| {
-			c.create_action_row(|r| {
-				r.create_select_menu(|menu| {
-					menu.custom_id("rolelist.new");
-					menu.placeholder("Roles");
-					menu.min_values(1);
-					menu.max_values(select_menu.len() as u64);
-					menu.options(|f| {
-						f.set_options(select_menu)
-					})
-				})
-			})
-		})
-	}).await?;
+	let reply = ctx.send(poise::CreateReply::default()
+		.embed(serenity::CreateEmbed::new()
+			.color(EMBED_STD)
+			.description("Please select a set of roles for the group below. Note that roles with permissions to modify the server are not available.")
+		).components(vec![
+			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("rolelist.new", serenity::CreateSelectMenuKind::String { options: select_menu.clone() })
+				.placeholder("Roles")
+				.min_values(1)
+				.max_values(select_menu.len() as u8))
+		])).await?;
 
 	// Await interaction
 	let interaction = match reply.message().await?
@@ -254,37 +221,39 @@ async fn create(
 				i
 			},
 			None => {
-				reply.edit(ctx, |f| {
-					f.embed(|e| {
-						templates::builder_state_embed(e, false, "Interaction timed out, please try again.");
-						e
-					})
-				}).await?;
+				reply.edit(ctx, poise::CreateReply::default()
+					.embed(templates::state_embed(false, "Interaction timed out, please try again."))
+				).await?;
 
 				return Ok(())
 			}
 		};
 
 	// Processing message
-	reply.edit(ctx, |b| {
-		b.content("")
-			.embed(|e| {
-				templates::builder_processing_embed(e);
-				e
-			})
-			.components(|f| f)
-	})
+	reply.edit(ctx, poise::CreateReply::default()
+		.content("")
+		.embed(templates::processing_embed())
+		.components(Vec::new())
+	)
 	.await?;
 
+	let selected = match interaction.data.kind {
+		serenity::ComponentInteractionDataKind::StringSelect { values } => values,
+		_ => {
+			println!("Nope");
+			return Ok(())
+		}
+	};
+
 	// Insert roles into database.
-	for rid in &interaction.data.values {
+	for rid in selected {
 		let users = ctx.guild_id()
 			.unwrap()
 			.members(ctx, None, None)
 			.await?
 			.into_iter()
 			.filter_map(|f| {
-				if f.roles.contains(&serenity::RoleId::from_str(rid).unwrap()) {
+				if f.roles.contains(&serenity::RoleId::new(rid.parse::<u64>().unwrap())) {
 					return Some(f)
 				}
 				None
@@ -298,31 +267,27 @@ async fn create(
 	}
 
 	// Fetch new rolelist
-	let rolelist = query_as::<_, db_structs::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
+	let rolelist = query_as::<_, db::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
 		.bind(&group)
 		.fetch_all(&ctx.data().db)
 		.await?;
 
 	// Generate list with the channel stored for the check
-	let msg = channel.send_message(ctx, |m| {
-		m.content("");
-		m.set_embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist));
-		m.set_components(templates::rolelist_components(&group))
-	}).await?;
+	let msg = channel.send_message(ctx, serenity::CreateMessage::new()
+		.embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist))
+		.components(vec![templates::rolelist_components(&group)])
+	).await?;
 
 	// Add msg to group table
 	query(&format!("INSERT INTO rgroups_{srv_id} (name, msg) VALUES (?, ?)"))
 		.bind(&group)
-		.bind(*msg.id.as_u64() as i64)
+		.bind(msg.id.get() as i64)
 		.execute(&ctx.data().db)
 		.await?;
 
 	// Notify Success
-	reply.edit(ctx, |m| {
-		m.embed(|e| {
-			templates::builder_state_embed(e, true, &format!("Rolelist for group {group} has been created."));
-			e
-		})
-	}).await?;
+	reply.edit(ctx, poise::CreateReply::default()
+		.embed(templates::state_embed(true, &format!("Rolelist for group {group} has been created.")))
+	).await?;
 	Ok(())
 }

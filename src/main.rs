@@ -5,15 +5,25 @@ use sqlx::{
 	Sqlite,
 	sqlite::SqlitePoolOptions
 };
-use abby_utils::{Context, Error, Data, Config, db_structs};
 
 mod commands;
 mod events;
+mod structs;
 mod templates;
+mod utils;
 
-const EMBED_STD: serenity::utils::Color = serenity::utils::Color::from_rgb(102, 51, 102);
-const EMBED_WAIT: serenity::utils::Color = serenity::utils::Color::from_rgb(253, 253, 150);
-const EMBED_FAIL: serenity::utils::Color = serenity::utils::Color::from_rgb(178, 34, 34);
+use structs::Config;
+
+const EMBED_STD: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
+const EMBED_WAIT: serenity::Color = serenity::Color::from_rgb(253, 253, 150);
+const EMBED_FAIL: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
+
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Context<'a> = poise::Context<'a, Data, Error>;
+
+pub struct Data {
+	pub db: sqlx::Pool<sqlx::Sqlite>
+}
 
 #[derive(Debug, Options)]
 struct Opts {
@@ -29,7 +39,7 @@ async fn main() -> Result<(), Error> {
 
 	// Data Folder From Opts
 	let data_folder = if !opts.data.ends_with('/') {
-		abby_utils::concat(&opts.data, "/")
+		utils::concat(&opts.data, "/")
 	} else {
 		opts.data
 	};
@@ -69,7 +79,7 @@ async fn main() -> Result<(), Error> {
 		],
 		prefix_options: poise::PrefixFrameworkOptions {
 			prefix: Some("~".into()),
-			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600))),
+			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600)).into()),
 			..Default::default()
 		},
 		event_handler: |ctx, event, framework, data| Box::pin(events::event_handler(ctx, event, framework, data)),
@@ -80,8 +90,6 @@ async fn main() -> Result<(), Error> {
 	// Bot Setup
 	let framework = poise::Framework::builder()
 		.options(options)
-		.token(&*config.token)
-		.intents(intents)
 		.setup(move |_ctx, _ready, framework| {
 			Box::pin(async move {
 				let sm = framework.shard_manager().clone();
@@ -109,16 +117,26 @@ async fn main() -> Result<(), Error> {
 					}
 					print!("Shutting Down");
 					db.close().await;
-					sm.lock().await.shutdown_all().await;
+					sm.shutdown_all().await;
 				});
 				Ok(Data {
 					db: pool
 				})
 			})
-		});
+		})
+		.build();
 
-	// Start Bot
-	if let Err(why) = framework.run().await {
+	let mut client = match serenity::ClientBuilder::new(config.token, intents)
+		.framework(framework)
+		.await {
+		Ok(c) => c,
+		Err(e) => {
+			println!("Error assembling client: {e:?}");
+			return Ok(())
+		}
+	};
+
+	if let Err(why) = client.start().await {
 		println!("Client error: {why:?}");
 	}
 	Ok(())

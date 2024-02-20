@@ -3,7 +3,10 @@ use std::{
 	io::{Read, Write}
 };
 use serde::{Serialize, Deserialize};
-use crate::{Error, concat};
+use crate::{
+	utils,
+	Error,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -15,7 +18,7 @@ impl Config {
 			.create(true)
 			.read(true)
 			.write(true)
-			.open(concat(folder, "config.toml"))?;
+			.open(utils::concat(folder, "config.toml"))?;
 		let mut toml = String::new();
 		file.read_to_string(&mut toml)?;
 		if toml.is_empty() {

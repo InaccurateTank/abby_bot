@@ -1,6 +1,6 @@
 use poise::serenity_prelude as serenity;
 use sqlx::FromRow;
-use crate::concat;
+use crate::utils::concat;
 
 /// Database feature entry
 #[derive(FromRow, Debug)]
@@ -16,7 +16,7 @@ pub struct Server {
 }
 impl Default for Server {
 	fn default() -> Self {
-		Server {
+		Self {
 			srvid: 0,
 			serious: true,
 			messages: false,
@@ -24,6 +24,11 @@ impl Default for Server {
 		}
 	}
 }
+// impl Into<serenity::GuildId> for Server {
+// 	fn into(self) -> serenity::GuildId {
+// 		serenity::GuildId::new(self.srvid as u64)
+// 	}
+// }
 impl Server {
 	pub fn as_array(&self) -> [(&str, bool); 3] {
 		[
@@ -61,6 +66,12 @@ pub struct RoleEntry {
 	pub grp: String,
 	/// Roughly the amount of users with the role.
 	pub users: u16
+}
+impl RoleEntry {
+	/// Returns a [`serenity::RoleId`] from the id.
+	pub fn extract_roleid (&self) -> serenity::RoleId {
+		serenity::RoleId::new(self.id as u64)
+	}
 }
 
 /// Database per-server group management.
