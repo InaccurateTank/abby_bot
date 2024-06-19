@@ -113,7 +113,7 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 					.await?),
 				None => None
 			}.unwrap_or_default();
-			if !new_message.is_own(&ctx.cache) && srv_features.messages {
+			if (new_message.author.id != framework.bot_id) && srv_features.messages {
 				message::handler(ctx, new_message, srv_features).await?;
 			}
 		},

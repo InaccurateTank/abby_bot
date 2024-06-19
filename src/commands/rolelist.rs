@@ -274,7 +274,7 @@ async fn create(
 
 	// Generate list with the channel stored for the check
 	let msg = channel.send_message(ctx, serenity::CreateMessage::new()
-		.embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist))
+		.embed(templates::rolelist_embed(ctx.serenity_context(), &group, rolelist, ctx.guild_id().unwrap()))
 		.components(vec![templates::rolelist_components(&group)])
 	).await?;
 

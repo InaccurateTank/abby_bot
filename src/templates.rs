@@ -26,9 +26,14 @@ pub fn processing_embed() -> serenity::CreateEmbed {
 		.description("Processing, please wait...")
 }
 
-pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db::RoleEntry>) -> serenity::CreateEmbed {
+pub fn rolelist_embed(ctx: &serenity::Context, group: &str, rolelist: Vec<db::RoleEntry>, guild_id: serenity::GuildId) -> serenity::CreateEmbed {
 	let mut rolelist: Vec<(String, u16)> = rolelist.into_iter().map(|r|
-		(serenity::RoleId::new(r.id as u64).to_role_cached(ctx).unwrap().name, r.users)
+		(guild_id.to_guild_cached(ctx)
+			.unwrap()
+			.roles
+			.get(&serenity::RoleId::new(r.id as u64))
+			.unwrap()
+			.name.clone(), r.users)
 	).collect();
 	rolelist.sort_by(|a, b| {
 		let a_l = a.0.to_lowercase();

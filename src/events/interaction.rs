@@ -51,7 +51,8 @@ async fn roles_click(ctx: &serenity::Context, data: &Data, mci: &serenity::Compo
 			let mut role_list: Vec<(serenity::RoleId, String)> = group_roles.iter()
 				.map(|r| {
 					let rid = r.extract_roleid();
-					(rid, rid.to_role_cached(ctx).unwrap().name)
+					let rname = serenity::GuildId::new(srv_id).to_guild_cached(ctx).unwrap().roles.get(&rid).unwrap().name.clone();
+					(rid, rname)
 				}).collect();
 			role_list.sort_by(|(_, a), (_, b)| {
 					let a_l = a.to_lowercase();
@@ -166,7 +167,7 @@ async fn roles_click(ctx: &serenity::Context, data: &Data, mci: &serenity::Compo
 				.await
 				.unwrap();
 			mci.message.to_owned().edit(ctx, serenity::EditMessage::new()
-				.embed(templates::rolelist_embed(ctx, group, role_list_new))
+				.embed(templates::rolelist_embed(ctx, group, role_list_new, serenity::GuildId::new(srv_id)))
 			).await?;
 		},
 
@@ -271,7 +272,7 @@ async fn roles_click(ctx: &serenity::Context, data: &Data, mci: &serenity::Compo
 			)).await?;
 
 			mci.message.to_owned().edit(ctx, serenity::EditMessage::new()
-				.embed(templates::rolelist_embed(ctx, group, role_list_new))
+				.embed(templates::rolelist_embed(ctx, group, role_list_new, serenity::GuildId::new(srv_id)))
 			).await?;
 		},
 
