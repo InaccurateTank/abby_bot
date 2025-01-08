@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 poise = { version = "0.6" }
-tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "signal"] }
 regex = { version = "1.11" }
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 gumdrop = { version = "0.8" }
@@ -17,7 +17,7 @@ serde = { version = "1.0" }
 toml = { version = "0.8" }
 
 [dev-dependencies]
-brunch = "0.6"
+brunch = "0.8"
 
 [[bench]]
 name = "concat"
