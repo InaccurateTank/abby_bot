@@ -34,13 +34,24 @@ async fn roles_click(ctx: &serenity::Context, data: &Data, mci: &serenity::Compo
 	let group_roles = query_as::<_, db::RoleEntry>(&format!("SELECT * FROM roles_{srv_id} WHERE grp = ?;"))
 		.bind(group)
 		.fetch_all(&data.db)
-		.await
+		.await?;
+	let member = mci.member
+		.as_ref()
 		.unwrap();
-	let member = mci.member.as_ref().unwrap();
+	let channel = mci.channel_id
+		.to_channel(ctx)
+		.await?
+		.guild()
+		.unwrap();
+	let guild = mci.guild_id
+		.unwrap()
+		.to_guild_cached(ctx)
+		.unwrap()
+		.clone();
 	match id_vec.pop_front().unwrap() {
 		// Rolelist Pick
 		"pick" => {
-			if member.permissions(ctx).unwrap().manage_roles() {
+			if guild.user_permissions_in(&channel, &member).manage_roles() {
 				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 					.ephemeral(true)
 					.embed(templates::state_embed(false, "For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself. If you cannot assign them to yourself then I can't assign them to anyone anyway."))

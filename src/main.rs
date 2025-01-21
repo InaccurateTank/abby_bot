@@ -1,9 +1,10 @@
+use std::str::FromStr;
 use poise::serenity_prelude as serenity;
 use gumdrop::Options;
 use sqlx::{
 	migrate::MigrateDatabase,
 	Sqlite,
-	sqlite::SqlitePoolOptions
+	sqlite::{SqliteConnectOptions, SqlitePoolOptions}
 };
 
 mod commands;
@@ -49,6 +50,7 @@ async fn main() -> Result<(), Error> {
 
 	// DB
 	let db_url = format!("sqlite:{data_folder}sqlite.db");
+	// Check if DB exists
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
 		println!("Database absent in '{data_folder}', creating...");
 		match Sqlite::create_database(&db_url).await {
@@ -57,9 +59,13 @@ async fn main() -> Result<(), Error> {
 		}
 	}
 	println!("Connecting to database...");
+	// Set DB options
+	let db_opts = SqliteConnectOptions::from_str(&db_url)?
+		.foreign_keys(true);
+	// Connect and migrate
 	let pool = SqlitePoolOptions::new()
 		.max_connections(5)
-		.connect(&db_url).await?;
+		.connect_with(db_opts).await?;
 	sqlx::migrate!("./migrations")
 		.run(&pool)
 		.await?;

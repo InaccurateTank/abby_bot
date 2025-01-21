@@ -2,6 +2,83 @@ use poise::serenity_prelude as serenity;
 use sqlx::FromRow;
 use crate::utils::concat;
 
+// CREATE TABLE IF NOT EXISTS settings
+// (
+// 	id						INT		PRIMARY KEY NOT NULL,
+// 	serious				BOOL	NOT NULL DEFAULT true,
+// 	messages			BOOL	NOT NULL DEFAULT false,
+// 	roles					BOOL	NOT NULL DEFAULT false,
+// 	roles_channel	INT		DEFAULT NULL
+// );
+
+#[derive(FromRow, Debug)]
+#[allow(dead_code)]
+pub struct ServerSettings {
+	/// [`serenity::GuildId`] of the server, stored as an [i64].
+	pub srvid: i64,
+	/// Whether the server is serious or not, default `true`.
+	pub serious: bool,
+	/// Whether the bot should respond to message events, default `false`.
+	pub messages: bool,
+	/// Whether the bot should manage roles, default `false`.
+	pub roles: bool,
+	/// Channel to manage roles from if applicable, default `None`.
+	pub roles_channel: Option<i64>
+}
+impl Default for ServerSettings {
+	fn default() -> Self {
+		Self {
+			srvid: 0,
+			serious: true,
+			messages: false,
+			roles: false,
+			roles_channel: None
+		}
+	}
+}
+
+// CREATE TABLE IF NOT EXISTS role_groups(
+// 	server_id			INT		NOT NULL,
+//   group_name 		TEXT	NOT NULL,
+//   group_message INT		NOT NULL,
+// 	FOREIGN KEY (server_id) REFERENCES settings(id)
+// 		ON DELETE CASCADE,
+// 	UNIQUE (server_id, group_name)
+// );
+#[derive(FromRow, Debug)]
+#[allow(dead_code)]
+pub struct Group {
+	/// [`serenity::GuildId`] of the server, stored as an [i64].
+	pub server_id: i64,
+	/// Name of the role group
+	pub group_name: String,
+	/// [`serenity::MessageId`] that the group is posted in, stored as an [`i64`].
+	pub group_message: i64,
+}
+
+
+// CREATE TABLE IF NOT EXISTS roles (
+// 	server_id		INT		NOT NULL,
+//   group_name	TEXT 	NOT NULL,
+//   role_id 		INT		NOT NULL,
+// 	FOREIGN KEY (server_id) REFERENCES settings(id)
+// 		ON DELETE CASCADE,
+// 	UNIQUE (server_id, role_id)
+// );
+#[derive(FromRow, Debug)]
+#[allow(dead_code)]
+pub struct Role {
+	/// [`serenity::GuildId`] of the server, stored as an [i64].
+	pub server_id: i64,
+	/// Name of the group that the role is under.
+	pub group_name: String,
+	/// [`serenity::RoleId`] of the role, stored as an [`i64`].
+	pub role_id: i64,
+}
+
+
+// ========== OLD DATABASE STRUCTS!!!! ==========
+
 /// Database feature entry
 #[derive(FromRow, Debug)]
 pub struct Server {
