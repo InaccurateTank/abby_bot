@@ -44,6 +44,7 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 					.await {
 					// Do things that a bot would do on server join
 					let id = guild.id.get();
+					// TODO: Log the console errors
 					println!("Creating database entry for server {} (GuildId {}).", guild.name, id);
 					query("INSERT INTO server_settings (id) VALUES(?);")
 						.bind(id as i64)
