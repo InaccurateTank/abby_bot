@@ -42,41 +42,45 @@ pub fn role_filter(role: &serenity::Role) -> bool {
 
 /// Selects either the system messages channel or, if that isn't an option, the default channel. Returns [`None`] if the channel isn't writeable.
 pub async fn default_bot_channel(
-	ctx: impl serenity::CacheHttp + Copy,
+	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache>,
 	guild: serenity::Guild,
-	botuser: serenity::UserId
-) -> Option<serenity::ChannelId> {
-	// Get the channel
-	let channel = if let Some(system_channel) = guild.system_channel_id {
-		Some(system_channel)
-	} else {
-		guild.default_channel(botuser)
-			.map(|f| f.id)
-	};
-	// If a channel was returned at all, which there should be but you never really know?
-	if let Some(c) = channel {
-		// Can messages even be sent in the channel?
-		if can_post(ctx, &c, botuser).await || c.to_channel(ctx).await.unwrap().guild().unwrap().kind == serenity::ChannelType::Text {
-			// If so return it
-			return Some(c)
+	bot_id: serenity::UserId
+) -> Result<Option<serenity::ChannelId>, Error> {
+	let Some(channel) = ({
+		match guild.system_channel_id {
+			// Use system channel if available
+			Some(system_channel) => Some(system_channel),
+			// Check for a default channel otherwise
+			None => guild.default_channel(bot_id).map(|f| f.id)
 		}
+	}) else {
+		// None means none
+		return Ok(None)
+	};
+	// Check if the bot can post to the channel
+	match can_post(ctx, &channel, bot_id).await? {
+		true => Ok(Some(channel)),
+		false => Ok(None)
 	}
-	// Default return None
-	None
 }
 
-/// Detects if a user can post to the provided [`serenity::Channel`]
+/// Checks if a user can post to the provided [`serenity::Channel`]
 pub async fn can_post(
-	ctx: impl serenity::CacheHttp + Copy,
+	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache>,
 	chid: &serenity::ChannelId,
 	user: serenity::UserId
-) -> bool {
-	chid.to_channel(ctx)
-		.await
+) -> Result<bool, Error> {
+	let Some(channel) = chid.to_channel(ctx).await?.guild() else {
+		// If the channel has no guild it's a private channel.
+		return Ok(true)
+	};
+	let guild = channel.guild(&ctx)
+		// Frankly if the explicitly filtered guild channel has no guild, we have bigger issues.
 		.unwrap()
-		.guild()
-		.unwrap()
-		.permissions_for_user(ctx.cache().unwrap(), user)
-		.unwrap()
-		.send_messages()
+		.to_owned();
+	let member = guild.member(ctx, user).await?;
+	if !guild.user_permissions_in(&channel, &member).send_messages() {
+		return Ok(false)
+	}
+	Ok(true)
 }
