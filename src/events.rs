@@ -9,28 +9,6 @@ use crate::utils;
 mod message;
 mod interaction;
 
-// Private intro function
-async fn intro(guild: &serenity::Guild, ctx: &serenity::Context, bot_id: serenity::UserId, db: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), Error> {
-	let id = guild.id.get();
-	println!("Creating database entry for server {id}.");
-	query("INSERT INTO servers (srvid) VALUES(?);")
-		.bind(id as i64)
-		.execute(db)
-		.await?;
-	// If the bot can post in a default channel, do so. Better to disclose the join than not.
-	if let Some(chid) = utils::default_bot_channel(ctx, guild.clone(), bot_id).await {
-		chid.send_message(ctx, CreateMessage::new()
-			.embed(CreateEmbed::new()
-				.title("Hello I'm Abby!")
-				.color(EMBED_STD)
-				.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-				.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-			)
-		).await?;
-	}
-	Ok(())
-}
-
 // Private kick function
 async fn kick(guid: u64, db: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), Error> {
 	println!("Deleting server {guid} from database.");
@@ -57,20 +35,36 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 	match event {
 		// Join Server
 		serenity::FullEvent::GuildCreate { guild, is_new } => {
+			// If server is detected as new. This can fail
 			if is_new.is_some_and(|x| x) {
-				intro(guild, ctx, framework.bot_id, &data.db).await?;
-			} else {
-				// If server has been added between logins, run the intro.
-				if query("SELECT * FROM servers WHERE srvid = ?;")
+				// Check if server is *actually* new.
+				if let Ok(_row) = query("SELECT * FROM server_settings WHERE id = ?;")
 					.bind(guild.id.get() as i64)
 					.fetch_one(&data.db)
-					.await
-					.is_err() {
-					intro(guild, ctx, framework.bot_id, &data.db).await?;
+					.await {
+					// Do things that a bot would do on server join
+					let id = guild.id.get();
+					println!("Creating database entry for server {} (GuildId {}).", guild.name, id);
+					query("INSERT INTO server_settings (id) VALUES(?);")
+						.bind(id as i64)
+						.execute(&data.db)
+						.await?;
+					// If the bot can post in a default channel, do so. Better to disclose the join than not.
+					if let Some(chid) = utils::default_bot_channel(ctx, guild.to_owned(), framework.bot_id).await? {
+						chid.send_message(ctx, CreateMessage::new()
+							.embed(CreateEmbed::new()
+								.title("Hello I'm Abby!")
+								.color(EMBED_STD)
+								.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
+								.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+							)
+						).await?;
+					}
+					// Register commands in new server
+					// TODO: Change to register commangs via settings
+					poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
 				}
 			}
-			// Auto-register commands to keep up with updates
-			poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
 		},
 
 		// Kicked from Server
