@@ -68,7 +68,9 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 
 		// On Login
 		serenity::FullEvent::Ready { data_about_bot } => {
+			// TODO: Log
 			println!("{} is connected!", data_about_bot.user.name);
+			// Set status because memes
 			let status = serenity::ActivityData {
 				name: "Everything".to_string(),
 				kind: serenity::ActivityType::Watching,
@@ -77,17 +79,16 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 			};
 			ctx.set_activity(Some(status));
 			// If servers have been removed, run a purge
-			let db_servers: HashSet<u64> = query_as::<_, db::Server>("SELECT * FROM servers;")
+			let db_servers: HashSet<u64> = query_scalar("SELECT id FROM server_settings;")
 				.fetch_all(&data.db)
 				.await?
 				.into_iter()
-				.map(|f| f.srvid as u64)
 				.collect();
 			let login_servers: HashSet<u64> = data_about_bot.guilds
 				.iter()
 				.map(|f| f.id.get())
 				.collect();
-			for guid in db_servers.difference(&login_servers).collect::<Vec<&u64>>() {
+			for guid in db_servers.difference(&login_servers) {
 				on_leave(*guid, &data.db).await?;
 			}
 		},
