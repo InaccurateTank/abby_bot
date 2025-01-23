@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateMessage, CreateEmbed };
-use sqlx::{query, query_as};
+use sqlx::{query, query_as, query_scalar};
 use crate::{ EMBED_STD, Error, Data };
 use crate::structs::db;
 use crate::utils;
