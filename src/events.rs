@@ -27,10 +27,10 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 			// If server is detected as new. This can fail
 			if is_new.is_some_and(|x| x) {
 				// Check if server is *actually* new.
-				if let Ok(_row) = query("SELECT * FROM server_settings WHERE id = ?;")
+				if query_scalar::<_, bool>("SELECT NOT EXISTS (SELECT 1 FROM server_settings WHERE id = 1);")
 					.bind(guild.id.get() as i64)
 					.fetch_one(&data.db)
-					.await {
+					.await? {
 					// Do things that a bot would do on server join
 					let id = guild.id.get();
 					// TODO: Log the console errors
