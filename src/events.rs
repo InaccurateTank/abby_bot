@@ -10,7 +10,10 @@ mod message;
 mod interaction;
 
 // Private on leave function
-async fn on_leave(guid: u64, db: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), Error> {
+async fn on_leave(
+	guid: u64,
+	db: &sqlx::Pool<sqlx::Sqlite>
+) -> Result<(), Error> {
 	println!("Deleting server {guid} from database.");
 	// Deletion cascades now so this is all we need
 	query("DELETE FROM server_settings WHERE id = ?;")
@@ -20,7 +23,12 @@ async fn on_leave(guid: u64, db: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), Error>
 	Ok(())
 }
 
-pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEvent, framework: poise::FrameworkContext<'a, Data, Error>, data: &Data) -> Result<(), Error> {
+pub async fn event_handler<'a>(
+	ctx: &serenity::Context,
+	event: &serenity::FullEvent,
+	framework: poise::FrameworkContext<'a, Data, Error>,
+	data: &Data
+) -> Result<(), Error> {
 	match event {
 		// Join Server
 		serenity::FullEvent::GuildCreate { guild, is_new } => {
