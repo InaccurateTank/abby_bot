@@ -10,22 +10,11 @@ mod message;
 mod interaction;
 
 // Private kick function
-async fn kick(guid: u64, db: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), Error> {
+async fn on_leave(guid: u64, db: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), Error> {
 	println!("Deleting server {guid} from database.");
-	query("DELETE FROM servers WHERE srvid = ?;")
+	// Deletion cascades now so this is all we need
+	query("DELETE FROM server_settings WHERE id = ?;")
 		.bind(guid as i64)
-		.execute(db)
-		.await?;
-
-	// Can't purge the messages so just remove the roles.
-	query("DELETE FROM role_options WHERE srvid = ?;")
-		.bind(guid as i64)
-		.execute(db)
-		.await?;
-	query(&format!("DROP TABLE IF EXISTS roles_{guid};"))
-		.execute(db)
-		.await?;
-	query(&format!("DROP TABLE IF EXISTS rgroups_{guid};"))
 		.execute(db)
 		.await?;
 	Ok(())
@@ -51,6 +40,7 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 						.execute(&data.db)
 						.await?;
 					// If the bot can post in a default channel, do so. Better to disclose the join than not.
+					// TODO: Change intro message
 					if let Some(chid) = utils::default_bot_channel(ctx, guild.to_owned(), framework.bot_id).await? {
 						chid.send_message(ctx, CreateMessage::new()
 							.embed(CreateEmbed::new()
@@ -70,7 +60,10 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 
 		// Kicked from Server
 		serenity::FullEvent::GuildDelete { incomplete, full: _ } => {
-			kick(incomplete.id.get(), &data.db).await?;
+			// Should only be leaving servers when kicked/banned
+			if !incomplete.unavailable {
+				on_leave(incomplete.id.get(), &data.db).await?;
+			}
 		},
 
 		// On Login
@@ -95,7 +88,7 @@ pub async fn event_handler<'a>(ctx: &serenity::Context, event: &serenity::FullEv
 				.map(|f| f.id.get())
 				.collect();
 			for guid in db_servers.difference(&login_servers).collect::<Vec<&u64>>() {
-				kick(*guid, &data.db).await?;
+				on_leave(*guid, &data.db).await?;
 			}
 		},
 
