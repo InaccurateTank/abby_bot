@@ -9,7 +9,7 @@ use crate::utils;
 mod message;
 mod interaction;
 
-// Private kick function
+// Private on leave function
 async fn on_leave(guid: u64, db: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), Error> {
 	println!("Deleting server {guid} from database.");
 	// Deletion cascades now so this is all we need
