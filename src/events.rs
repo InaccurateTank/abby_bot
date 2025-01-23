@@ -67,7 +67,7 @@ pub async fn event_handler<'a>(
 		},
 
 		// Kicked from Server
-		serenity::FullEvent::GuildDelete { incomplete, full: _ } => {
+		serenity::FullEvent::GuildDelete { incomplete, .. } => {
 			// Should only be leaving servers when kicked/banned
 			if !incomplete.unavailable {
 				on_leave(incomplete.id.get(), &data.db).await?;
