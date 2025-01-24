@@ -92,13 +92,26 @@ pub async fn event_handler<'a>(
 				.await?
 				.into_iter()
 				.collect();
-			let login_servers: HashSet<u64> = data_about_bot.guilds
-				.iter()
-				.map(|f| f.id.get())
-				.collect();
-			for guid in db_servers.difference(&login_servers) {
-				on_leave(*guid, &data.db).await?;
+			// TODO: Test this
+			for guild in &data_about_bot.guilds {
+				if !guild.unavailable {
+					// Unavailable being false means removal while offline
+					println!("Left Guild");
+					// on_leave(*guid, &data.db).await?;
+				} else if !db_servers.contains(&guild.id.get()) {
+					// Servers that arn't in the database have been joined while offline
+					println!("Joined Guild");
+					// on_join(*guid, &data.db).await?;
+				}
 			}
+			// let login_servers: HashSet<u64> = data_about_bot.guilds
+			// 	.iter()
+			// 	.map(|f| f.id.get())
+			// 	.collect();
+			// // Servers in the DB but not in login list are removed
+			// for guid in db_servers.difference(&login_servers) {
+			// 	on_leave(*guid, &data.db).await?;
+			// }
 		},
 
 		// On Message in Channel
