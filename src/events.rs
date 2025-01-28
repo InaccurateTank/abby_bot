@@ -116,13 +116,14 @@ pub async fn event_handler<'a>(
 
 		// On Message in Channel
 		serenity::FullEvent::Message { new_message } => {
-			let srv_features = match new_message.guild_id {
-				Some(id) => Some(query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
+			let srv_features = if let Some(id) = new_message.guild_id {
+				query_as::<_, db::ServerSettings>("SELECT * FROM server_settings WHERE id = ?;")
 					.bind(id.get() as i64)
 					.fetch_one(&data.db)
-					.await?),
-				None => None
-			}.unwrap_or_default();
+					.await?
+			} else {
+				db::ServerSettings::default()
+			};
 			if (new_message.author.id != framework.bot_id) && srv_features.messages {
 				message::handler(ctx, new_message, srv_features).await?;
 			}
