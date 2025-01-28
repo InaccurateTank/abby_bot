@@ -15,7 +15,7 @@ use crate::utils::concat;
 #[allow(dead_code)]
 pub struct ServerSettings {
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
-	pub srvid: i64,
+	pub id: i64,
 	/// Whether the server is serious or not, default `true`.
 	pub serious: bool,
 	/// Whether the bot should respond to message events, default `false`.
@@ -28,7 +28,7 @@ pub struct ServerSettings {
 impl Default for ServerSettings {
 	fn default() -> Self {
 		Self {
-			srvid: 0,
+			id: 0,
 			serious: true,
 			messages: false,
 			roles: false,
