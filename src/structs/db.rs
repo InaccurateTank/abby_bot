@@ -12,7 +12,6 @@ use crate::utils::concat;
 // );
 
 #[derive(FromRow, Debug)]
-#[allow(dead_code)]
 pub struct ServerSettings {
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
 	pub id: i64,
@@ -46,7 +45,6 @@ impl Default for ServerSettings {
 // 	UNIQUE (server_id, group_name)
 // );
 #[derive(FromRow, Debug)]
-#[allow(dead_code)]
 pub struct Group {
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
 	pub server_id: i64,
@@ -66,7 +64,6 @@ pub struct Group {
 // 	UNIQUE (server_id, role_id)
 // );
 #[derive(FromRow, Debug)]
-#[allow(dead_code)]
 pub struct Role {
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
 	pub server_id: i64,
@@ -81,6 +78,7 @@ pub struct Role {
 
 /// Database feature entry
 #[derive(FromRow, Debug)]
+#[deprecated]
 pub struct Server {
 	/// ID of the server bitcast as an [i64].
 	pub srvid: i64,
@@ -127,6 +125,7 @@ impl Server {
 
 /// Database role feature settings entry.
 #[derive(Default, FromRow, Debug)]
+#[deprecated]
 pub struct ServerRoles {
 	/// ID of the server bitcast as an [i64].
 	pub srvid: i64,
@@ -136,6 +135,7 @@ pub struct ServerRoles {
 
 /// Database per-server role entry.
 #[derive(Default, FromRow, Debug)]
+#[deprecated]
 pub struct RoleEntry {
 	/// The ID of the role bitcast as an [i64].
 	pub id: i64,
@@ -153,6 +153,7 @@ impl RoleEntry {
 
 /// Database per-server group management.
 #[derive(Default, FromRow, Debug)]
+#[deprecated]
 pub struct RoleGroup {
 	/// [`String`] name of the role group.
 	pub name: String,
