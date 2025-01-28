@@ -1,5 +1,9 @@
 use poise::serenity_prelude as serenity;
-use sqlx::FromRow;
+use sqlx::{
+	FromRow,
+	Row,
+	sqlite::SqliteRow
+};
 use crate::utils::concat;
 
 // CREATE TABLE IF NOT EXISTS settings
@@ -11,10 +15,10 @@ use crate::utils::concat;
 // 	roles_channel	INT		DEFAULT NULL
 // );
 
-#[derive(FromRow, Debug)]
+#[derive(Debug)]
 pub struct ServerSettings {
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
-	pub id: i64,
+	pub id: serenity::GuildId,
 	/// Whether the server is serious or not, default `true`.
 	pub serious: bool,
 	/// Whether the bot should respond to message events, default `false`.
@@ -22,17 +26,41 @@ pub struct ServerSettings {
 	/// Whether the bot should manage roles, default `false`.
 	pub roles: bool,
 	/// Channel to manage roles from if applicable, default `None`.
-	pub roles_channel: Option<i64>
+	pub roles_channel: Option<serenity::ChannelId>
 }
 impl Default for ServerSettings {
 	fn default() -> Self {
 		Self {
-			id: 0,
+			id: serenity::GuildId::default(),
 			serious: true,
 			messages: false,
 			roles: false,
 			roles_channel: None
 		}
+	}
+}
+impl FromRow<'_, SqliteRow> for ServerSettings {
+	fn from_row(row: &SqliteRow) -> sqlx::Result<Self, sqlx::Error> {
+
+		let mapped_id = match row.try_get::<u64, &str>("id") {
+			Ok(raw) => serenity::GuildId::from(raw),
+			Err(e) => return Err(e)
+		};
+
+		let mapped_roles_channel = match row.try_get::<Option<u64>, &str>("roles_channel") {
+			Ok(raw) => raw.map(|inner| serenity::ChannelId::from(inner)),
+			Err(e) => return Err(e)
+		};
+
+		Ok(
+			Self {
+				id: mapped_id,
+				serious: row.try_get::<bool, &str>("serious")?,
+				messages: row.try_get::<bool, &str>("messages")?,
+				roles: row.try_get::<bool, &str>("roles")?,
+				roles_channel: mapped_roles_channel
+			}
+		)
 	}
 }
 
@@ -46,12 +74,14 @@ impl Default for ServerSettings {
 // );
 #[derive(FromRow, Debug)]
 pub struct Group {
+	#[sqlx(try_from = "u64")]
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
-	pub server_id: i64,
+	pub server_id: serenity::GuildId,
 	/// Name of the role group
 	pub group_name: String,
+	#[sqlx(try_from = "u64")]
 	/// [`serenity::MessageId`] that the group is posted in, stored as an [`i64`].
-	pub group_message: i64,
+	pub group_message: serenity::ChannelId,
 }
 
 
@@ -65,12 +95,14 @@ pub struct Group {
 // );
 #[derive(FromRow, Debug)]
 pub struct Role {
+	#[sqlx(try_from = "u64")]
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
-	pub server_id: i64,
+	pub server_id: serenity::GuildId,
 	/// Name of the group that the role is under.
 	pub group_name: String,
+	#[sqlx(try_from = "u64")]
 	/// [`serenity::RoleId`] of the role, stored as an [`i64`].
-	pub role_id: i64,
+	pub role_id: serenity::RoleId,
 }
 
 
