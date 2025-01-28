@@ -6,7 +6,7 @@ use sqlx::{
 };
 use crate::utils::concat;
 
-// CREATE TABLE IF NOT EXISTS settings
+// CREATE TABLE IF NOT EXISTS server_settings
 // (
 // 	id						INT		PRIMARY KEY NOT NULL,
 // 	serious				BOOL	NOT NULL DEFAULT true,
