@@ -102,7 +102,7 @@ pub struct Role {
 	pub group_name: String,
 	#[sqlx(try_from = "u64")]
 	/// [`serenity::RoleId`] of the role, stored as an [`i64`].
-	pub role_id: serenity::RoleId,
+	pub role_id: serenity::RoleId
 }
 
 

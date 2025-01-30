@@ -35,7 +35,7 @@ pub async fn event_handler<'a>(
 			// If server is detected as new. This can fail
 			if is_new.is_some_and(|x| x) {
 				// Check if server is *actually* new.
-				if query_scalar::<_, bool>("SELECT NOT EXISTS (SELECT 1 FROM server_settings WHERE id = 1);")
+				if query_scalar::<_, bool>("SELECT NOT EXISTS (SELECT 1 FROM server_settings WHERE id = ?);")
 					.bind(guild.id.get() as i64)
 					.fetch_one(&data.db)
 					.await? {

@@ -84,3 +84,20 @@ pub async fn can_post(
 	}
 	Ok(true)
 }
+
+/// Poise command checker for server features. Checks if the server should have meme features.
+pub async fn check_serious(ctx: Context<'_>) -> Result<bool, Error> {
+	// Bypass check if it's in a DM. It shouldn't be there anyway, but who cares if it is.
+	let Some(id) = ctx.guild_id() else {
+		return Ok(true)
+	};
+	let serious = sqlx::query_scalar::<_, bool>("SELECT serious FROM server_settings WHERE id = ?);")
+		.bind(id.get() as i64)
+		.fetch_one(&ctx.data().db)
+		.await?;
+	if serious {
+		feature_not_enabled(ctx).await?;
+		return Ok(false)
+	}
+	Ok(true)
+}
