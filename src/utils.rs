@@ -21,6 +21,8 @@ pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// Abby should never assign moderation roles and should never show @everyone.
+///
+/// Returns [true] when the role is safe to assign.
 pub fn role_filter(role: &serenity::Role) -> bool {
 	if role.has_permission(serenity::Permissions::ADMINISTRATOR)
 	|| role.has_permission(serenity::Permissions::MANAGE_CHANNELS)
