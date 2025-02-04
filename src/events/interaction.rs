@@ -193,14 +193,14 @@ async fn roles_click(
 				if selected_contain && !member_contain {
 					// Add Role to Member
 					match member.to_owned().add_role(ctx, r.id).await {
-						Ok(_) => {r.users.increment();},
+						Ok(_) => {r.users.increment()?;},
 						Err(e) => error_list.push(format!("Error applying role \"{}\": {}", r.name, e))
 					}
 				// If role isn't selected and is in member roles
 				} else if !selected_contain && member_contain {
 					// Remove Role from Member
 					match member.to_owned().remove_role(ctx, r.id).await {
-						Ok(_) => {r.users.decrement();},
+						Ok(_) => {r.users.decrement()?;},
 						Err(e) => error_list.push(format!("Error removing role \"{}\": {}", r.name, e))
 					}
 				}
