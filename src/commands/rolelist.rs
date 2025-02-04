@@ -1,7 +1,8 @@
 use poise::serenity_prelude as serenity;
 use sqlx::{
 	query,
-	query_as
+	query_as,
+	query_scalar
 };
 use crate::{
 	structs::db,
@@ -36,24 +37,24 @@ pub async fn rolelist(
 async fn autocomplete_groups<'a>(
 	ctx: Context<'_>,
 	partial: &'a str
-) -> Vec<String> {
-	let srv_id = ctx.guild_id().unwrap();
-	let groups = query_as::<_, db::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id};"))
+) -> impl Iterator< Item = String > + 'a {
+	let srv_id = ctx.guild_id()
+		.unwrap();
+
+	let groups: Vec<String> = query_scalar("SELECT group_name from role_groups WHERE server_id = ?")
+		.bind(srv_id.get() as i64)
 		.fetch_all(&ctx.data().db)
 		.await
 		.unwrap();
+
 	groups.into_iter()
-		.filter_map(|f| {
-			if f.name.starts_with(partial) {
-				return Some(f.name)
-			}
-			None
-		}).collect::<Vec<String>>()
+		.filter(move |f| f.starts_with(partial))
 }
 
 #[poise::command(
 	guild_only,
 	slash_command,
+	check = "utils::check_roles",
 	required_permissions="MANAGE_ROLES",
 	category="Administration",
 	ephemeral
@@ -64,58 +65,73 @@ async fn delete(
 	#[autocomplete = "autocomplete_groups"]
 	group: String
 ) -> Result<(), Error> {
-	let srv_id = ctx.guild_id().unwrap();
-	let srv_features = query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(srv_id.get() as i64)
-		.fetch_one(&ctx.data().db)
-		.await?;
-	if !srv_features.roles {
-		utils::feature_not_enabled(ctx).await?;
-		return Ok(())
-	}
-
-	// Info Gathering
-	let group_entry = if let Some(rgroup) = query_as::<_, db::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id} WHERE name = ?;"))
-		.bind(&group)
-		.fetch_optional(&ctx.data().db)
-		.await? {
-		  rgroup
+	let server = if let Some(r) = ctx.guild_id()
+		.ok_or_else(|| "Not a Guild")?
+		.to_guild_cached(ctx.cache()) {
+		r.to_owned()
 	} else {
-		ctx.send(poise::CreateReply::default()
-			.ephemeral(true)
-			.embed(templates::state_embed(false, &format!("Role group \"{group}\" does not exist.")))
-		).await?;
-		return Ok(())
+		return Err(serenity::ModelError::GuildNotFound.into())
 	};
 
-	let group_channel = serenity::ChannelId::new(query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
-		.bind(srv_id.get() as i64)
+	// Info Gathering
+	let channel: serenity::ChannelId = query_scalar::<_, u64>("SELECT roles_channel FROM server_settings WHERE id = ?;")
+		.bind(server.id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?
-		.channel
-		.unwrap_or(srv_id.to_guild_cached(&ctx)
-			.unwrap()
-			.system_channel_id
-			.unwrap_or(ctx.guild()
-				.unwrap()
-				.default_channel(ctx.framework().bot_id)
-				.unwrap()
-				.id
-			).get() as i64
-		) as u64);
+		.into();
+	let message: serenity::MessageId = query_scalar::<_, u64>("SELECT group_message FROM role_groups WHERE server_id = ? AND group_name = ?;")
+		.bind(server.id.get() as i64)
+		.bind(&group)
+		.fetch_one(&ctx.data().db)
+		.await?
+		.into();
+
+
+	// let group_entry = if let Some(rgroup) = query_as::<_, db::Group>(&format!("SELECT group_message FROM role_groups WHERE server_id = ? AND group_name = ?;"))
+	// 	.bind(server.id.get() as i64)
+	// 	.bind(group)
+	// 	.fetch_optional(&ctx.data().db)
+	// 	.await? {
+	// 	  rgroup
+	// } else {
+	// 	ctx.send(poise::CreateReply::default()
+	// 		.ephemeral(true)
+	// 		.embed(templates::state_embed(false, &format!("Role group \"{group}\" does not exist.")))
+	// 	).await?;
+	// 	return Ok(())
+	// };
+
+	// let group_channel = serenity::ChannelId::new(query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
+	// 	.bind(srv_id.get() as i64)
+	// 	.fetch_one(&ctx.data().db)
+	// 	.await?
+	// 	.channel
+	// 	.unwrap_or(srv_id.to_guild_cached(&ctx)
+	// 		.unwrap()
+	// 		.system_channel_id
+	// 		.unwrap_or(ctx.guild()
+	// 			.unwrap()
+	// 			.default_channel(ctx.framework().bot_id)
+	// 			.unwrap()
+	// 			.id
+	// 		).get() as i64
+	// 	) as u64);
 
 	// Deletions
-	if ctx.http().delete_message(group_channel, serenity::MessageId::new(group_entry.msg as u64), Some(&format!("Deleting Role List {}", group_entry.name))).await.is_err() {
+	if ctx.http().delete_message(channel, message, Some(&format!("Deleting Role List \"{group}\""))).await.is_err() {
 		ctx.send(poise::CreateReply::default()
 			.ephemeral(true)
 			.embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually.")))
 		).await?;
 	}
-	query(&format!("DELETE FROM rgroups_{srv_id} WHERE name = ?;"))
+	// Delete Database Entries
+	query("DELETE FROM role_groups WHERE server_id = ? AND group_name = ?;")
+		.bind(server.id.get() as i64)
 		.bind(&group)
 		.execute(&ctx.data().db)
 		.await?;
-	query(&format!("DELETE FROM roles_{srv_id} WHERE grp = ?;"))
+	query("DELETE FROM roles WHERE server_id = ? AND group_name = ?;")
+		.bind(server.id.get() as i64)
 		.bind(&group)
 		.execute(&ctx.data().db)
 		.await?;

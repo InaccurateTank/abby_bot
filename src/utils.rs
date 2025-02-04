@@ -101,3 +101,20 @@ pub async fn check_serious(ctx: Context<'_>) -> Result<bool, Error> {
 	}
 	Ok(true)
 }
+
+/// Poise command checker for server features. Checks if the server allows the bot to manage roles.
+pub async fn check_roles(ctx: Context<'_>) -> Result<bool, Error> {
+	// Role management is a server exclusive feature. Somthing is deeply wrong if we're not in a guild.
+	let Some(id) = ctx.guild_id() else {
+		return Ok(false)
+	};
+	let roles = sqlx::query_scalar::<_, bool>("SELECT roles FROM server_settings WHERE id = ?);")
+		.bind(id.get() as i64)
+		.fetch_one(&ctx.data().db)
+		.await?;
+	if roles {
+		feature_not_enabled(ctx).await?;
+		return Ok(false)
+	}
+	Ok(true)
+}
