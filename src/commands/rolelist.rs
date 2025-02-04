@@ -260,33 +260,36 @@ async fn create(
 		return Ok(())
 	};
 
-	// Insert roles into database.
-	for r in &selected_roles {
-		query("INSERT INTO roles (server_id, group_name, role_id) VALUES(?, ?, ?);")
+	// Send message with roles.
+	if let Ok(msg) = channel.send_message(ctx, serenity::CreateMessage::new()
+			.embed(templates::rolelist_embed(&group, &selected_roles)?)
+			.components(vec![templates::rolelist_components(&group)])
+		).await {
+		// Add roles if successful
+		query("INSERT INTO role_groups (server_id, group_name, group_message) VALUES (?, ?, ?)")
 			.bind(server.id.get() as i64)
 			.bind(&group)
-			.bind(r.id.get() as i64)
+			.bind(msg.id.get() as i64)
 			.execute(&ctx.data().db)
 			.await?;
+		// Insert roles into database.
+		for r in &selected_roles {
+			query("INSERT INTO roles (server_id, group_name, role_id) VALUES(?, ?, ?);")
+				.bind(server.id.get() as i64)
+				.bind(&group)
+				.bind(r.id.get() as i64)
+				.execute(&ctx.data().db)
+				.await?;
+		}
+		// Notify Success
+		reply.edit(ctx, poise::CreateReply::default()
+			.embed(templates::state_embed(true, &format!("Rolelist for group \"{group}\" has been created.")))
+		).await?;
+	} else {
+		// Notify Failure
+		reply.edit(ctx, poise::CreateReply::default()
+			.embed(templates::state_embed(false, &format!("Failed to create role list for group \"{group}\".")))
+		).await?;
 	}
-
-	// Generate list with the channel stored for the check
-	let msg = channel.send_message(ctx, serenity::CreateMessage::new()
-		.embed(templates::rolelist_embed(&group, &selected_roles)?)
-		.components(vec![templates::rolelist_components(&group)])
-	).await?;
-
-	// Add msg to group table
-	query("INSERT INTO role_groups (server_id, group_name, group_message) VALUES (?, ?, ?)")
-		.bind(server.id.get() as i64)
-		.bind(&group)
-		.bind(msg.id.get() as i64)
-		.execute(&ctx.data().db)
-		.await?;
-
-	// Notify Success
-	reply.edit(ctx, poise::CreateReply::default()
-		.embed(templates::state_embed(true, &format!("Rolelist for group {group} has been created.")))
-	).await?;
 	Ok(())
 }
