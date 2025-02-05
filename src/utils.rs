@@ -45,7 +45,7 @@ pub fn role_filter(role: &serenity::Role) -> bool {
 /// Selects either the system messages channel or, if that isn't an option, the default channel. Returns [`None`] if the channel isn't writeable.
 pub async fn default_bot_channel(
 	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache>,
-	guild: serenity::Guild,
+	guild: &serenity::Guild,
 	bot_id: serenity::UserId
 ) -> Result<Option<serenity::ChannelId>, Error> {
 	let Some(channel) = ({

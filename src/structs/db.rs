@@ -4,7 +4,10 @@ use sqlx::{
 	Row,
 	sqlite::SqliteRow
 };
-use crate::utils::concat;
+use crate::{
+	Error,
+	utils::concat
+};
 
 // CREATE TABLE IF NOT EXISTS server_settings
 // (
@@ -15,7 +18,7 @@ use crate::utils::concat;
 // 	roles_channel	INT		DEFAULT NULL
 // );
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ServerSettings {
 	/// [`serenity::GuildId`] of the server, stored as an [i64].
 	pub id: serenity::GuildId,
@@ -27,6 +30,38 @@ pub struct ServerSettings {
 	pub roles: bool,
 	/// Channel to manage roles from if applicable, default `None`.
 	pub roles_channel: Option<serenity::ChannelId>
+}
+impl ServerSettings {
+	pub fn new(guild_id: serenity::GuildId) -> Self {
+		let mut result = Self::default();
+		result.id = guild_id;
+		result
+	}
+
+	pub async fn from_query(guild_id: serenity::GuildId, db: &sqlx::SqlitePool) -> Result<Option<Self>, sqlx::Error> {
+		sqlx::query_as("SELECT * FROM server_settings WHERE id = ?;")
+			.bind(guild_id.get() as i64)
+			.fetch_optional(db)
+			.await
+	}
+
+	pub fn as_array(&self) -> [(&str, bool); 3] {
+		[
+			("serious", self.serious),
+			("messages", self.messages),
+			("roles", self.roles)
+		]
+	}
+
+	pub fn as_selectmenuoptions(&self) -> Vec<serenity::CreateSelectMenuOption> {
+		let mut opts = Vec::new();
+		for (name, value) in self.as_array() {
+			opts.push(serenity::CreateSelectMenuOption::new(name[0..1].to_uppercase() + &name[1..], concat("enable_", name))
+				.default_selection(value)
+				.to_owned());
+		}
+		opts
+	}
 }
 impl Default for ServerSettings {
 	fn default() -> Self {
@@ -81,7 +116,7 @@ pub struct Group {
 	pub group_name: String,
 	#[sqlx(try_from = "u64")]
 	/// [`serenity::MessageId`] that the group is posted in, stored as an [`i64`].
-	pub group_message: serenity::ChannelId,
+	pub group_message: serenity::MessageId,
 }
 
 
@@ -103,92 +138,4 @@ pub struct Role {
 	#[sqlx(try_from = "u64")]
 	/// [`serenity::RoleId`] of the role, stored as an [`i64`].
 	pub role_id: serenity::RoleId
-}
-
-
-// ========== OLD DATABASE STRUCTS!!!! ==========
-
-/// Database feature entry
-#[derive(FromRow, Debug)]
-#[deprecated]
-pub struct Server {
-	/// ID of the server bitcast as an [i64].
-	pub srvid: i64,
-	/// Whether the server is serious or not, defaults to `true`.
-	pub serious: bool,
-	/// Whether the bot should respond to message events, defaults to `false`.
-	pub messages: bool,
-	/// Whether the bot should manage roles, defaults to `false`.
-	pub roles: bool
-}
-impl Default for Server {
-	fn default() -> Self {
-		Self {
-			srvid: 0,
-			serious: true,
-			messages: false,
-			roles: false
-		}
-	}
-}
-// impl Into<serenity::GuildId> for Server {
-// 	fn into(self) -> serenity::GuildId {
-// 		serenity::GuildId::new(self.srvid as u64)
-// 	}
-// }
-impl Server {
-	pub fn as_array(&self) -> [(&str, bool); 3] {
-		[
-			("serious", self.serious),
-			("messages", self.messages),
-			("roles", self.roles)
-		]
-	}
-	pub fn as_selectmenuoptions(&self) -> Vec<serenity::CreateSelectMenuOption> {
-		let mut opts = Vec::new();
-		for (name, value) in self.as_array() {
-			opts.push(serenity::CreateSelectMenuOption::new(name[0..1].to_uppercase() + &name[1..], concat("enable_", name))
-				.default_selection(value)
-				.to_owned());
-		}
-		opts
-	}
-}
-
-/// Database role feature settings entry.
-#[derive(Default, FromRow, Debug)]
-#[deprecated]
-pub struct ServerRoles {
-	/// ID of the server bitcast as an [i64].
-	pub srvid: i64,
-	/// ID of the server bitcast as an [i64].
-	pub channel: Option<i64>
-}
-
-/// Database per-server role entry.
-#[derive(Default, FromRow, Debug)]
-#[deprecated]
-pub struct RoleEntry {
-	/// The ID of the role bitcast as an [i64].
-	pub id: i64,
-	/// [`String`] of the group that the role belongs to.
-	pub grp: String,
-	/// Roughly the amount of users with the role.
-	pub users: u16
-}
-impl RoleEntry {
-	/// Returns a [`serenity::RoleId`] from the id.
-	pub fn extract_roleid (&self) -> serenity::RoleId {
-		serenity::RoleId::new(self.id as u64)
-	}
-}
-
-/// Database per-server group management.
-#[derive(Default, FromRow, Debug)]
-#[deprecated]
-pub struct RoleGroup {
-	/// [`String`] name of the role group.
-	pub name: String,
-	/// ID of the message that holds the group.
-	pub msg: i64
 }

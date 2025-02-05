@@ -49,7 +49,7 @@ pub async fn event_handler<'a>(
 						.await?;
 					// If the bot can post in a default channel, do so. Better to disclose the join than not.
 					// TODO: Change intro message
-					if let Some(chid) = utils::default_bot_channel(ctx, guild.to_owned(), framework.bot_id).await? {
+					if let Some(chid) = utils::default_bot_channel(ctx, &guild, framework.bot_id).await? {
 						chid.send_message(ctx, CreateMessage::new()
 							.embed(CreateEmbed::new()
 								.title("Hello I'm Abby!")

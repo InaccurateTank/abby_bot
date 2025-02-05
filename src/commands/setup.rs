@@ -38,11 +38,27 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 	ephemeral
 )]
 async fn bot(ctx: Context<'_>) -> Result<(), Error> {
-	let srv_id = ctx.guild_id().unwrap().get();
-	let guild = ctx.guild().unwrap().clone();
+	// let server_settings = {
+	// 	let guild_id = ctx.guild_id()
+	// 		.ok_or_else(|| "Not a Guild")?;
+	// 	match db::ServerSettings::from_query(guild_id, &ctx.data().db).await
+	// 	{
+	// 		Ok(Some(r)) => r,
+	// 		Ok(None) => db::ServerSettings::new(guild_id),
+	// 		Err(e) => return Err(e.into())
+	// 	}
+	// };
 
-	let srv_features = query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(srv_id as i64)
+	let server = if let Some(r) = ctx.guild_id()
+		.ok_or_else(|| "Not a Guild")?
+		.to_guild_cached(ctx.cache()) {
+		r.to_owned()
+	} else {
+		return Err(serenity::ModelError::GuildNotFound.into())
+	};
+
+	let server_settings = query_as::<_, db::ServerSettings>("SELECT * FROM server_settings WHERE id = ?;")
+		.bind(server.id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await
 		.unwrap();
@@ -56,10 +72,10 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			.field("Messages", "Whether or not I should listen to message events outside of command invocations. This is mostly to reply to them based on regex.", false)
 			.field("Roles", "Toggles role management features. Note that the subcommand is global so while it will still exist, it will simply do nothing.", false)
 		).components(vec![
-			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.bot", serenity::CreateSelectMenuKind::String { options: srv_features.as_selectmenuoptions() })
+			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.bot", serenity::CreateSelectMenuKind::String { options: server_settings.as_selectmenuoptions() })
 				.placeholder("Please select features...")
 				.min_values(0)
-				.max_values(srv_features.as_selectmenuoptions().len() as u8))
+				.max_values(server_settings.as_array().len() as u8))
 		])
 	).await?;
 
@@ -94,16 +110,19 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		}
 	};
 
-	let set_string = srv_features.as_array()
+	let mut a = server_settings.clone();
+	a.serious = selected.contains(&"enable_serious".to_string());
+
+	let set_string = server_settings.as_array()
 		.map(|(name, _)| format!("{name} = {}", selected.contains(&utils::concat("enable_", name))))
 		.join(",");
-	query(&format!("UPDATE servers SET {set_string} WHERE srvid = {};", srv_features.srvid))
+	query(&format!("UPDATE servers SET {set_string} WHERE srvid = {};", server_settings.id))
 		.execute(&ctx.data().db)
 		.await
 		.unwrap();
 
-	let updated = query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(srv_id as i64)
+	let updated = query_as::<_, db::ServerSettings>("SELECT * FROM servers WHERE srvid = ?;")
+		.bind(server.id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await
 		.unwrap();
@@ -134,21 +153,21 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		// }
 	// }
 	// Changed Roles
-	if updated.roles != srv_features.roles {
+	if updated.roles != server_settings.roles {
 		if updated.roles {
-			query(&format!("CREATE TABLE IF NOT EXISTS roles_{srv_id} (id BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, users INTEGER NOT NULL);"))
+			query(&format!("CREATE TABLE IF NOT EXISTS roles_{} (id BIGINT PRIMARY KEY NOT NULL, grp TEXT NOT NULL, users INTEGER NOT NULL);", server.id.get()))
 				.execute(&ctx.data().db)
 				.await
 				.unwrap();
-			query(&format!("CREATE TABLE IF NOT EXISTS rgroups_{srv_id} (name TEXT PRIMARY KEY NOT NULL, msg BIGINT NOT NULL);"))
+			query(&format!("CREATE TABLE IF NOT EXISTS rgroups_{} (name TEXT PRIMARY KEY NOT NULL, msg BIGINT NOT NULL);", server.id.get()))
 				.execute(&ctx.data().db)
 				.await
 				.unwrap();
 			// Find default channel in i64 form (for database)
-			let default = utils::default_bot_channel(ctx, guild, ctx.framework().bot_id).await;
+			let default = utils::default_bot_channel(ctx, &server, ctx.framework().bot_id).await?;
 			// Insert into role_options
 			query("INSERT INTO role_options (srvid, channel) VALUES(?, ?);")
-				.bind(updated.srvid)
+				.bind(updated.id.get() as i64)
 				.bind(default.map(|c| c.get() as i64))
 				.execute(&ctx.data().db)
 				.await?;
@@ -170,46 +189,46 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			).await?;
 		} else {
 			// Delete messages
-			let group_channel = query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
-				.bind(srv_id as i64)
-				.fetch_one(&ctx.data().db)
-				.await
-				.unwrap()
-				.channel
-				.unwrap_or(ctx.guild_id()
-					.unwrap()
-					.to_guild_cached(&ctx)
-					.unwrap()
-					.system_channel_id
-					.unwrap_or(ctx.guild()
-						.unwrap()
-						.default_channel(ctx.framework().bot_id)
-						.unwrap()
-						.id)
-					.get() as i64
-				);
-			for grp in query_as::<_, db::RoleGroup>(&format!("SELECT * FROM rgroups_{srv_id}"))
+			// let group_channel = query_as::<_, db::Role>("SELECT * FROM role_options WHERE server_id = ?;")
+			// 	.bind(server.id.get() as i64)
+			// 	.fetch_one(&ctx.data().db)
+			// 	.await
+			// 	.unwrap()
+			// 	.channel
+			// 	.unwrap_or(ctx.guild_id()
+			// 		.unwrap()
+			// 		.to_guild_cached(&ctx)
+			// 		.unwrap()
+			// 		.system_channel_id
+			// 		.unwrap_or(ctx.guild()
+			// 			.unwrap()
+			// 			.default_channel(ctx.framework().bot_id)
+			// 			.unwrap()
+			// 			.id)
+			// 		.get() as i64
+			// 	);
+			for grp in query_as::<_, db::Group>(&format!("SELECT * FROM rgroups_{}", server.id.get()))
 				.fetch_all(&ctx.data().db)
 				.await? {
-				if ctx.http().delete_message(serenity::ChannelId::new(group_channel as u64), serenity::MessageId::new(grp.msg as u64), Some("Role feature disabled, deleting groups.")).await.is_err() {
+				if ctx.http().delete_message(serenity::ChannelId::new(updated.roles_channel.unwrap().get() as u64), serenity::MessageId::new(grp.group_message.get() as u64), Some("Role feature disabled, deleting groups.")).await.is_err() {
 					ctx.send(poise::CreateReply::default()
 						.ephemeral(true)
-						.embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{}\". Entries will be removed from the database, but the message will need to be deleted manually.", grp.name)))
+						.embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{}\". Entries will be removed from the database, but the message will need to be deleted manually.", grp.group_name)))
 					).await?;
 				}
 			}
 
 			// Purge Database
-			query(&format!("DROP TABLE IF EXISTS roles_{srv_id};"))
+			query(&format!("DROP TABLE IF EXISTS roles_{};", server.id.get()))
 				.execute(&ctx.data().db)
 				.await
 				.unwrap();
 			query("DELETE FROM role_options WHERE srvid = ?;")
-				.bind(updated.srvid)
+				.bind(updated.id.get() as i64)
 				.execute(&ctx.data().db)
 				.await
 				.unwrap();
-			query(&format!("DROP TABLE IF EXISTS rgroups_{srv_id};"))
+			query(&format!("DROP TABLE IF EXISTS rgroups_{};", server.id.get()))
 				.execute(&ctx.data().db)
 				.await
 				.unwrap();
@@ -229,21 +248,15 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	let guild = ctx.guild().unwrap().clone();
 
 	// Data gathering
-	let srv_features = query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(ctx.guild_id().unwrap().get() as i64)
+	let server_settings = query_as::<_, db::ServerSettings>("SELECT * FROM server_settings WHERE id = ?;")
+		.bind(guild.id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await
 		.unwrap();
-	if !srv_features.roles {
+	if !server_settings.roles {
 		utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
-	let role_opts = query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
-		.bind(ctx.guild_id().unwrap().get() as i64)
-		.fetch_optional(&ctx.data().db)
-		.await
-		.unwrap()
-		.unwrap_or_default();
 
 	// Channel select
 	let reply = ctx.send(poise::CreateReply::default()
@@ -252,8 +265,8 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			.color(EMBED_STD)
 			.description("Please select a channel for role management to take place in. This channel should be completely empty save for the role lists. All interactions done with me via this channel will be ephemeral, so there should end up being no clutter.")
 		).components(vec![
-			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.roles", serenity::CreateSelectMenuKind::Channel { channel_types: Some(vec![serenity::ChannelType::Text]), default_channels: role_opts.channel
-					.map(|c| vec![serenity::ChannelId::new(c as u64)])
+			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.roles", serenity::CreateSelectMenuKind::Channel { channel_types: Some(vec![serenity::ChannelType::Text]), default_channels: server_settings.roles_channel
+					.map(|c| vec![c])
 				}).placeholder("Select a Channel.")
 				.min_values(0)
 				.max_values(1)
@@ -287,10 +300,10 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	let selected = match &interaction.data.kind {
 		serenity::ComponentInteractionDataKind::ChannelSelect { values } => {
 			if let Some(ch) = values.first() {
-				if utils::can_post(ctx, ch, ctx.framework().bot_id).await { Some(*ch) }
+				if utils::can_post(ctx, ch, ctx.framework().bot_id).await? { Some(*ch) }
 				else { None }
 			} else {
-				utils::default_bot_channel(ctx, guild, ctx.framework().bot_id).await
+				utils::default_bot_channel(ctx, &guild, ctx.framework().bot_id).await?
 			}
 		}
 		_ => {
@@ -304,40 +317,37 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 
 	if let Some(chid) = selected {
 		// Fetch old group messages
-		let old_lists = query_as::<_, db::RoleGroup>(&format!("SELECT * FROM rgroups_{};", ctx.guild_id().unwrap().get()))
+		let old_lists = query_as::<_, db::Group>("SELECT * FROM role_groups WHERE server_id = ?;")
+			.bind(guild.id.get() as i64)
 			.fetch_all(&ctx.data().db)
 			.await?;
 
 		// Migrates if there are role messages in the old channel
 		if !old_lists.is_empty() {
-			if let Some(c) = query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
-				.bind(ctx.guild_id().unwrap().get() as i64)
-				.fetch_one(&ctx.data().db)
-				.await
-				.unwrap()
-				.channel {
+			if let Some(c) = server_settings.roles_channel {
 				for entry in old_lists {
 					// If the old message can't even be reached then no point trying anyway.
-					if let Ok(old_message) = ctx.http().get_message(serenity::ChannelId::new(c as u64), serenity::MessageId::new(entry.msg as u64)).await {
+					if let Ok(old_message) = ctx.http().get_message(c, entry.group_message).await {
 						let new_message = chid.send_message(ctx, serenity::CreateMessage::new()
 							// Copy embed
 							.embed(serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned()))
 							// Add components
 							.components(vec![
-								templates::rolelist_components(&entry.name)
+								templates::rolelist_components(&entry.group_name)
 							])
 						).await?;
 						// Update database with new message
-						query(&format!("UPDATE rgroups_{} SET msg = ? WHERE name = ?;", ctx.guild_id().unwrap().get()))
+						query("UPDATE role_groups SET group_message = ? WHERE server_id = ? AND name = ?;")
+							.bind(guild.id.get() as i64)
 							.bind(new_message.id.get() as i64)
-							.bind(entry.name)
+							.bind(entry.group_name)
 							.execute(&ctx.data().db)
 							.await?;
 						// Delete old message
 						old_message.delete(ctx).await?;
 					} else {
 						ctx.send(poise::CreateReply::default()
-							.embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name)))
+							.embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.group_name)))
 						).await?;
 					}
 				}
