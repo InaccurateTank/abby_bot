@@ -9,6 +9,7 @@ use sqlx::{
 use tracing::{
 	debug,
 	info,
+	warn,
 	error,
 	level_filters::LevelFilter
 };
@@ -73,7 +74,7 @@ async fn main() -> Result<(), Error> {
 	let db_url = format!("sqlite:{data_folder}sqlite.db");
 	// Check if DB exists
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-		debug!("Database absent in '{data_folder}', creating new one.");
+		warn!("Database absent in '{data_folder}', creating new one.");
 		match Sqlite::create_database(&db_url).await {
 			Ok(_) => debug!("Database creation successful."),
 			Err(error) => panic!("error: {error}")

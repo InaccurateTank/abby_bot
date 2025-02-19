@@ -21,6 +21,7 @@ pub struct GuildSettings {
 	pub roles_channel: Option<serenity::ChannelId>
 }
 impl GuildSettings {
+	/// Creates an instance of the object from a database query.
 	pub async fn from_query(
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
@@ -32,6 +33,17 @@ impl GuildSettings {
 			.map_err(|e| e.into())
 	}
 
+	/// While the standard default function is useful for servers, some minor changes are needed for handling private messages.
+	pub fn pm_default() -> Self {
+		Self {
+			serious: true,
+			messages: true,
+			roles: false,
+			roles_channel: None
+		}
+	}
+
+	/// Updates the database entry of a given [GuildId]['serenity::GuildId'] with the values contained in the struct.
 	pub async fn update(
 		&self,
 		guild_id: serenity::GuildId,
@@ -49,6 +61,7 @@ impl GuildSettings {
 			.map_err(|e| e.into())
 	}
 
+	/// All true/false options as an array.
 	pub fn as_array(&self) -> [(&str, bool); 3] {
 		[
 			("serious", self.serious),
@@ -57,6 +70,7 @@ impl GuildSettings {
 		]
 	}
 
+	/// All true/false options as [CreateSelectMenuOption]['serenity::CreateSelectMenuOption'] components.
 	pub fn as_selectmenuoptions(&self) -> Vec<serenity::CreateSelectMenuOption> {
 		let mut opts = Vec::new();
 		for (name, value) in self.as_array() {

@@ -5,7 +5,10 @@ use sqlx::{
 	query,
 	query_scalar
 };
-use tracing::info;
+use tracing::{
+	debug,
+	info
+};
 use crate::{ EMBED_STD, Error, Data };
 use crate::database;
 use crate::utils;
@@ -13,18 +16,59 @@ use crate::utils;
 mod message;
 mod interaction;
 
+async fn on_join<'a>(
+	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache> + AsRef<serenity::Http>,
+	framework: poise::FrameworkContext<'a, Data, Error>,
+	guild: &serenity::Guild,
+	db: &sqlx::Pool<sqlx::Sqlite>
+) -> Result<(), Error> {
+	info!("Joining guild \"{}\" (GuildId {}).", guild.name, guild.id);
+	// Do things that a bot would do on server join
+	// TODO: Log the console errors
+	debug!("Creating database entry for guild.");
+	{
+		let insert = query("INSERT INTO guild_settings (id) VALUES (?);")
+			.bind(guild.id.get() as i64)
+			.execute(db)
+			.await;
+		if let Err(e) = insert {
+			return Err(e.into())
+		}
+	}
+	// If the bot can post in a default channel, do so. Better to disclose the join than not.
+	// TODO: Change intro message
+	if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
+		chid.send_message(ctx, CreateMessage::new()
+			.embed(CreateEmbed::new()
+				.title("Hello I'm Abby!")
+				.color(EMBED_STD)
+				.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
+				.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+			)
+		).await?;
+	}
+	// Register commands in new server
+	// TODO: Change to register commangs via settings
+	poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
+	Ok(())
+}
+
 // Private on leave function
 async fn on_leave(
 	guid: u64,
 	db: &sqlx::Pool<sqlx::Sqlite>
 ) -> Result<(), Error> {
-	println!("Deleting server {guid} from database.");
+	info!("Removing guild {guid} from database.");
 	// Deletion cascades now so this is all we need
-	query("DELETE FROM server_settings WHERE id = ?;")
+	let result = query("DELETE FROM guild_settings WHERE id = ?;")
 		.bind(guid as i64)
 		.execute(db)
-		.await?;
-	Ok(())
+		.await;
+
+	match result {
+		Ok(_) => Ok(()),
+		Err(e) => Err(e.into())
+	}
 }
 
 pub async fn event_handler<'a>(
@@ -39,34 +83,17 @@ pub async fn event_handler<'a>(
 			// If server is detected as new. This can fail
 			if is_new.is_some_and(|x| x) {
 				// Check if server is *actually* new.
-				if query_scalar::<_, bool>("SELECT NOT EXISTS (SELECT 1 FROM server_settings WHERE id = ?);")
+				let actually_new = query_scalar::<_, bool>("SELECT NOT EXISTS (SELECT 1 FROM guild_settings WHERE id = ?);")
 					.bind(guild.id.get() as i64)
 					.fetch_one(&data.db)
-					.await? {
-					// Do things that a bot would do on server join
-					let id = guild.id.get();
-					// TODO: Log the console errors
-					info!("Creating database entry for guild {} (GuildId {id}).", guild.name);
-					// println!("Creating database entry for server {} (GuildId {}).", guild.name, id);
-					query("INSERT INTO server_settings (id) VALUES(?);")
-						.bind(id as i64)
-						.execute(&data.db)
-						.await?;
-					// If the bot can post in a default channel, do so. Better to disclose the join than not.
-					// TODO: Change intro message
-					if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
-						chid.send_message(ctx, CreateMessage::new()
-							.embed(CreateEmbed::new()
-								.title("Hello I'm Abby!")
-								.color(EMBED_STD)
-								.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-								.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-							)
-						).await?;
-					}
-					// Register commands in new server
-					// TODO: Change to register commangs via settings
-					poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
+					.await;
+				match actually_new {
+					// New
+					Ok(n) if n == true => on_join(ctx, framework, guild, &data.db).await?,
+					// Error
+					Err(e) => return Err(e.into()),
+					// Not New
+					_ => ()
 				}
 			}
 		},
@@ -93,7 +120,7 @@ pub async fn event_handler<'a>(
 			};
 			ctx.set_activity(Some(status));
 			// If servers have been removed, run a purge
-			let db_servers: HashSet<u64> = query_scalar("SELECT id FROM server_settings;")
+			let db_guilds: HashSet<u64> = query_scalar("SELECT id FROM guild_settings;")
 				.fetch_all(&data.db)
 				.await?
 				.into_iter()
@@ -104,10 +131,10 @@ pub async fn event_handler<'a>(
 					// Unavailable being false means removal while offline
 					println!("Left Guild");
 					// on_leave(*guid, &data.db).await?;
-				} else if !db_servers.contains(&guild.id.get()) {
+				} else if !db_guilds.contains(&guild.id.get()) {
 					// Servers that arn't in the database have been joined while offline
 					println!("Joined Guild");
-					// on_join(*guid, &data.db).await?;
+					// on_join(ctx, framework, guild, &data.db).await?;
 				}
 			}
 			// let login_servers: HashSet<u64> = data_about_bot.guilds
@@ -126,7 +153,7 @@ pub async fn event_handler<'a>(
 			let guild_settings = if let Some(id) = new_message.guild_id {
 				database::GuildSettings::from_query(id, &data.db).await?
 			} else {
-				database::GuildSettings::default()
+				database::GuildSettings::pm_default()
 			};
 			if (new_message.author.id != framework.bot_id) && guild_settings.messages {
 				message::handler(ctx, new_message, guild_settings).await?;
