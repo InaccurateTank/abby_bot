@@ -7,7 +7,7 @@ use sqlx::{
 };
 use tracing::info;
 use crate::{ EMBED_STD, Error, Data };
-use crate::structs::db;
+use crate::database;
 use crate::utils;
 
 mod message;
@@ -123,9 +123,9 @@ pub async fn event_handler<'a>(
 		serenity::FullEvent::Message { new_message } => {
 			// TODO: Error Handling
 			let guild_settings = if let Some(id) = new_message.guild_id {
-				db::GuildSettings::from_query(id, &data.db).await?
+				database::GuildSettings::from_query(id, &data.db).await?
 			} else {
-				db::GuildSettings::default()
+				database::GuildSettings::default()
 			};
 			if (new_message.author.id != framework.bot_id) && guild_settings.messages {
 				message::handler(ctx, new_message, guild_settings).await?;

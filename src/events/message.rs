@@ -1,10 +1,10 @@
 use crate::Error;
-use crate::structs::db;
+use crate::database;
 use poise::serenity_prelude as serenity;
 use regex::Regex;
 
 // Public handler function for module.
-pub async fn handler(ctx: &serenity::Context, msg: &serenity::Message, srv_features: db::GuildSettings) -> Result<(), Error> {
+pub async fn handler(ctx: &serenity::Context, msg: &serenity::Message, srv_features: database::GuildSettings) -> Result<(), Error> {
 	let content = msg.content.as_str();
 	if !srv_features.serious {
 		borger(ctx, msg, content).await?;

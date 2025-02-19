@@ -6,7 +6,8 @@ use sqlx::{
 	query_scalar
 };
 use crate::{
-	structs::{db, misc},
+	database,
+	structs::misc,
 	utils, templates,
 	Context, Error,
 	EMBED_STD
@@ -168,7 +169,7 @@ async fn create(
 	};
 
 	// ChannelId from role settings
-	let channel = match query_as::<_, db::GuildSettings>("SELECT * FROM server_settings WHERE srvid = ?;")
+	let channel = match query_as::<_, database::GuildSettings>("SELECT * FROM server_settings WHERE srvid = ?;")
 		.bind(server.id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?

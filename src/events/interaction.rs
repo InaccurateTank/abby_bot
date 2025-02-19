@@ -5,10 +5,8 @@ use std::{
 use poise::serenity_prelude as serenity;
 use sqlx::{query, query_as};
 use crate::{
-	structs::{
-		db,
-		misc
-	},
+	database,
+	structs::misc,
 	utils, templates,
 	Error, Data,
 	EMBED_STD
@@ -19,7 +17,7 @@ pub async fn mci_handler(
 	data: &Data,
 	mci: &serenity::ComponentInteraction
 ) -> Result<(), Error> {
-	let srv_features = query_as::<_, db::GuildSettings>("SELECT * FROM server_settings WHERE id = ?;")
+	let srv_features = query_as::<_, database::GuildSettings>("SELECT * FROM server_settings WHERE id = ?;")
 		.bind(mci.guild_id.unwrap_or_default().get() as i64)
 		.fetch_one(&data.db)
 		.await?;
@@ -56,11 +54,12 @@ async fn roles_click(
 		return Err(serenity::ModelError::GuildNotFound.into())
 	};
 
-	let db_group_roles = query_as::<_, db::Role>("SELECT * FROM roles WHERE server_id = ? AND group_name = ?;")
-		.bind(server.id.get() as i64)
-		.bind(group_name)
-		.fetch_all(&data.db)
-		.await?;
+	// let db_group_roles = query_as::<_, database::Role>("SELECT * FROM roles WHERE server_id = ? AND group_name = ?;")
+	// 	.bind(server.id.get() as i64)
+	// 	.bind(group_name)
+	// 	.fetch_all(&data.db)
+	// 	.await?;
+	let db_group_roles = database::roles_from_query(server.id, group_name, &data.db).await?;
 
 	let Some(member) = mci.member.as_ref() else {
 		// TODO: Better Errors
@@ -88,7 +87,7 @@ async fn roles_click(
 
 			let mut roles_list = db_group_roles.into_iter()
 				.map(|r| {
-					misc::RoleVitals::new(r.role_id, &server)
+					misc::RoleVitals::new(r, &server)
 				}).collect::<Result<Vec<misc::RoleVitals>, Error>>()?;
 			roles_list.sort_by(|a, b| {
 				let a_l = a.name.to_lowercase();
@@ -263,7 +262,7 @@ async fn roles_click(
 					serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("rolelist.edit", serenity::CreateSelectMenuKind::String { options: server_roles.iter()
 						.map(|r| {
 							serenity::CreateSelectMenuOption::new(&r.name, r.id.to_string())
-								.default_selection(db_group_roles.iter().any(|f| r.id == f.role_id))
+								.default_selection(db_group_roles.iter().any(|f| &r.id == f))
 							}).collect()
 						}).placeholder("Roles")
 						.min_values(1)

@@ -9,10 +9,10 @@ pub enum UserCount {
 impl UserCount {
 	pub fn get_calculated(&self) -> Result<&u8, Error> {
 		if let Self::Calculated(v) = &self {
-			return Ok(&v)
+			Ok(v)
 		} else {
 			// TODO: Better Errors
-			return Err("Not Calculated".into())
+			Err("Not Calculated".into())
 		}
 	}
 

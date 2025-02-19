@@ -1,7 +1,7 @@
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use sqlx::query;
 use crate::{
-	structs::db,
+	database,
 	templates, utils,
 	Context, Error,
 	EMBED_STD, EMBED_WAIT, EMBED_FAIL
@@ -44,7 +44,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 		return Err(serenity::ModelError::GuildNotFound.into())
 	};
 
-	let guild_settings = db::GuildSettings::from_query(guild.id, &ctx.data().db).await?;
+	let guild_settings = database::GuildSettings::from_query(guild.id, &ctx.data().db).await?;
 
 	let reply = ctx.send(poise::CreateReply::default()
 		.embed(serenity::CreateEmbed::new()
@@ -84,7 +84,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 
 	let mut updated = match &interaction.data.kind {
 		serenity::ComponentInteractionDataKind::StringSelect { values } => {
-			db::GuildSettings {
+			database::GuildSettings {
 				serious: values.contains(&"enable_serious".to_string()),
 				messages: values.contains(&"enable_messages".to_string()),
 				roles: values.contains(&"enable_roles".to_string()),
@@ -140,7 +140,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			// Unset roles channel in structure
 			updated.roles_channel = None;
 			// Query groups
-			let groups = db::Group::from_batch_query(guild.id, &ctx.data().db).await?;
+			let groups = database::groups_from_query(guild.id, &ctx.data().db).await?;
 
 			// For groups
 			for grp in groups {
@@ -159,7 +159,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 					.bind(guild.id.get() as i64)
 					.bind(grp.name)
 					.execute(&ctx.data().db)
-					.await;
+					.await?;
 			}
 		},
 		// Same
@@ -193,12 +193,8 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 	let guild = ctx.guild().unwrap().clone();
 
 	// Data gathering
-	let server_settings = query_as::<_, db::ServerSettings>("SELECT * FROM server_settings WHERE id = ?;")
-		.bind(guild.id.get() as i64)
-		.fetch_one(&ctx.data().db)
-		.await
-		.unwrap();
-	if !server_settings.roles {
+	let guild_settings = database::GuildSettings::from_query(guild.id, &ctx.data().db).await?;
+	if !guild_settings.roles {
 		utils::feature_not_enabled(ctx).await?;
 		return Ok(())
 	}
@@ -210,7 +206,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			.color(EMBED_STD)
 			.description("Please select a channel for role management to take place in. This channel should be completely empty save for the role lists. All interactions done with me via this channel will be ephemeral, so there should end up being no clutter.")
 		).components(vec![
-			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.roles", serenity::CreateSelectMenuKind::Channel { channel_types: Some(vec![serenity::ChannelType::Text]), default_channels: server_settings.roles_channel
+			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.roles", serenity::CreateSelectMenuKind::Channel { channel_types: Some(vec![serenity::ChannelType::Text]), default_channels: guild_settings.roles_channel
 					.map(|c| vec![c])
 				}).placeholder("Select a Channel.")
 				.min_values(0)
@@ -262,37 +258,34 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 
 	if let Some(chid) = selected {
 		// Fetch old group messages
-		let old_lists = query_as::<_, db::Group>("SELECT * FROM role_groups WHERE server_id = ?;")
-			.bind(guild.id.get() as i64)
-			.fetch_all(&ctx.data().db)
-			.await?;
+		let old_lists = database::groups_from_query(guild.id, &ctx.data().db).await?;
 
 		// Migrates if there are role messages in the old channel
 		if !old_lists.is_empty() {
-			if let Some(c) = server_settings.roles_channel {
+			if let Some(c) = guild_settings.roles_channel {
 				for entry in old_lists {
 					// If the old message can't even be reached then no point trying anyway.
-					if let Ok(old_message) = ctx.http().get_message(c, entry.group_message).await {
+					if let Ok(old_message) = c.message(ctx, entry.message).await {
 						let new_message = chid.send_message(ctx, serenity::CreateMessage::new()
 							// Copy embed
 							.embed(serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned()))
 							// Add components
 							.components(vec![
-								templates::rolelist_components(&entry.group_name)
+								templates::rolelist_components(&entry.name)
 							])
 						).await?;
 						// Update database with new message
-						query("UPDATE role_groups SET group_message = ? WHERE server_id = ? AND name = ?;")
+						query("UPDATE role_groups SET group_message = ? WHERE guild_id = ? AND name = ?;")
 							.bind(guild.id.get() as i64)
 							.bind(new_message.id.get() as i64)
-							.bind(entry.group_name)
+							.bind(entry.name)
 							.execute(&ctx.data().db)
 							.await?;
 						// Delete old message
 						old_message.delete(ctx).await?;
 					} else {
 						ctx.send(poise::CreateReply::default()
-							.embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.group_name)))
+							.embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name)))
 						).await?;
 					}
 				}
@@ -304,7 +297,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		}
 
 		// Update the database with the new channel
-		query("UPDATE role_options SET channel = ? WHERE srvid = ?;")
+		query("UPDATE guild_settings SET roles_channel = ? WHERE id = ?;")
 			.bind(chid.get() as i64)
 			.bind(ctx.guild_id().unwrap().get() as i64)
 			.execute(&ctx.data().db)

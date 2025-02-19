@@ -13,6 +13,7 @@ use tracing::{
 };
 
 mod commands;
+mod database;
 mod error;
 mod events;
 mod structs;

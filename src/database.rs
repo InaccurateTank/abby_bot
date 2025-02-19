@@ -95,6 +95,7 @@ impl FromRow<'_, SqliteRow> for GuildSettings {
 	}
 }
 
+
 #[derive(FromRow, Debug)]
 pub struct Group {
 	/// Name of the role group
@@ -103,40 +104,33 @@ pub struct Group {
 	/// [`serenity::MessageId`] that the group is posted in.
 	pub message: serenity::MessageId,
 }
-impl Group {
-	pub async fn from_batch_query(
-		guild_id: serenity::GuildId,
-		db: &sqlx::SqlitePool
-	) -> Result<Vec<Self>, Error> {
-		sqlx::query_as("SELECT name,message FROM role_groups WHERE guild_id = ?;")
-			.bind(guild_id.get() as i64)
-			.fetch_all(db)
-			.await
-			.map_err(|e| e.into())
-	}
+
+pub async fn groups_from_query(
+	guild_id: serenity::GuildId,
+	db: &sqlx::SqlitePool
+) -> Result<Vec<Group>, Error> {
+	sqlx::query_as("SELECT name,message FROM role_groups WHERE guild_id = ?;")
+		.bind(guild_id.get() as i64)
+		.fetch_all(db)
+		.await
+		.map_err(|e| e.into())
 }
 
+pub async fn roles_from_query(
+	guild_id: serenity::GuildId,
+	group_name: &str,
+	db: &sqlx::SqlitePool
+) -> Result<Vec<serenity::RoleId>, Error> {
+	let res = sqlx::query_scalar::<_, u64>("SELECT role_id FROM roles WHERE guild_id = ? AND group_name = ?;")
+		.bind(guild_id.get() as i64)
+		.bind(group_name)
+		.fetch_all(db)
+		.await;
 
-#[derive(FromRow, Debug)]
-pub struct Role {
-	#[sqlx(try_from = "u64")]
-	/// [`serenity::GuildId`] of the server.
-	pub guild_id: serenity::GuildId,
-	/// Name of the group that the role is under.
-	pub group_name: String,
-	#[sqlx(try_from = "u64")]
-	/// [`serenity::RoleId`] of the role.
-	pub role_id: serenity::RoleId
-}
-impl Role {
-	pub async fn from_batch_query(
-		guild_id: serenity::GuildId,
-		db: &sqlx::SqlitePool
-	) -> Result<Vec<Self>, Error> {
-		sqlx::query_as("SELECT group_name,role_id FROM roles WHERE guild_id = ?;")
-			.bind(guild_id.get() as i64)
-			.fetch_all(db)
-			.await
-			.map_err(|e| e.into())
+	match res {
+		Ok(v) => Ok(v.into_iter()
+			.map(|f| serenity::RoleId::from(f))
+			.collect()),
+		Err(e) => Err(e.into())
 	}
 }
