@@ -19,14 +19,14 @@ pub async fn mci_handler(
 	data: &Data,
 	mci: &serenity::ComponentInteraction
 ) -> Result<(), Error> {
-	let srv_features = query_as::<_, db::ServerSettings>("SELECT * FROM server_settings WHERE id = ?;")
+	let srv_features = query_as::<_, db::GuildSettings>("SELECT * FROM server_settings WHERE id = ?;")
 		.bind(mci.guild_id.unwrap_or_default().get() as i64)
 		.fetch_one(&data.db)
 		.await?;
 	let mut mci_id: VecDeque<&str> = mci.data.custom_id.split_terminator('.').collect();
 
 	// Interaction futureproof
-	match mci_id.pop_front().ok_or_else(|| "Malformed interaction id.")? {
+	match mci_id.pop_front().ok_or("Malformed interaction id.")? {
 		"roles" => {
 			if srv_features.roles {
 				roles_click(ctx, data, mci, &mut mci_id).await?;
@@ -49,14 +49,14 @@ async fn roles_click(
 	};
 
 	let server = if let Some(r) = mci.guild_id
-		.ok_or_else(|| "Not a Guild")?
+		.ok_or("Not a Guild")?
 		.to_guild_cached(ctx) {
 		r.to_owned()
 	} else {
 		return Err(serenity::ModelError::GuildNotFound.into())
 	};
 
-	let db_group_roles = query_as::<_, db::Role>(&format!("SELECT * FROM roles WHERE server_id = ? AND group_name = ?;"))
+	let db_group_roles = query_as::<_, db::Role>("SELECT * FROM roles WHERE server_id = ? AND group_name = ?;")
 		.bind(server.id.get() as i64)
 		.bind(group_name)
 		.fetch_all(&data.db)
@@ -74,11 +74,11 @@ async fn roles_click(
 		return Err(Error::from("Not a GuildChannel"))
 	};
 
-	match id_vec.pop_front().ok_or_else(|| "Malformed interaction id.")? {
+	match id_vec.pop_front().ok_or("Malformed interaction id.")? {
 		// Rolelist Pick
 		"pick" => {
 			// TODO: Standardize Error
-			if server.user_permissions_in(&channel, &member).manage_roles() {
+			if server.user_permissions_in(&channel, member).manage_roles() {
 				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 					.ephemeral(true)
 					.embed(templates::state_embed(false, "For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself. If you cannot assign them to yourself then I can't assign them to anyone anyway."))
@@ -155,7 +155,7 @@ async fn roles_click(
 
 			// Vector of selected roles
 			let selected_roles = match &sec_mci.data.kind {
-				serenity::ComponentInteractionDataKind::StringSelect { values } => values.into_iter()
+				serenity::ComponentInteractionDataKind::StringSelect { values } => values.iter()
 					.map(|s| serenity::RoleId::from_str(s).map_err(|e| e.into()))
 					.collect::<Result<Vec<serenity::RoleId>, Error>>()?,
 				_ => {
@@ -235,7 +235,7 @@ async fn roles_click(
 
 		// Rolelist Edit
 		"edit" => {
-			if !server.user_permissions_in(&channel, &member).manage_roles() {
+			if !server.user_permissions_in(&channel, member).manage_roles() {
 				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 					.ephemeral(true)
 					.embed(templates::state_embed(false, "You do not have the required permissions for this."))
@@ -292,7 +292,7 @@ async fn roles_click(
 			).await?;
 
 			let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &sec_mci.data.kind {
-				values.into_iter()
+				values.iter()
 				.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
 				.collect::<Result<Vec<misc::RoleVitals>, Error>>()?
 			} else {

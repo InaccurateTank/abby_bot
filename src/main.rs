@@ -6,8 +6,14 @@ use sqlx::{
 	Sqlite,
 	sqlite::{SqliteConnectOptions, SqlitePoolOptions}
 };
+use tracing::{
+	info,
+	error,
+	level_filters::LevelFilter
+};
 
 mod commands;
+mod error;
 mod events;
 mod structs;
 mod templates;
@@ -30,13 +36,25 @@ pub struct Data {
 struct Opts {
 	help: bool,
 	#[options(help = "Set data folder location.", default = "data/")]
-	data: String
+	data: String,
+	#[options(count, help = "Set data folder location.")]
+	verbose: u8
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
 	// Opts
 	let opts = Opts::parse_args_default_or_exit();
+
+	let verbosity = match opts.verbose {
+		0 => LevelFilter::WARN,
+		1 => LevelFilter::INFO,
+		_ => LevelFilter::DEBUG
+	};
+	tracing_subscriber::fmt()
+		.with_max_level(verbosity)
+		.without_time()
+		.init();
 
 	// Data Folder From Opts
 	let data_folder = if !opts.data.ends_with('/') {
@@ -52,9 +70,10 @@ async fn main() -> Result<(), Error> {
 	let db_url = format!("sqlite:{data_folder}sqlite.db");
 	// Check if DB exists
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-		println!("Database absent in '{data_folder}', creating...");
+		info!("Database absent in '{data_folder}', creating...");
+		// println!("Database absent in '{data_folder}', creating...");
 		match Sqlite::create_database(&db_url).await {
-			Ok(_) => println!("DB Creation Success!"),
+			Ok(_) => info!("Database creation successful."),// println!("DB Creation Success!"),
 			Err(error) => panic!("error: {error}")
 		}
 	}
@@ -137,13 +156,15 @@ async fn main() -> Result<(), Error> {
 		.await {
 		Ok(c) => c,
 		Err(e) => {
-			println!("Error assembling client: {e:?}");
+			error!("Error assembling Discord client: {e:?}");
+			// println!("Error assembling client: {e:?}");
 			return Ok(())
 		}
 	};
 
 	if let Err(why) = client.start().await {
-		println!("Client error: {why:?}");
+		error!("Client error: {why:?}");
+		// println!("Client error: {why:?}");
 	}
 	Ok(())
 }

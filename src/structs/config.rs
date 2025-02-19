@@ -16,6 +16,7 @@ impl Config {
 	pub fn new(folder: &str) -> Result<Self, Error> {
 		let mut file = OpenOptions::new()
 			.create(true)
+			.truncate(false)
 			.read(true)
 			.write(true)
 			.open(utils::concat(folder, "config.toml"))?;

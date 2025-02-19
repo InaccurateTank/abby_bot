@@ -9,19 +9,8 @@ use crate::{
 	utils::concat
 };
 
-// CREATE TABLE IF NOT EXISTS server_settings
-// (
-// 	id						INT		PRIMARY KEY NOT NULL,
-// 	serious				BOOL	NOT NULL DEFAULT true,
-// 	messages			BOOL	NOT NULL DEFAULT false,
-// 	roles					BOOL	NOT NULL DEFAULT false,
-// 	roles_channel	INT		DEFAULT NULL
-// );
-
 #[derive(Debug, Clone)]
-pub struct ServerSettings {
-	/// [`serenity::GuildId`] of the server, stored as an [i64].
-	pub id: serenity::GuildId,
+pub struct GuildSettings {
 	/// Whether the server is serious or not, default `true`.
 	pub serious: bool,
 	/// Whether the bot should respond to message events, default `false`.
@@ -31,18 +20,33 @@ pub struct ServerSettings {
 	/// Channel to manage roles from if applicable, default `None`.
 	pub roles_channel: Option<serenity::ChannelId>
 }
-impl ServerSettings {
-	pub fn new(guild_id: serenity::GuildId) -> Self {
-		let mut result = Self::default();
-		result.id = guild_id;
-		result
+impl GuildSettings {
+	pub async fn from_query(
+		guild_id: serenity::GuildId,
+		db: &sqlx::SqlitePool
+	) -> Result<Self, Error> {
+		sqlx::query_as("SELECT serious,messages,roles,roles_channel FROM guild_settings WHERE id = ?;")
+			.bind(guild_id.get() as i64)
+			.fetch_one(db)
+			.await
+			.map_err(|e| e.into())
 	}
 
-	pub async fn from_query(guild_id: serenity::GuildId, db: &sqlx::SqlitePool) -> Result<Option<Self>, sqlx::Error> {
-		sqlx::query_as("SELECT * FROM server_settings WHERE id = ?;")
+	pub async fn update(
+		&self,
+		guild_id: serenity::GuildId,
+		db: &sqlx::SqlitePool
+	) -> Result<(), Error> {
+		sqlx::query("UPDATE servers SET serious = ?, messages = ?, roles = ?, roles_channel = ? WHERE id = ?;")
+			.bind(self.serious)
+			.bind(self.messages)
+			.bind(self.roles)
+			.bind(self.roles_channel.map(|id| id.get() as i64))
 			.bind(guild_id.get() as i64)
-			.fetch_optional(db)
+			.execute(db)
 			.await
+			.map(|_| ())
+			.map_err(|e| e.into())
 	}
 
 	pub fn as_array(&self) -> [(&str, bool); 3] {
@@ -63,10 +67,9 @@ impl ServerSettings {
 		opts
 	}
 }
-impl Default for ServerSettings {
+impl Default for GuildSettings {
 	fn default() -> Self {
 		Self {
-			id: serenity::GuildId::default(),
 			serious: true,
 			messages: false,
 			roles: false,
@@ -74,14 +77,8 @@ impl Default for ServerSettings {
 		}
 	}
 }
-impl FromRow<'_, SqliteRow> for ServerSettings {
+impl FromRow<'_, SqliteRow> for GuildSettings {
 	fn from_row(row: &SqliteRow) -> sqlx::Result<Self, sqlx::Error> {
-
-		let mapped_id = match row.try_get::<u64, &str>("id") {
-			Ok(raw) => serenity::GuildId::from(raw),
-			Err(e) => return Err(e)
-		};
-
 		let mapped_roles_channel = match row.try_get::<Option<u64>, &str>("roles_channel") {
 			Ok(raw) => raw.map(|inner| serenity::ChannelId::from(inner)),
 			Err(e) => return Err(e)
@@ -89,7 +86,6 @@ impl FromRow<'_, SqliteRow> for ServerSettings {
 
 		Ok(
 			Self {
-				id: mapped_id,
 				serious: row.try_get::<bool, &str>("serious")?,
 				messages: row.try_get::<bool, &str>("messages")?,
 				roles: row.try_get::<bool, &str>("roles")?,
@@ -99,43 +95,48 @@ impl FromRow<'_, SqliteRow> for ServerSettings {
 	}
 }
 
-// CREATE TABLE IF NOT EXISTS role_groups(
-// 	server_id			INT		NOT NULL,
-//   group_name 		TEXT	NOT NULL,
-//   group_message INT		NOT NULL,
-// 	FOREIGN KEY (server_id) REFERENCES settings(id)
-// 		ON DELETE CASCADE,
-// 	UNIQUE (server_id, group_name)
-// );
 #[derive(FromRow, Debug)]
 pub struct Group {
-	#[sqlx(try_from = "u64")]
-	/// [`serenity::GuildId`] of the server, stored as an [i64].
-	pub server_id: serenity::GuildId,
 	/// Name of the role group
-	pub group_name: String,
+	pub name: String,
 	#[sqlx(try_from = "u64")]
-	/// [`serenity::MessageId`] that the group is posted in, stored as an [`i64`].
-	pub group_message: serenity::MessageId,
+	/// [`serenity::MessageId`] that the group is posted in.
+	pub message: serenity::MessageId,
+}
+impl Group {
+	pub async fn from_batch_query(
+		guild_id: serenity::GuildId,
+		db: &sqlx::SqlitePool
+	) -> Result<Vec<Self>, Error> {
+		sqlx::query_as("SELECT name,message FROM role_groups WHERE guild_id = ?;")
+			.bind(guild_id.get() as i64)
+			.fetch_all(db)
+			.await
+			.map_err(|e| e.into())
+	}
 }
 
 
-// CREATE TABLE IF NOT EXISTS roles (
-// 	server_id		INT		NOT NULL,
-//   group_name	TEXT 	NOT NULL,
-//   role_id 		INT		NOT NULL,
-// 	FOREIGN KEY (server_id) REFERENCES settings(id)
-// 		ON DELETE CASCADE,
-// 	UNIQUE (server_id, role_id)
-// );
 #[derive(FromRow, Debug)]
 pub struct Role {
 	#[sqlx(try_from = "u64")]
-	/// [`serenity::GuildId`] of the server, stored as an [i64].
-	pub server_id: serenity::GuildId,
+	/// [`serenity::GuildId`] of the server.
+	pub guild_id: serenity::GuildId,
 	/// Name of the group that the role is under.
 	pub group_name: String,
 	#[sqlx(try_from = "u64")]
-	/// [`serenity::RoleId`] of the role, stored as an [`i64`].
+	/// [`serenity::RoleId`] of the role.
 	pub role_id: serenity::RoleId
+}
+impl Role {
+	pub async fn from_batch_query(
+		guild_id: serenity::GuildId,
+		db: &sqlx::SqlitePool
+	) -> Result<Vec<Self>, Error> {
+		sqlx::query_as("SELECT group_name,role_id FROM roles WHERE guild_id = ?;")
+			.bind(guild_id.get() as i64)
+			.fetch_all(db)
+			.await
+			.map_err(|e| e.into())
+	}
 }

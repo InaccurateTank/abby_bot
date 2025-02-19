@@ -3,8 +3,9 @@ name = "abby_bot"
 authors = ["inaccuratetank"]
 description = "A poorly assembled custom chatbot"
 repository = "https://git.inaccuratetank.gay/inaccuratetank/abby_bot"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 poise = { version = "0.6" }
@@ -15,6 +16,8 @@ gumdrop = { version = "0.8" }
 sqlx = { version = "0.8", features = [ "runtime-tokio-native-tls", "sqlite" ] }
 serde = { version = "1.0" }
 toml = { version = "0.8" }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3" }
 
 [dev-dependencies]
 brunch = "0.8"

@@ -1,7 +1,11 @@
 use std::collections::HashSet;
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateMessage, CreateEmbed };
-use sqlx::{query, query_as, query_scalar};
+use sqlx::{
+	query,
+	query_scalar
+};
+use tracing::info;
 use crate::{ EMBED_STD, Error, Data };
 use crate::structs::db;
 use crate::utils;
@@ -42,14 +46,15 @@ pub async fn event_handler<'a>(
 					// Do things that a bot would do on server join
 					let id = guild.id.get();
 					// TODO: Log the console errors
-					println!("Creating database entry for server {} (GuildId {}).", guild.name, id);
+					info!("Creating database entry for guild {} (GuildId {id}).", guild.name);
+					// println!("Creating database entry for server {} (GuildId {}).", guild.name, id);
 					query("INSERT INTO server_settings (id) VALUES(?);")
 						.bind(id as i64)
 						.execute(&data.db)
 						.await?;
 					// If the bot can post in a default channel, do so. Better to disclose the join than not.
 					// TODO: Change intro message
-					if let Some(chid) = utils::default_bot_channel(ctx, &guild, framework.bot_id).await? {
+					if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
 						chid.send_message(ctx, CreateMessage::new()
 							.embed(CreateEmbed::new()
 								.title("Hello I'm Abby!")
@@ -116,16 +121,14 @@ pub async fn event_handler<'a>(
 
 		// On Message in Channel
 		serenity::FullEvent::Message { new_message } => {
-			let srv_features = if let Some(id) = new_message.guild_id {
-				query_as::<_, db::ServerSettings>("SELECT * FROM server_settings WHERE id = ?;")
-					.bind(id.get() as i64)
-					.fetch_one(&data.db)
-					.await?
+			// TODO: Error Handling
+			let guild_settings = if let Some(id) = new_message.guild_id {
+				db::GuildSettings::from_query(id, &data.db).await?
 			} else {
-				db::ServerSettings::default()
+				db::GuildSettings::default()
 			};
-			if (new_message.author.id != framework.bot_id) && srv_features.messages {
-				message::handler(ctx, new_message, srv_features).await?;
+			if (new_message.author.id != framework.bot_id) && guild_settings.messages {
+				message::handler(ctx, new_message, guild_settings).await?;
 			}
 		},
 

@@ -67,7 +67,7 @@ async fn delete(
 	group: String
 ) -> Result<(), Error> {
 	let server = if let Some(r) = ctx.guild_id()
-		.ok_or_else(|| "Not a Guild")?
+		.ok_or("Not a Guild")?
 		.to_guild_cached(ctx.cache()) {
 		r.to_owned()
 	} else {
@@ -160,7 +160,7 @@ async fn create(
 	group: String
 ) -> Result<(), Error> {
 	let server = if let Some(r) = ctx.guild_id()
-		.ok_or_else(|| "Not a Guild")?
+		.ok_or("Not a Guild")?
 		.to_guild_cached(ctx.cache()) {
 		r.to_owned()
 	} else {
@@ -168,7 +168,7 @@ async fn create(
 	};
 
 	// ChannelId from role settings
-	let channel = match query_as::<_, db::ServerSettings>("SELECT * FROM server_settings WHERE srvid = ?;")
+	let channel = match query_as::<_, db::GuildSettings>("SELECT * FROM server_settings WHERE srvid = ?;")
 		.bind(server.id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?
@@ -249,7 +249,7 @@ async fn create(
 	.await?;
 
 	let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind {
-		values.into_iter()
+		values.iter()
 		.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
 		.collect::<Result<Vec<misc::RoleVitals>, Error>>()?
 	} else {
