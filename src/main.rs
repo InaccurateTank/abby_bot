@@ -65,6 +65,7 @@ async fn main() -> Result<(), Error> {
 		opts.data
 	};
 
+	debug!("Loading configuration.");
 	// Config
 	let config = Config::new(&data_folder)?;
 
