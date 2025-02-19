@@ -7,6 +7,7 @@ use sqlx::{
 	sqlite::{SqliteConnectOptions, SqlitePoolOptions}
 };
 use tracing::{
+	debug,
 	info,
 	error,
 	level_filters::LevelFilter
@@ -48,9 +49,9 @@ async fn main() -> Result<(), Error> {
 	let opts = Opts::parse_args_default_or_exit();
 
 	let verbosity = match opts.verbose {
-		0 => LevelFilter::WARN,
-		1 => LevelFilter::INFO,
-		_ => LevelFilter::DEBUG
+		0 => LevelFilter::INFO,
+		1 => LevelFilter::DEBUG,
+		_ => LevelFilter::TRACE
 	};
 	tracing_subscriber::fmt()
 		.with_max_level(verbosity)
@@ -71,14 +72,13 @@ async fn main() -> Result<(), Error> {
 	let db_url = format!("sqlite:{data_folder}sqlite.db");
 	// Check if DB exists
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-		info!("Database absent in '{data_folder}', creating...");
-		// println!("Database absent in '{data_folder}', creating...");
+		debug!("Database absent in '{data_folder}', creating new one.");
 		match Sqlite::create_database(&db_url).await {
-			Ok(_) => info!("Database creation successful."),// println!("DB Creation Success!"),
+			Ok(_) => debug!("Database creation successful."),
 			Err(error) => panic!("error: {error}")
 		}
 	}
-	println!("Connecting to database...");
+	info!("Connecting to database.");
 	// Set DB options
 	let db_opts = SqliteConnectOptions::from_str(&db_url)?
 		.foreign_keys(true);
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Error> {
 	sqlx::migrate!("./migrations")
 		.run(&pool)
 		.await?;
-	println!("Database Connection established!");
+	debug!("Database Connection successfully established.");
 
 	// Bot Options
 	let options = poise::FrameworkOptions {
@@ -157,15 +157,13 @@ async fn main() -> Result<(), Error> {
 		.await {
 		Ok(c) => c,
 		Err(e) => {
-			error!("Error assembling Discord client: {e:?}");
-			// println!("Error assembling client: {e:?}");
+			error!("Error with Discord client: {e:?}");
 			return Ok(())
 		}
 	};
 
 	if let Err(why) = client.start().await {
 		error!("Client error: {why:?}");
-		// println!("Client error: {why:?}");
 	}
 	Ok(())
 }

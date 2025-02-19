@@ -82,7 +82,8 @@ pub async fn event_handler<'a>(
 		// On Login
 		serenity::FullEvent::Ready { data_about_bot } => {
 			// TODO: Log
-			println!("{} is connected!", data_about_bot.user.name);
+			info!("{} is connected!", data_about_bot.user.name);
+			// println!("{} is connected!", data_about_bot.user.name);
 			// Set status because memes
 			let status = serenity::ActivityData {
 				name: "Everything".to_string(),
