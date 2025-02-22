@@ -146,7 +146,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 			for grp in groups {
 				// Deleting messages
 				let delete = ctx.http()
-					.delete_message(updated.roles_channel.unwrap(), grp.message, Some("Role management disabled, deleting groups."))
+					.delete_message(updated.roles_channel.unwrap(), grp.message_id, Some("Role management disabled, deleting groups."))
 					.await;
 				if delete.is_err() {
 					ctx.send(poise::CreateReply::default()
@@ -265,7 +265,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 			if let Some(c) = guild_settings.roles_channel {
 				for entry in old_lists {
 					// If the old message can't even be reached then no point trying anyway.
-					if let Ok(old_message) = c.message(ctx, entry.message).await {
+					if let Ok(old_message) = c.message(ctx, entry.message_id).await {
 						let new_message = chid.send_message(ctx, serenity::CreateMessage::new()
 							// Copy embed
 							.embed(serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned()))
@@ -275,7 +275,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 							])
 						).await?;
 						// Update database with new message
-						query("UPDATE role_groups SET group_message = ? WHERE guild_id = ? AND name = ?;")
+						query("UPDATE role_groups SET group_message = ? WHERE guild_id = ? AND group_name = ?;")
 							.bind(guild.id.get() as i64)
 							.bind(new_message.id.get() as i64)
 							.bind(entry.name)
@@ -297,7 +297,7 @@ async fn roles(ctx: Context<'_>) -> Result<(), Error> {
 		}
 
 		// Update the database with the new channel
-		query("UPDATE guild_settings SET roles_channel = ? WHERE id = ?;")
+		query("UPDATE guild_settings SET roles_channel = ? WHERE guild_id = ?;")
 			.bind(chid.get() as i64)
 			.bind(ctx.guild_id().unwrap().get() as i64)
 			.execute(&ctx.data().db)

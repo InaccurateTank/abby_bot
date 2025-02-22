@@ -2,7 +2,6 @@ use std::str::FromStr;
 use poise::serenity_prelude as serenity;
 use sqlx::{
 	query,
-	query_as,
 	query_scalar
 };
 use crate::{
@@ -24,6 +23,7 @@ use crate::{
 #[poise::command(
 	guild_only,
 	slash_command,
+	check = "utils::check_roles",
 	required_permissions="MANAGE_ROLES",
 	category="Administration",
 	ephemeral,
@@ -40,11 +40,11 @@ async fn autocomplete_groups<'a>(
 	ctx: Context<'_>,
 	partial: &'a str
 ) -> impl Iterator< Item = String > + 'a {
-	let srv_id = ctx.guild_id()
+	let guild_id = ctx.guild_id()
 		.unwrap();
 
 	let groups: Vec<String> = query_scalar("SELECT group_name from role_groups WHERE server_id = ?")
-		.bind(srv_id.get() as i64)
+		.bind(guild_id.get() as i64)
 		.fetch_all(&ctx.data().db)
 		.await
 		.unwrap();
@@ -56,7 +56,6 @@ async fn autocomplete_groups<'a>(
 #[poise::command(
 	guild_only,
 	slash_command,
-	check = "utils::check_roles",
 	required_permissions="MANAGE_ROLES",
 	category="Administration",
 	ephemeral
@@ -67,7 +66,7 @@ async fn delete(
 	#[autocomplete = "autocomplete_groups"]
 	group: String
 ) -> Result<(), Error> {
-	let server = if let Some(r) = ctx.guild_id()
+	let guild = if let Some(r) = ctx.guild_id()
 		.ok_or("Not a Guild")?
 		.to_guild_cached(ctx.cache()) {
 		r.to_owned()
@@ -76,48 +75,8 @@ async fn delete(
 	};
 
 	// Info Gathering
-	let channel: serenity::ChannelId = query_scalar::<_, u64>("SELECT roles_channel FROM server_settings WHERE id = ?;")
-		.bind(server.id.get() as i64)
-		.fetch_one(&ctx.data().db)
-		.await?
-		.into();
-	let message: serenity::MessageId = query_scalar::<_, u64>("SELECT group_message FROM role_groups WHERE server_id = ? AND group_name = ?;")
-		.bind(server.id.get() as i64)
-		.bind(&group)
-		.fetch_one(&ctx.data().db)
-		.await?
-		.into();
-
-
-	// let group_entry = if let Some(rgroup) = query_as::<_, db::Group>(&format!("SELECT group_message FROM role_groups WHERE server_id = ? AND group_name = ?;"))
-	// 	.bind(server.id.get() as i64)
-	// 	.bind(group)
-	// 	.fetch_optional(&ctx.data().db)
-	// 	.await? {
-	// 	  rgroup
-	// } else {
-	// 	ctx.send(poise::CreateReply::default()
-	// 		.ephemeral(true)
-	// 		.embed(templates::state_embed(false, &format!("Role group \"{group}\" does not exist.")))
-	// 	).await?;
-	// 	return Ok(())
-	// };
-
-	// let group_channel = serenity::ChannelId::new(query_as::<_, db::ServerRoles>("SELECT * FROM role_options WHERE srvid = ?;")
-	// 	.bind(srv_id.get() as i64)
-	// 	.fetch_one(&ctx.data().db)
-	// 	.await?
-	// 	.channel
-	// 	.unwrap_or(srv_id.to_guild_cached(&ctx)
-	// 		.unwrap()
-	// 		.system_channel_id
-	// 		.unwrap_or(ctx.guild()
-	// 			.unwrap()
-	// 			.default_channel(ctx.framework().bot_id)
-	// 			.unwrap()
-	// 			.id
-	// 		).get() as i64
-	// 	) as u64);
+	let channel = database::roles_channel_query(guild.id, &ctx.data().db).await?;
+	let message = database::group_message_query(guild.id, &group, &ctx.data().db).await?;
 
 	// Deletions
 	if ctx.http().delete_message(channel, message, Some(&format!("Deleting Role List \"{group}\""))).await.is_err() {
@@ -127,13 +86,13 @@ async fn delete(
 		).await?;
 	}
 	// Delete Database Entries
-	query("DELETE FROM role_groups WHERE server_id = ? AND group_name = ?;")
-		.bind(server.id.get() as i64)
+	query("DELETE FROM role_groups WHERE guild_id = ? AND group_name = ?;")
+		.bind(guild.id.get() as i64)
 		.bind(&group)
 		.execute(&ctx.data().db)
 		.await?;
-	query("DELETE FROM roles WHERE server_id = ? AND group_name = ?;")
-		.bind(server.id.get() as i64)
+	query("DELETE FROM roles WHERE guild_id = ? AND group_name = ?;")
+		.bind(guild.id.get() as i64)
 		.bind(&group)
 		.execute(&ctx.data().db)
 		.await?;
@@ -150,7 +109,6 @@ async fn delete(
 #[poise::command(
 	guild_only,
 	slash_command,
-	check = "utils::check_roles",
 	required_permissions="MANAGE_ROLES",
 	category="Administration",
 	ephemeral
@@ -160,7 +118,7 @@ async fn create(
 	#[description = "Name of the role group."]
 	group: String
 ) -> Result<(), Error> {
-	let server = if let Some(r) = ctx.guild_id()
+	let guild = if let Some(r) = ctx.guild_id()
 		.ok_or("Not a Guild")?
 		.to_guild_cached(ctx.cache()) {
 		r.to_owned()
@@ -169,12 +127,8 @@ async fn create(
 	};
 
 	// ChannelId from role settings
-	let channel = match query_as::<_, database::GuildSettings>("SELECT * FROM server_settings WHERE srvid = ?;")
-		.bind(server.id.get() as i64)
-		.fetch_one(&ctx.data().db)
-		.await?
-		.roles_channel {
-		Some(chid) => {
+	let channel = match database::roles_channel_query(guild.id, &ctx.data().db).await {
+		Ok(chid) => {
 			// If exists but can't be posted in just stop and error
 			if !utils::can_post(ctx, &chid, ctx.framework().bot_id).await? {
 				let name = chid.name(ctx).await.unwrap();
@@ -185,7 +139,7 @@ async fn create(
 			}
 			chid
 		},
-		None => {
+		Err(_) => {
 			// If it doesn't exist at all
 			ctx.send(poise::CreateReply::default()
 				.embed(templates::state_embed(false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`."))
@@ -195,7 +149,7 @@ async fn create(
 	};
 
 	// Select sorting
-	let mut initial_rolelist: Vec<&serenity::Role> = server.roles
+	let mut initial_rolelist: Vec<&serenity::Role> = guild.roles
 		.values()
 		.filter(|r| {
 			utils::role_filter(r)
@@ -251,7 +205,7 @@ async fn create(
 
 	let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind {
 		values.iter()
-		.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
+		.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
 		.collect::<Result<Vec<misc::RoleVitals>, Error>>()?
 	} else {
 		interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
@@ -267,16 +221,16 @@ async fn create(
 			.components(vec![templates::rolelist_components(&group)])
 		).await {
 		// Add roles if successful
-		query("INSERT INTO role_groups (server_id, group_name, group_message) VALUES (?, ?, ?)")
-			.bind(server.id.get() as i64)
+		query("INSERT INTO role_groups (guild_id, group_name, message) VALUES (?, ?, ?)")
+			.bind(guild.id.get() as i64)
 			.bind(&group)
 			.bind(msg.id.get() as i64)
 			.execute(&ctx.data().db)
 			.await?;
 		// Insert roles into database.
 		for r in &selected_roles {
-			query("INSERT INTO roles (server_id, group_name, role_id) VALUES(?, ?, ?);")
-				.bind(server.id.get() as i64)
+			query("INSERT INTO roles (guild_id, group_name, role_id) VALUES(?, ?, ?);")
+				.bind(guild.id.get() as i64)
 				.bind(&group)
 				.bind(r.id.get() as i64)
 				.execute(&ctx.data().db)

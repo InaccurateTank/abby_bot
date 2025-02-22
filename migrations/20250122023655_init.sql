@@ -1,6 +1,6 @@
 -- Server Settings
 CREATE TABLE guild_settings (
-	id						INT		PRIMARY KEY NOT NULL,
+	guild_id			INT		PRIMARY KEY NOT NULL,
 	serious				BOOL	NOT NULL DEFAULT true,
 	messages			BOOL	NOT NULL DEFAULT false,
 	roles					BOOL	NOT NULL DEFAULT false,
@@ -9,10 +9,10 @@ CREATE TABLE guild_settings (
 
 -- Role Groups
 CREATE TABLE role_groups (
-	guild_id	INT		NOT NULL,
-  name		 	TEXT	NOT NULL,
-  message		INT		NOT NULL,
-	FOREIGN KEY (guild_id) REFERENCES guild_settings(id)
+	guild_id		INT		NOT NULL,
+  group_name	TEXT	NOT NULL,
+  message_id	INT		NOT NULL,
+	FOREIGN KEY (guild_id) REFERENCES guild_settings(guild_id)
 		ON DELETE CASCADE,
 	UNIQUE (guild_id, group_name)
 );
@@ -22,7 +22,7 @@ CREATE TABLE roles (
 	guild_id		INT		NOT NULL,
   group_name	TEXT 	NOT NULL,
   role_id			INT		NOT NULL,
-	FOREIGN KEY (guild_id) REFERENCES guild_settings(id)
+	FOREIGN KEY (guild_id) REFERENCES guild_settings(guild_id)
 		ON DELETE CASCADE,
 	UNIQUE (guild_id, role_id)
 );
@@ -32,3 +32,11 @@ CREATE TRIGGER no_orphaned_roles
 BEGIN
 	SELECT RAISE(FAIL, 'No such role group exists yet.');
 END;
+
+SELECT
+  l.roles_channel,
+  r.message_id
+FROM
+  guild_settings l
+  INNER JOIN role_groups r USING (guild_id)
+WHERE guild_id = 2;

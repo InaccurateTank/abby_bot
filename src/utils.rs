@@ -93,7 +93,7 @@ pub async fn check_serious(ctx: Context<'_>) -> Result<bool, Error> {
 	let Some(id) = ctx.guild_id() else {
 		return Ok(true)
 	};
-	let serious = sqlx::query_scalar::<_, bool>("SELECT serious FROM server_settings WHERE id = ?);")
+	let serious = sqlx::query_scalar::<_, bool>("SELECT serious FROM guild_settings WHERE guild_id = ?);")
 		.bind(id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
@@ -110,7 +110,7 @@ pub async fn check_roles(ctx: Context<'_>) -> Result<bool, Error> {
 	let Some(id) = ctx.guild_id() else {
 		return Ok(false)
 	};
-	let roles = sqlx::query_scalar::<_, bool>("SELECT roles FROM server_settings WHERE id = ?);")
+	let roles = sqlx::query_scalar::<_, bool>("SELECT roles FROM guild_settings WHERE guild_id = ?);")
 		.bind(id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;

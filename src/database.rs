@@ -34,7 +34,7 @@ impl GuildSettings {
 	}
 
 	/// While the standard default function is useful for servers, some minor changes are needed for handling private messages.
-	pub fn pm_default() -> Self {
+	pub fn private_default() -> Self {
 		Self {
 			serious: true,
 			messages: true,
@@ -49,7 +49,7 @@ impl GuildSettings {
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
 	) -> Result<(), Error> {
-		sqlx::query("UPDATE servers SET serious = ?, messages = ?, roles = ?, roles_channel = ? WHERE id = ?;")
+		sqlx::query("UPDATE servers SET serious = ?, messages = ?, roles = ?, roles_channel = ? WHERE guild_id = ?;")
 			.bind(self.serious)
 			.bind(self.messages)
 			.bind(self.roles)
@@ -116,14 +116,44 @@ pub struct Group {
 	pub name: String,
 	#[sqlx(try_from = "u64")]
 	/// [`serenity::MessageId`] that the group is posted in.
-	pub message: serenity::MessageId,
+	pub message_id: serenity::MessageId,
+}
+
+pub async fn roles_channel_query(
+	guild_id: serenity::GuildId,
+	db: &sqlx::SqlitePool
+) -> Result<serenity::ChannelId, Error> {
+	sqlx::query_scalar::<_, u64>("SELECT roles_channel FROM guild_settings WHERE guild_id = ?;")
+		.bind(guild_id.get() as i64)
+		.fetch_one(db)
+		.await
+		.map_or_else(
+			|e| Err(e.into()),
+			|v| Ok(serenity::ChannelId::from(v))
+		)
+}
+
+pub async fn group_message_query(
+	guild_id: serenity::GuildId,
+	group_name: &str,
+	db: &sqlx::SqlitePool
+) -> Result<serenity::MessageId, Error> {
+	sqlx::query_scalar::<_, u64>("SELECT group_message FROM role_groups WHERE guild_id = ? AND group_name = ?;")
+		.bind(guild_id.get() as i64)
+		.bind(group_name)
+		.fetch_one(db)
+		.await
+		.map_or_else(
+			|e| Err(e.into()),
+			|v| Ok(serenity::MessageId::from(v))
+		)
 }
 
 pub async fn groups_from_query(
 	guild_id: serenity::GuildId,
 	db: &sqlx::SqlitePool
 ) -> Result<Vec<Group>, Error> {
-	sqlx::query_as("SELECT name,message FROM role_groups WHERE guild_id = ?;")
+	sqlx::query_as("SELECT group_name,message_id FROM role_groups WHERE guild_id = ?;")
 		.bind(guild_id.get() as i64)
 		.fetch_all(db)
 		.await

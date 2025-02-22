@@ -27,7 +27,7 @@ async fn on_join<'a>(
 	// TODO: Log the console errors
 	debug!("Creating database entry for guild.");
 	{
-		let insert = query("INSERT INTO guild_settings (id) VALUES (?);")
+		let insert = query("INSERT INTO guild_settings (guild_id) VALUES (?);")
 			.bind(guild.id.get() as i64)
 			.execute(db)
 			.await;
@@ -60,7 +60,7 @@ async fn on_leave(
 ) -> Result<(), Error> {
 	info!("Removing guild {guid} from database.");
 	// Deletion cascades now so this is all we need
-	let result = query("DELETE FROM guild_settings WHERE id = ?;")
+	let result = query("DELETE FROM guild_settings WHERE guild_id = ?;")
 		.bind(guid as i64)
 		.execute(db)
 		.await;
@@ -83,7 +83,7 @@ pub async fn event_handler<'a>(
 			// If server is detected as new. This can fail
 			if is_new.is_some_and(|x| x) {
 				// Check if server is *actually* new.
-				let actually_new = query_scalar::<_, bool>("SELECT NOT EXISTS (SELECT 1 FROM guild_settings WHERE id = ?);")
+				let actually_new = query_scalar::<_, bool>("SELECT NOT EXISTS (SELECT 1 FROM guild_settings WHERE guild_id = ?);")
 					.bind(guild.id.get() as i64)
 					.fetch_one(&data.db)
 					.await;
@@ -120,7 +120,7 @@ pub async fn event_handler<'a>(
 			};
 			ctx.set_activity(Some(status));
 			// If servers have been removed, run a purge
-			let db_guilds: HashSet<u64> = query_scalar("SELECT id FROM guild_settings;")
+			let db_guilds: HashSet<u64> = query_scalar("SELECT guild_id FROM guild_settings;")
 				.fetch_all(&data.db)
 				.await?
 				.into_iter()
@@ -153,7 +153,7 @@ pub async fn event_handler<'a>(
 			let guild_settings = if let Some(id) = new_message.guild_id {
 				database::GuildSettings::from_query(id, &data.db).await?
 			} else {
-				database::GuildSettings::pm_default()
+				database::GuildSettings::private_default()
 			};
 			if (new_message.author.id != framework.bot_id) && guild_settings.messages {
 				message::handler(ctx, new_message, guild_settings).await?;
