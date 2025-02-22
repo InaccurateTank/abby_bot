@@ -111,6 +111,16 @@ async fn main() -> Result<(), Error> {
 			..Default::default()
 		},
 		event_handler: |ctx, event, framework, data| Box::pin(events::event_handler(ctx, event, framework, data)),
+		pre_command: |ctx| {
+			Box::pin(async move {
+				debug!("{} invoked {}.", ctx.author().name, ctx.invocation_string());
+			})
+		},
+		post_command: |ctx| {
+			Box::pin(async move {
+				debug!("Invocation {} from {} finished successfully.", ctx.invocation_string(), ctx.author().name);
+			})
+		},
 		..Default::default()
 	};
 	let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::GUILD_MESSAGES | serenity::GatewayIntents::MESSAGE_CONTENT;
