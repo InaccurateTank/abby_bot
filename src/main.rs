@@ -113,7 +113,7 @@ async fn main() -> Result<(), Error> {
 		event_handler: |ctx, event, framework, data| Box::pin(events::event_handler(ctx, event, framework, data)),
 		pre_command: |ctx| {
 			Box::pin(async move {
-				debug!("{} invoked {}.", ctx.author().name, ctx.invocation_string());
+				debug!("{} invoked {}", ctx.author().name, ctx.invocation_string());
 			})
 		},
 		post_command: |ctx| {
