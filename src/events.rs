@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateMessage, CreateEmbed };
 use sqlx::{
@@ -7,9 +8,10 @@ use sqlx::{
 };
 use tracing::{
 	debug,
-	info
+	info,
+	instrument
 };
-use crate::{ EMBED_STD, Error, Data };
+use crate::{ EMBED_STD, Data };
 use crate::database;
 use crate::utils;
 
@@ -18,11 +20,11 @@ mod interaction;
 
 async fn on_join<'a>(
 	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache> + AsRef<serenity::Http>,
-	framework: poise::FrameworkContext<'a, Data, Error>,
+	framework: poise::FrameworkContext<'a, Data, Report>,
 	guild_id: serenity::GuildId,
 	guild_name: &str,
 	db: &sqlx::Pool<sqlx::Sqlite>
-) -> Result<(), Error> {
+) -> Result<()> {
 	info!("Joining guild \"{}\" (GuildId {}).", guild_name, guild_id);
 	// Do things that a bot would do on server join
 	// TODO: Log the console errors
@@ -46,7 +48,7 @@ async fn on_join<'a>(
 async fn on_leave(
 	guild_id: serenity::GuildId,
 	db: &sqlx::Pool<sqlx::Sqlite>
-) -> Result<(), Error> {
+) -> Result<()> {
 	info!("Removing guild {guild_id} from database.");
 	// Deletion cascades now so this is all we need
 	let result = query("DELETE FROM guild_settings WHERE guild_id = ?;")
@@ -60,15 +62,18 @@ async fn on_leave(
 	}
 }
 
+#[instrument(skip_all, fields(event))]
 pub async fn event_handler<'a>(
 	ctx: &serenity::Context,
 	event: &serenity::FullEvent,
-	framework: poise::FrameworkContext<'a, Data, Error>,
+	framework: poise::FrameworkContext<'a, Data, Report>,
 	data: &Data
-) -> Result<(), Error> {
+) -> Result<()> {
 	match event {
 		// Join Server
 		serenity::FullEvent::GuildCreate { guild, is_new } => {
+			tracing::Span::current().record("event", "GuildCreate");
+
 			// If server is detected as new. This can fail
 			if is_new.is_some_and(|x| x) {
 				// Check if server is *actually* new.
@@ -82,16 +87,16 @@ pub async fn event_handler<'a>(
 						on_join(ctx, framework, guild.id, &guild.name, &data.db).await?;
 						// If the bot can post in a default channel, do so. Better to disclose the join than not.
 						// TODO: Change intro message
-						// if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
-							// chid.send_message(ctx, CreateMessage::new()
-							// 	.embed(CreateEmbed::new()
-							// 		.title("Hello I'm Abby!")
-							// 		.color(EMBED_STD)
-							// 		.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-							// 		.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-							// 	)
-							// ).await?;
-						// }
+						if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
+							chid.send_message(ctx, CreateMessage::new()
+								.embed(CreateEmbed::new()
+									.title("Hello I'm Abby!")
+									.color(EMBED_STD)
+									.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
+									.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+								)
+							).await?;
+						}
 					},
 					// Error
 					Err(e) => return Err(e.into()),
@@ -103,6 +108,8 @@ pub async fn event_handler<'a>(
 
 		// Kicked from Server
 		serenity::FullEvent::GuildDelete { incomplete, .. } => {
+			tracing::Span::current().record("event", "GuildDelete");
+
 			// Should only be leaving servers when kicked/banned
 			if !incomplete.unavailable {
 				on_leave(incomplete.id, &data.db).await?;
@@ -111,6 +118,8 @@ pub async fn event_handler<'a>(
 
 		// On Login
 		serenity::FullEvent::Ready { data_about_bot } => {
+			tracing::Span::current().record("event", "Ready");
+
 			// TODO: Log
 			info!("{} is connected!", data_about_bot.user.name);
 			// Set status because memes
@@ -143,6 +152,8 @@ pub async fn event_handler<'a>(
 
 		// On Message in Channel
 		serenity::FullEvent::Message { new_message } => {
+			tracing::Span::current().record("event", "Message");
+
 			// TODO: Error Handling
 			let guild_settings = if let Some(id) = new_message.guild_id {
 				database::GuildSettings::from_query(id, &data.db).await?
@@ -156,6 +167,7 @@ pub async fn event_handler<'a>(
 
 		// Longform Message Interactions
 		serenity::FullEvent::InteractionCreate { interaction: serenity::Interaction::Component(m) } => {
+			tracing::Span::current().record("event", "InteractionCreate");
 			interaction::mci_handler(ctx, data, m).await?;
 		}
 

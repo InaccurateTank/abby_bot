@@ -1,13 +1,11 @@
+use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use sqlx::{
 	FromRow,
 	Row,
 	sqlite::SqliteRow
 };
-use crate::{
-	Error,
-	utils::concat
-};
+use crate::utils::concat;
 
 #[derive(Debug, Clone)]
 pub struct GuildSettings {
@@ -25,7 +23,7 @@ impl GuildSettings {
 	pub async fn from_query(
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
-	) -> Result<Self, Error> {
+	) -> Result<Self> {
 		sqlx::query_as("SELECT serious,messages,roles,roles_channel FROM guild_settings WHERE id = ?;")
 			.bind(guild_id.get() as i64)
 			.fetch_one(db)
@@ -48,7 +46,7 @@ impl GuildSettings {
 		&self,
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
-	) -> Result<(), Error> {
+	) -> Result<()> {
 		sqlx::query("UPDATE servers SET serious = ?, messages = ?, roles = ?, roles_channel = ? WHERE guild_id = ?;")
 			.bind(self.serious)
 			.bind(self.messages)
@@ -122,7 +120,7 @@ pub struct Group {
 pub async fn roles_channel_query(
 	guild_id: serenity::GuildId,
 	db: &sqlx::SqlitePool
-) -> Result<serenity::ChannelId, Error> {
+) -> Result<serenity::ChannelId> {
 	sqlx::query_scalar::<_, u64>("SELECT roles_channel FROM guild_settings WHERE guild_id = ?;")
 		.bind(guild_id.get() as i64)
 		.fetch_one(db)
@@ -137,7 +135,7 @@ pub async fn group_message_query(
 	guild_id: serenity::GuildId,
 	group_name: &str,
 	db: &sqlx::SqlitePool
-) -> Result<serenity::MessageId, Error> {
+) -> Result<serenity::MessageId> {
 	sqlx::query_scalar::<_, u64>("SELECT group_message FROM role_groups WHERE guild_id = ? AND group_name = ?;")
 		.bind(guild_id.get() as i64)
 		.bind(group_name)
@@ -152,7 +150,7 @@ pub async fn group_message_query(
 pub async fn groups_from_query(
 	guild_id: serenity::GuildId,
 	db: &sqlx::SqlitePool
-) -> Result<Vec<Group>, Error> {
+) -> Result<Vec<Group>> {
 	sqlx::query_as("SELECT group_name,message_id FROM role_groups WHERE guild_id = ?;")
 		.bind(guild_id.get() as i64)
 		.fetch_all(db)
@@ -164,7 +162,7 @@ pub async fn roles_from_query(
 	guild_id: serenity::GuildId,
 	group_name: &str,
 	db: &sqlx::SqlitePool
-) -> Result<Vec<serenity::RoleId>, Error> {
+) -> Result<Vec<serenity::RoleId>> {
 	let res = sqlx::query_scalar::<_, u64>("SELECT role_id FROM roles WHERE guild_id = ? AND group_name = ?;")
 		.bind(guild_id.get() as i64)
 		.bind(group_name)

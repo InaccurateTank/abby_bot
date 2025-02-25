@@ -1,9 +1,10 @@
+use color_eyre::{eyre::eyre, Result};
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use sqlx::query;
 use crate::{
 	database,
 	templates, utils,
-	Context, Error,
+	Context,
 	EMBED_STD, EMBED_WAIT, EMBED_FAIL
 };
 
@@ -22,7 +23,7 @@ use crate::{
 	ephemeral,
 	subcommands("roles", "bot")
 )]
-pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn setup(ctx: Context<'_>) -> Result<()> {
 	ctx.say("You shouldn't be here?").await?;
 	Ok(())
 }
@@ -34,9 +35,9 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
-async fn bot(ctx: Context<'_>) -> Result<(), Error> {
+async fn bot(ctx: Context<'_>) -> Result<()> {
 	let guild = if let Some(r) = ctx.guild_id()
-		.ok_or("Not a Guild")?
+		.ok_or(eyre!("Not a Guild"))?
 		.to_guild_cached(ctx.cache())
 	{
 		r.to_owned()
@@ -189,7 +190,7 @@ async fn bot(ctx: Context<'_>) -> Result<(), Error> {
 	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
-async fn roles(ctx: Context<'_>) -> Result<(), Error> {
+async fn roles(ctx: Context<'_>) -> Result<()> {
 	let guild = ctx.guild().unwrap().clone();
 
 	// Data gathering

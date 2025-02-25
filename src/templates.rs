@@ -1,8 +1,9 @@
+use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateActionRow, CreateButton };
 use crate::{
 	structs::misc::RoleVitals,
-	utils, Error,
+	utils,
 	EMBED_FAIL, EMBED_STD, EMBED_WAIT
 };
 
@@ -31,7 +32,7 @@ pub fn rolelist_embed<'a>(
 	group: impl Into<String>,
 	role_list: impl IntoIterator<Item = &'a RoleVitals>
 	// guild_id: serenity::GuildId
-) -> Result<serenity::CreateEmbed, Error> {
+) -> Result<serenity::CreateEmbed> {
 	// let mut rolelist: Vec<(String, u16)> = rolelist.into_iter().map(|r|
 	// 	(guild_id.to_guild_cached(ctx)
 	// 		.unwrap()

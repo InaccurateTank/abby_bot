@@ -1,5 +1,5 @@
+use color_eyre::{eyre::eyre, Result};
 use poise::serenity_prelude as serenity;
-use crate::Error;
 
 #[derive(Debug)]
 pub enum UserCount {
@@ -7,41 +7,41 @@ pub enum UserCount {
 	Calculated(u8)
 }
 impl UserCount {
-	pub fn get_calculated(&self) -> Result<&u8, Error> {
+	pub fn get_calculated(&self) -> Result<&u8> {
 		if let Self::Calculated(v) = &self {
 			Ok(v)
 		} else {
 			// TODO: Better Errors
-			Err("Not Calculated".into())
+			Err(eyre!("Not Calculated"))
 		}
 	}
 
-	pub async fn solve(&mut self) -> Result<(), Error> {
+	pub async fn solve(&mut self) -> Result<()> {
 		if let Self::Working(result) = self {
 			*self = Self::Calculated(result.await?)
 		} else {
 			// TODO: Better Errors
-			return Err("Already Calculated".into())
+			return Err(eyre!("Already Calculated"))
 		}
 		Ok(())
 	}
 
-	pub fn decrement(&mut self) -> Result<(), Error> {
+	pub fn decrement(&mut self) -> Result<()> {
 		if let Self::Calculated(v) = self {
 			*v = v.saturating_sub(1);
 		} else {
 			// TODO: Better Errors
-			return Err("Not Calculated".into())
+			return Err(eyre!("Not Calculated"))
 		}
 		Ok(())
 	}
 
-	pub fn increment(&mut self) -> Result<(), Error> {
+	pub fn increment(&mut self) -> Result<()> {
 		if let Self::Calculated(v) = self {
 			*v = v.saturating_add(1);
 		} else {
 			// TODO: Better Errors
-			return Err("Not Calculated".into())
+			return Err(eyre!("Not Calculated"))
 		}
 		Ok(())
 	}
@@ -57,7 +57,7 @@ impl <'a> RoleVitals {
 	pub fn new(
 		id: serenity::RoleId,
 		guild: &'a serenity::Guild
-	) -> Result<Self, Error> {
+	) -> Result<Self> {
 		let closure_id = id.to_owned();
 		let closure_members = guild.members.to_owned();
 		let spawn = tokio::spawn(async move {
@@ -69,7 +69,7 @@ impl <'a> RoleVitals {
 
 		let name = guild.roles
 			.get(&id)
-			.ok_or_else(|| "No RoleId")?
+			.ok_or(eyre!("No RoleId"))?
 			.name
 			.to_owned();
 

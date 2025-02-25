@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
 use gumdrop::Options;
 use sqlx::{
@@ -8,10 +9,10 @@ use sqlx::{
 };
 use tracing::{
 	debug,
-	info,
-	warn,
 	error,
-	level_filters::LevelFilter
+	info,
+	level_filters::LevelFilter,
+	warn
 };
 
 mod commands;
@@ -28,8 +29,8 @@ const EMBED_STD: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
 const EMBED_WAIT: serenity::Color = serenity::Color::from_rgb(253, 253, 150);
 const EMBED_FAIL: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub type Context<'a> = poise::Context<'a, Data, Error>;
+// pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Context<'a> = poise::Context<'a, Data, Report>;
 
 pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
@@ -45,7 +46,9 @@ struct Opts {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
+	color_eyre::install()?;
+
 	// Opts
 	let opts = Opts::parse_args_default_or_exit();
 
@@ -121,6 +124,11 @@ async fn main() -> Result<(), Error> {
 				debug!("Invocation {} from {} finished successfully.", ctx.invocation_string(), ctx.author().name);
 			})
 		},
+		// on_error: |error| Box::pin(async move {
+		// 	if let Err(e) = error::error_handler(error).await {
+		// 		error!("Failed to handle error: {e:#}");
+		// 	}
+		// }),
 		..Default::default()
 	};
 	let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::GUILD_MESSAGES | serenity::GatewayIntents::MESSAGE_CONTENT;

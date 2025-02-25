@@ -1,5 +1,7 @@
-use crate::{Context, Error};
+use color_eyre::Result;
 use poise::serenity_prelude as serenity;
+
+use crate::Context;
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -17,7 +19,7 @@ pub async fn help(
 	#[description = "Specific command to show help about"]
 	#[autocomplete = "poise::builtins::autocomplete_command"]
 	command: Option<String>
-) -> Result<(), Error> {
+) -> Result<()> {
 	let config = poise::builtins::HelpConfiguration {
 		extra_text_at_bottom: "\
 If this is used as a prefix command, the invoking message can be edited to change my response.",
@@ -35,7 +37,7 @@ If this is used as a prefix command, the invoking message can be edited to chang
 )]
 pub async fn about(
 	ctx:Context<'_>
-) -> Result<(), Error> {
+) -> Result<()> {
 	ctx.send(poise::CreateReply::default()
 		.embed(serenity::CreateEmbed::new()
 			.color(serenity::Color::new(663366))
@@ -54,7 +56,7 @@ pub async fn about(
 	category="General", hide_in_help,
 	owners_only
 )]
-pub async fn register(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn register(ctx: Context<'_>) -> Result<()> {
 	poise::builtins::register_application_commands_buttons(ctx).await?;
 	Ok(())
 }

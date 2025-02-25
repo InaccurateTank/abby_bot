@@ -1,4 +1,5 @@
-use crate::{Context, Error};
+use color_eyre::Result;
+use crate::Context;
 use crate::utils;
 
 fn byte_to_emoji(value: u8) -> String {
@@ -35,7 +36,7 @@ pub async fn bottomify(
   ctx: Context<'_>,
   #[description = "Text to translate"]
   plead: String
-) -> Result<(), Error> {
+) -> Result<()> {
   let result = plead.bytes().map(byte_to_emoji).collect::<String>();
 	ctx.send(poise::CreateReply::default()
 		.content(result)

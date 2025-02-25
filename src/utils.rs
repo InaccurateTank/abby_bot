@@ -1,5 +1,6 @@
+use color_eyre::Result;
 use poise::serenity_prelude as serenity;
-use crate::{Context, Error};
+use crate::Context;
 
 pub fn concat(a: &str, b: &str) -> String {
   let mut result: String = String::with_capacity(a.len() + b.len());
@@ -8,7 +9,7 @@ pub fn concat(a: &str, b: &str) -> String {
   result
 }
 
-pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<()> {
 	ctx.send(poise::CreateReply::default()
 		.content("")
 		.embed(serenity::CreateEmbed::default()
@@ -47,7 +48,7 @@ pub async fn default_bot_channel(
 	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache>,
 	guild: &serenity::Guild,
 	bot_id: serenity::UserId
-) -> Result<Option<serenity::ChannelId>, Error> {
+) -> Result<Option<serenity::ChannelId>> {
 	let Some(channel) = ({
 		match guild.system_channel_id {
 			// Use system channel if available
@@ -71,7 +72,7 @@ pub async fn can_post(
 	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache>,
 	chid: &serenity::ChannelId,
 	user: serenity::UserId
-) -> Result<bool, Error> {
+) -> Result<bool> {
 	let Some(channel) = chid.to_channel(ctx).await?.guild() else {
 		// If the channel has no guild it's a private channel.
 		return Ok(true)
@@ -88,7 +89,7 @@ pub async fn can_post(
 }
 
 /// Poise command checker for server features. Checks if the server should have meme features.
-pub async fn check_serious(ctx: Context<'_>) -> Result<bool, Error> {
+pub async fn check_serious(ctx: Context<'_>) -> Result<bool> {
 	// Bypass check if it's in a DM. It shouldn't be there anyway, but who cares if it is.
 	let Some(id) = ctx.guild_id() else {
 		return Ok(true)
@@ -105,7 +106,7 @@ pub async fn check_serious(ctx: Context<'_>) -> Result<bool, Error> {
 }
 
 /// Poise command checker for server features. Checks if the server allows the bot to manage roles.
-pub async fn check_roles(ctx: Context<'_>) -> Result<bool, Error> {
+pub async fn check_roles(ctx: Context<'_>) -> Result<bool> {
 	// Role management is a server exclusive feature. Somthing is deeply wrong if we're not in a guild.
 	let Some(id) = ctx.guild_id() else {
 		return Ok(false)

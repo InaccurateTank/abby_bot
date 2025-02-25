@@ -2,13 +2,14 @@ use std::{
 	collections::VecDeque,
 	str::FromStr
 };
+use color_eyre::{eyre::eyre, Result};
 use poise::serenity_prelude as serenity;
 use sqlx::query;
 use crate::{
 	database,
 	structs::misc,
 	utils, templates,
-	Error, Data,
+	Data,
 	EMBED_STD
 };
 
@@ -16,12 +17,12 @@ pub async fn mci_handler(
 	ctx: &serenity::Context,
 	data: &Data,
 	mci: &serenity::ComponentInteraction
-) -> Result<(), Error> {
+) -> Result<()> {
 	let srv_features = database::GuildSettings::from_query(mci.guild_id.unwrap_or_default(), &data.db).await?;
 	let mut mci_id: VecDeque<&str> = mci.data.custom_id.split_terminator('.').collect();
 
 	// Interaction futureproof
-	match mci_id.pop_front().ok_or("Malformed interaction id.")? {
+	match mci_id.pop_front().ok_or(eyre!("Malformed interaction id."))? {
 		"roles" => {
 			if srv_features.roles {
 				roles_click(ctx, data, mci, &mut mci_id).await?;
@@ -37,14 +38,14 @@ async fn roles_click(
 	data: &Data,
 	mci: &serenity::ComponentInteraction,
 	id_vec: &mut VecDeque<&str>
-) -> Result<(), Error> {
+) -> Result<()> {
 	let Some(group_name) = id_vec.pop_back() else {
 		// TODO: Better Errors
-		return Err(Error::from("Malformed interaction id."))
+		return Err(eyre!("Malformed interaction id."))
 	};
 
 	let server = if let Some(r) = mci.guild_id
-		.ok_or("Not a Guild")?
+		.ok_or(eyre!("Not a Guild"))?
 		.to_guild_cached(ctx) {
 		r.to_owned()
 	} else {
@@ -67,10 +68,10 @@ async fn roles_click(
 		.await?
 		.guild() else {
 		// TODO: Better Errors
-		return Err(Error::from("Not a GuildChannel"))
+		return Err(eyre!("Not a GuildChannel"))
 	};
 
-	match id_vec.pop_front().ok_or("Malformed interaction id.")? {
+	match id_vec.pop_front().ok_or(eyre!("Malformed interaction id."))? {
 		// Rolelist Pick
 		"pick" => {
 			// TODO: Standardize Error
@@ -85,7 +86,7 @@ async fn roles_click(
 			let mut roles_list = db_group_roles.into_iter()
 				.map(|r| {
 					misc::RoleVitals::new(r, &server)
-				}).collect::<Result<Vec<misc::RoleVitals>, Error>>()?;
+				}).collect::<Result<Vec<misc::RoleVitals>>>()?;
 			roles_list.sort_by(|a, b| {
 				let a_l = a.name.to_lowercase();
 				let b_l = b.name.to_lowercase();
@@ -153,7 +154,7 @@ async fn roles_click(
 			let selected_roles = match &sec_mci.data.kind {
 				serenity::ComponentInteractionDataKind::StringSelect { values } => values.iter()
 					.map(|s| serenity::RoleId::from_str(s).map_err(|e| e.into()))
-					.collect::<Result<Vec<serenity::RoleId>, Error>>()?,
+					.collect::<Result<Vec<serenity::RoleId>>>()?,
 				_ => {
 					sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 						.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
@@ -285,7 +286,7 @@ async fn roles_click(
 			let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &sec_mci.data.kind {
 				values.iter()
 				.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
-				.collect::<Result<Vec<misc::RoleVitals>, Error>>()?
+				.collect::<Result<Vec<misc::RoleVitals>>>()?
 			} else {
 				sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 					.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))

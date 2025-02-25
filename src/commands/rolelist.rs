@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use color_eyre::{eyre::eyre, Result};
 use poise::serenity_prelude as serenity;
 use sqlx::{
 	query,
@@ -8,7 +9,7 @@ use crate::{
 	database,
 	structs::misc,
 	utils, templates,
-	Context, Error,
+	Context,
 	EMBED_STD
 };
 
@@ -31,7 +32,7 @@ use crate::{
 )]
 pub async fn rolelist(
 	ctx: Context<'_>
-) -> Result<(), Error> {
+) -> Result<()> {
 	ctx.say("You shouldn't be here?").await?;
 	Ok(())
 }
@@ -65,12 +66,13 @@ async fn delete(
 	#[description = "Name of the role group."]
 	#[autocomplete = "autocomplete_groups"]
 	group: String
-) -> Result<(), Error> {
+) -> Result<()> {
 	let guild = if let Some(r) = ctx.guild_id()
-		.ok_or("Not a Guild")?
+		.ok_or(eyre!("Not a Guild"))?
 		.to_guild_cached(ctx.cache()) {
 		r.to_owned()
 	} else {
+		// return serenity::Error::Model(serenity::ModelError::GuildNotFound)
 		return Err(serenity::ModelError::GuildNotFound.into())
 	};
 
@@ -117,9 +119,9 @@ async fn create(
 	ctx: Context<'_>,
 	#[description = "Name of the role group."]
 	group: String
-) -> Result<(), Error> {
+) -> Result<()> {
 	let guild = if let Some(r) = ctx.guild_id()
-		.ok_or("Not a Guild")?
+		.ok_or(eyre!("Not a Guild"))?
 		.to_guild_cached(ctx.cache()) {
 		r.to_owned()
 	} else {
@@ -206,7 +208,7 @@ async fn create(
 	let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind {
 		values.iter()
 		.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
-		.collect::<Result<Vec<misc::RoleVitals>, Error>>()?
+		.collect::<Result<Vec<misc::RoleVitals>>>()?
 	} else {
 		interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 			.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))

@@ -1,19 +1,20 @@
 use std::borrow::Cow;
+use color_eyre::{eyre::eyre, Report, Result};
 use poise::{serenity_prelude as serenity, Modal};
-use crate::{Data, Error, templates};
+use crate::{Data, templates};
 
-fn id_split(url: String) -> Result<[u64;2], Error> {
+fn id_split(url: String) -> Result<[u64;2]> {
 	// Need to check if everything is in the correct format first
 	let id_vec = url.split('/').collect::<Vec<&str>>();
 	let [chstr, msgstr] = id_vec.as_slice()[id_vec.len()-2..] else {
-		return Err(Error::from("Input is malformed, please read the help for this command and try again."))
+		return Err(eyre!("Input is malformed, please read the help for this command and try again."))
 	};
 	// Start Parsing
 	let Ok(chres) = chstr.parse::<u64>() else {
-		return Err(Error::from("Channel id isn't parseable. Please read the help for this command and try again."))
+		return Err(eyre!("Channel id isn't parseable. Please read the help for this command and try again."))
 	};
 	let Ok(msgres) = msgstr.parse::<u64>() else {
-		return Err(Error::from("Message id isn't parseable. Please read the help for this command and try again."))
+		return Err(eyre!("Message id isn't parseable. Please read the help for this command and try again."))
 	};
 	// Return
 	Ok([chres, msgres])
@@ -42,12 +43,12 @@ struct ConfirmModal {
 	ephemeral
 )]
 pub async fn rewind(
-	ctx: poise::ApplicationContext<'_, Data, Error>,
+	ctx: poise::ApplicationContext<'_, Data, Report>,
 	#[description = "Ident of the message to start deleting from."]
 	from: String,
 	#[description = "Ident of the message to stop deletions at."]
 	until: Option<String>
-) -> Result<(), Error> {
+) -> Result<()> {
 	// Parse from values
 	let (from_channel, from_id) = match id_split(from) {
 		Ok([chid, msgid]) => (serenity::ChannelId::new(chid), serenity::MessageId::new(msgid)),

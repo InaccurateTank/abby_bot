@@ -1,7 +1,8 @@
+use color_eyre::Result;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use crate::{
 	templates,
-	Context, Error
+	Context
 };
 
 /// A set of commands to quickly add things to the server. Less powerful than discords standard options.
@@ -19,7 +20,7 @@ use crate::{
 	ephemeral,
 	subcommands("channel", "role")
 )]
-pub async fn snap(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn snap(ctx: Context<'_>) -> Result<()> {
 	ctx.say("You shouldn't be here?").await?;
 	Ok(())
 }
@@ -49,7 +50,7 @@ async fn channel(
 	#[description = "Category for the new channel to go under."]
 	#[channel_types("Category")]
 	category: Option<serenity::ChannelId>
-) -> Result<(), Error> {
+) -> Result<()> {
 	let guild_id = ctx.guild_id().unwrap();
 
 	let mut builder = serenity::CreateChannel::new(&name)
@@ -113,7 +114,7 @@ async fn role(
 	ctx: Context<'_>,
 	#[description = "Name of the new role."]
 	name: String
-) -> Result<(), Error> {
+) -> Result<()> {
 	if ctx.guild().unwrap().role_by_name(&name).is_some() {
 		ctx.send(poise::CreateReply::default()
 			.ephemeral(true)
