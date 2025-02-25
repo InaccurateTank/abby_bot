@@ -19,49 +19,38 @@ mod interaction;
 async fn on_join<'a>(
 	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache> + AsRef<serenity::Http>,
 	framework: poise::FrameworkContext<'a, Data, Error>,
-	guild: &serenity::Guild,
+	guild_id: serenity::GuildId,
+	guild_name: &str,
 	db: &sqlx::Pool<sqlx::Sqlite>
 ) -> Result<(), Error> {
-	info!("Joining guild \"{}\" (GuildId {}).", guild.name, guild.id);
+	info!("Joining guild \"{}\" (GuildId {}).", guild_name, guild_id);
 	// Do things that a bot would do on server join
 	// TODO: Log the console errors
 	debug!("Creating database entry for guild.");
 	{
 		let insert = query("INSERT INTO guild_settings (guild_id) VALUES (?);")
-			.bind(guild.id.get() as i64)
+			.bind(guild_id.get() as i64)
 			.execute(db)
 			.await;
 		if let Err(e) = insert {
 			return Err(e.into())
 		}
 	}
-	// If the bot can post in a default channel, do so. Better to disclose the join than not.
-	// TODO: Change intro message
-	if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
-		chid.send_message(ctx, CreateMessage::new()
-			.embed(CreateEmbed::new()
-				.title("Hello I'm Abby!")
-				.color(EMBED_STD)
-				.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-				.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-			)
-		).await?;
-	}
 	// Register commands in new server
 	// TODO: Change to register commangs via settings
-	poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild.id).await?;
+	poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild_id).await?;
 	Ok(())
 }
 
 // Private on leave function
 async fn on_leave(
-	guid: u64,
+	guild_id: serenity::GuildId,
 	db: &sqlx::Pool<sqlx::Sqlite>
 ) -> Result<(), Error> {
-	info!("Removing guild {guid} from database.");
+	info!("Removing guild {guild_id} from database.");
 	// Deletion cascades now so this is all we need
 	let result = query("DELETE FROM guild_settings WHERE guild_id = ?;")
-		.bind(guid as i64)
+		.bind(guild_id.get() as i64)
 		.execute(db)
 		.await;
 
@@ -89,7 +78,21 @@ pub async fn event_handler<'a>(
 					.await;
 				match actually_new {
 					// New
-					Ok(n) if n == true => on_join(ctx, framework, guild, &data.db).await?,
+					Ok(n) if n == true => {
+						on_join(ctx, framework, guild.id, &guild.name, &data.db).await?;
+						// If the bot can post in a default channel, do so. Better to disclose the join than not.
+						// TODO: Change intro message
+						if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
+							// chid.send_message(ctx, CreateMessage::new()
+							// 	.embed(CreateEmbed::new()
+							// 		.title("Hello I'm Abby!")
+							// 		.color(EMBED_STD)
+							// 		.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
+							// 		.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+							// 	)
+							// ).await?;
+						}
+					},
 					// Error
 					Err(e) => return Err(e.into()),
 					// Not New
@@ -102,7 +105,7 @@ pub async fn event_handler<'a>(
 		serenity::FullEvent::GuildDelete { incomplete, .. } => {
 			// Should only be leaving servers when kicked/banned
 			if !incomplete.unavailable {
-				on_leave(incomplete.id.get(), &data.db).await?;
+				on_leave(incomplete.id, &data.db).await?;
 			}
 		},
 
@@ -126,15 +129,15 @@ pub async fn event_handler<'a>(
 				.into_iter()
 				.collect();
 			// TODO: Test this
-			for guild in &data_about_bot.guilds {
-				if !guild.unavailable {
+			for unfinished_guild in &data_about_bot.guilds {
+				if !unfinished_guild.unavailable {
 					// Unavailable being false means removal while offline
-					println!("Left Guild");
-					// on_leave(*guid, &data.db).await?;
-				} else if !db_guilds.contains(&guild.id.get()) {
+					on_leave(unfinished_guild.id, &data.db).await?;
+				} else if !db_guilds.contains(&unfinished_guild.id.get()) {
 					// Servers that arn't in the database have been joined while offline
-					println!("Joined Guild");
-					// on_join(ctx, framework, guild, &data.db).await?;
+					// Can't send a join message from here due to incomplete guild data
+					let partial = unfinished_guild.id.to_partial_guild(ctx).await.unwrap();
+					on_join(ctx, framework, partial.id, &partial.name, &data.db).await?;
 				}
 			}
 			// let login_servers: HashSet<u64> = data_about_bot.guilds
