@@ -82,7 +82,7 @@ pub async fn event_handler<'a>(
 						on_join(ctx, framework, guild.id, &guild.name, &data.db).await?;
 						// If the bot can post in a default channel, do so. Better to disclose the join than not.
 						// TODO: Change intro message
-						if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
+						// if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
 							// chid.send_message(ctx, CreateMessage::new()
 							// 	.embed(CreateEmbed::new()
 							// 		.title("Hello I'm Abby!")
@@ -91,7 +91,7 @@ pub async fn event_handler<'a>(
 							// 		.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
 							// 	)
 							// ).await?;
-						}
+						// }
 					},
 					// Error
 					Err(e) => return Err(e.into()),
@@ -113,7 +113,6 @@ pub async fn event_handler<'a>(
 		serenity::FullEvent::Ready { data_about_bot } => {
 			// TODO: Log
 			info!("{} is connected!", data_about_bot.user.name);
-			// println!("{} is connected!", data_about_bot.user.name);
 			// Set status because memes
 			let status = serenity::ActivityData {
 				name: "Everything".to_string(),
@@ -140,14 +139,6 @@ pub async fn event_handler<'a>(
 					on_join(ctx, framework, partial.id, &partial.name, &data.db).await?;
 				}
 			}
-			// let login_servers: HashSet<u64> = data_about_bot.guilds
-			// 	.iter()
-			// 	.map(|f| f.id.get())
-			// 	.collect();
-			// // Servers in the DB but not in login list are removed
-			// for guid in db_servers.difference(&login_servers) {
-			// 	on_leave(*guid, &data.db).await?;
-			// }
 		},
 
 		// On Message in Channel

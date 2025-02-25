@@ -3,7 +3,7 @@ use std::{
 	str::FromStr
 };
 use poise::serenity_prelude as serenity;
-use sqlx::{query, query_as};
+use sqlx::query;
 use crate::{
 	database,
 	structs::misc,
@@ -17,10 +17,7 @@ pub async fn mci_handler(
 	data: &Data,
 	mci: &serenity::ComponentInteraction
 ) -> Result<(), Error> {
-	let srv_features = query_as::<_, database::GuildSettings>("SELECT * FROM server_settings WHERE id = ?;")
-		.bind(mci.guild_id.unwrap_or_default().get() as i64)
-		.fetch_one(&data.db)
-		.await?;
+	let srv_features = database::GuildSettings::from_query(mci.guild_id.unwrap_or_default(), &data.db).await?;
 	let mut mci_id: VecDeque<&str> = mci.data.custom_id.split_terminator('.').collect();
 
 	// Interaction futureproof
@@ -222,11 +219,6 @@ async fn roles_click(
 				a_l.cmp(&b_l)
 			});
 
-			// let role_list_new: Vec<db::Role> = query_as::<_, db::Role>(&format!("SELECT * FROM roles WHERE server_id = ? AND group_name = ?;"))
-			// 	.bind(server.id.get() as i64)
-			// 	.bind(group_name)
-			// 	.fetch_all(&data.db)
-			// 	.await?;
 			mci.message.to_owned().edit(ctx, serenity::EditMessage::new()
 				.embed(templates::rolelist_embed(group_name, &roles_list)?)
 			).await?;

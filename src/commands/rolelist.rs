@@ -221,7 +221,7 @@ async fn create(
 			.components(vec![templates::rolelist_components(&group)])
 		).await {
 		// Add roles if successful
-		query("INSERT INTO role_groups (guild_id, group_name, message) VALUES (?, ?, ?)")
+		query("INSERT INTO role_groups (guild_id, group_name, message) VALUES (?, ?, ?);")
 			.bind(guild.id.get() as i64)
 			.bind(&group)
 			.bind(msg.id.get() as i64)
