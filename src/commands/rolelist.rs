@@ -24,7 +24,7 @@ use crate::{
 #[poise::command(
 	guild_only,
 	slash_command,
-	check = "utils::check_roles",
+	check = "checks::roles",
 	required_permissions="MANAGE_ROLES",
 	category="Administration",
 	ephemeral,
