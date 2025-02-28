@@ -9,6 +9,7 @@ use crate::{
 	database,
 	structs::misc,
 	utils, templates,
+	checks,
 	Context,
 	EMBED_STD
 };

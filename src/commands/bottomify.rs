@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use crate::Context;
-use crate::utils;
+use crate::{checks, utils};
 
 fn byte_to_emoji(value: u8) -> String {
   let mut buffer = String::new();
