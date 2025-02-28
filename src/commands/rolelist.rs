@@ -7,7 +7,7 @@ use sqlx::{
 };
 use crate::{
 	database,
-	structs::misc,
+	structs,
 	utils, templates,
 	checks,
 	Context,
@@ -208,8 +208,8 @@ async fn create(
 
 	let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind {
 		values.iter()
-		.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
-		.collect::<Result<Vec<misc::RoleVitals>>>()?
+		.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
+		.collect::<Result<Vec<structs::RoleVitals>>>()?
 	} else {
 		interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 			.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))

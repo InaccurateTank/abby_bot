@@ -1,4 +1,5 @@
-pub mod config;
-pub use config::Config;
+mod config;
+pub use config::*;
 
-pub mod misc;
+mod misc;
+pub use misc::*;

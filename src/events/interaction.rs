@@ -85,8 +85,8 @@ async fn roles_click(
 
 			let mut roles_list = db_group_roles.into_iter()
 				.map(|r| {
-					misc::RoleVitals::new(r, &server)
-				}).collect::<Result<Vec<misc::RoleVitals>>>()?;
+					structs::RoleVitals::new(r, &server)
+				}).collect::<Result<Vec<structs::RoleVitals>>>()?;
 			roles_list.sort_by(|a, b| {
 				let a_l = a.name.to_lowercase();
 				let b_l = b.name.to_lowercase();
@@ -285,8 +285,8 @@ async fn roles_click(
 
 			let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &sec_mci.data.kind {
 				values.iter()
-				.map(|s| misc::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
-				.collect::<Result<Vec<misc::RoleVitals>>>()?
+				.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
+				.collect::<Result<Vec<structs::RoleVitals>>>()?
 			} else {
 				sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 					.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
