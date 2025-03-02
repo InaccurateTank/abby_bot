@@ -12,6 +12,7 @@ use tracing::{
 	debug, error, info, warn
 };
 
+mod checks;
 mod commands;
 mod database;
 mod error;
