@@ -18,6 +18,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+ "tracing-error",
  "tracing-subscriber",
 ]
 

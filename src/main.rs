@@ -8,11 +8,8 @@ use sqlx::{
 	sqlite::{SqliteConnectOptions, SqlitePoolOptions}
 };
 use tracing::{
-	debug,
-	error,
-	info,
-	level_filters::LevelFilter,
-	warn
+	instrument,
+	debug, error, info, warn
 };
 
 mod commands;
@@ -22,8 +19,6 @@ mod events;
 mod structs;
 mod templates;
 mod utils;
-
-use structs::Config;
 
 const EMBED_STD: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
 const EMBED_WAIT: serenity::Color = serenity::Color::from_rgb(253, 253, 150);
@@ -45,6 +40,7 @@ struct Opts {
 	verbose: u8
 }
 
+#[instrument]
 #[tokio::main]
 async fn main() -> Result<()> {
 	color_eyre::install()?;
@@ -52,15 +48,8 @@ async fn main() -> Result<()> {
 	// Opts
 	let opts = Opts::parse_args_default_or_exit();
 
-	let verbosity = match opts.verbose {
-		0 => LevelFilter::INFO,
-		1 => LevelFilter::DEBUG,
-		_ => LevelFilter::TRACE
-	};
-	tracing_subscriber::fmt()
-		.with_max_level(verbosity)
-		.without_time()
-		.init();
+	// Installing tracing subscriber
+	install_tracing(&opts);
 
 	// Data Folder From Opts
 	let data_folder = if !opts.data.ends_with('/') {
@@ -69,9 +58,9 @@ async fn main() -> Result<()> {
 		opts.data
 	};
 
-	debug!("Loading configuration.");
+	info!("Loading configuration.");
 	// Config
-	let config = Config::new(&data_folder)?;
+	let config = structs::Config::new(&data_folder)?;
 
 	// DB
 	let db_url = format!("sqlite:{data_folder}sqlite.db");
@@ -94,7 +83,6 @@ async fn main() -> Result<()> {
 	sqlx::migrate!("./migrations")
 		.run(&pool)
 		.await?;
-	debug!("Database Connection successfully established.");
 
 	// Bot Options
 	let options = poise::FrameworkOptions {
@@ -186,4 +174,27 @@ async fn main() -> Result<()> {
 		error!("Client error: {why:?}");
 	}
 	Ok(())
+}
+
+fn install_tracing(
+	options: &Opts
+) {
+	use tracing::Level;
+	use tracing_error::ErrorLayer;
+	use tracing_subscriber::prelude::*;
+
+	let verbosity = match options.verbose {
+		0 => Level::INFO,
+		1 => Level::DEBUG,
+		_ => Level::TRACE
+	};
+	let fmt_layer = tracing_subscriber::fmt::layer()
+		.with_writer(std::io::stdout.with_max_level(verbosity))
+		.without_time()
+		.with_target(false);
+
+	tracing_subscriber::registry()
+		.with(fmt_layer)
+		.with(ErrorLayer::default())
+		.init();
 }
