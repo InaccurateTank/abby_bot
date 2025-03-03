@@ -235,13 +235,39 @@ pub async fn error_handler<U>(
 			).await?;
 		},
 
-		FrameworkError::CommandCheckFailed { error, ctx, .. } => {},
+		FrameworkError::CommandCheckFailed { error, ctx, .. } => {
+			if let Some(error) = error {
+				warn!("Check failed to run for invocation {:?}: {error:?}", ctx.invocation_string());
+				ctx.send(
+					create_reply(
+						templates::Status::ERROR,
+						format!("Check failed to run for invocation {:?}:\n```\n{error:?}\n```", ctx.invocation_string()),
+						Some(BOT_ERROR)
+					)
+				).await?;
+			} else {
+				warn!("Check failed to run invocation {:?}.", ctx.invocation_string());
+				ctx.send(
+					create_reply(
+						templates::Status::ERROR,
+						format!("Check failed to run invocation {:?}.", ctx.invocation_string()),
+						Some(BOT_ERROR)
+					)
+				).await?;
+			}
+		},
 
-		FrameworkError::DynamicPrefix { error, ctx, msg, .. } => {},
+		FrameworkError::DynamicPrefix { error, msg, .. } => {
+			error!("Dynamic prefix failed for {msg:?}: {error:?}");
+		},
 
-		FrameworkError::UnknownCommand { ctx, msg, prefix, msg_content, framework, invocation_data, trigger, .. } => {},
+		FrameworkError::UnknownCommand { prefix, msg_content, .. } => {
+			warn!("Recognized prefix {prefix:?} but didn't recognize command {msg_content:?}.");
+		},
 
-		FrameworkError::UnknownInteraction { ctx, framework, interaction, .. } => {}
+		FrameworkError::UnknownInteraction { interaction, .. } => {
+			warn!("Recieved interaction data for unknown command {:?}.", interaction.data.name);
+		}
 	}
 	Ok(())
 }
@@ -252,8 +278,8 @@ fn create_reply(
 	footer: Option<&str>
 ) -> poise::CreateReply {
 	let mut embed = templates::status_embed(status, description);
-	if let Some(f) = footer {
-		embed = embed.footer(serenity::CreateEmbedFooter::new(f));
+	if let Some(footer) = footer {
+		embed = embed.footer(serenity::CreateEmbedFooter::new(footer));
 	}
 	poise::CreateReply::default()
 		.embed(embed)

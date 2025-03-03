@@ -28,6 +28,7 @@ const EMBED_FAIL: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
 // pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Report>;
 
+#[derive(Debug)]
 pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
 }
@@ -103,7 +104,7 @@ async fn main() -> Result<()> {
 			..Default::default()
 		},
 		event_handler: |ctx, event, framework, data| Box::pin(events::event_handler(ctx, event, framework, data)),
-		pre_command: |ctx| {
+		pre_command: |ctx: poise::Context<'_, Data, Report>| {
 			Box::pin(async move {
 				debug!("{} invoked {}", ctx.author().name, ctx.invocation_string());
 			})
@@ -113,11 +114,11 @@ async fn main() -> Result<()> {
 				debug!("Invocation {} from {} finished successfully.", ctx.invocation_string(), ctx.author().name);
 			})
 		},
-		// on_error: |error| Box::pin(async move {
-		// 	if let Err(e) = error::error_handler(error).await {
-		// 		error!("Failed to handle error: {e:#}");
-		// 	}
-		// }),
+		on_error: |error| Box::pin(async move {
+			if let Err(e) = error::error_handler(error).await {
+				error!("Failed to handle error: {e:#}");
+			}
+		}),
 		..Default::default()
 	};
 	let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::GUILD_MESSAGES | serenity::GatewayIntents::MESSAGE_CONTENT;
@@ -150,7 +151,7 @@ async fn main() -> Result<()> {
 							_ = close.recv() => {}
 						}
 					}
-					print!("Shutting Down");
+					info!("Shutting Down");
 					db.close().await;
 					sm.shutdown_all().await;
 				});
@@ -171,8 +172,8 @@ async fn main() -> Result<()> {
 		}
 	};
 
-	if let Err(why) = client.start().await {
-		error!("Client error: {why:?}");
+	if let Err(e) = client.start().await {
+		error!("Client error: {e:?}");
 	}
 	Ok(())
 }

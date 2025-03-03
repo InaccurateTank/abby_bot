@@ -1,6 +1,8 @@
 use color_eyre::Result;
-use crate::Context;
-use crate::utils;
+use crate::{
+	Context,
+	utils
+};
 
 pub async fn serious(ctx: Context<'_>) -> Result<bool> {
 	// Bypass check if it's in a DM. It shouldn't be there anyway, but who cares if it is.
