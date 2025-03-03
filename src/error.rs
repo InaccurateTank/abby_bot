@@ -76,7 +76,7 @@ pub async fn error_handler<U>(
 				ctx.send(
 					create_reply(
 						templates::Status::WARNING,
-						format!("Made an error while invoking {:?}:\n```\n{error:#}\n```", ctx.invocation_string()),
+						format!("An error has been made while invoking {:?}:\n```\n{error:#}\n```", ctx.invocation_string()),
 						Some(USER_ERROR)
 					)
 				).await?;
@@ -94,31 +94,30 @@ pub async fn error_handler<U>(
 
 		FrameworkError::SubcommandRequired { ctx } => {
 			warn!("User attempted to invoke {:?}, which requires a subcommand, without a subcommand.", ctx.invocation_string());
-			ctx.send(poise::CreateReply::default()
-					.embed(templates::status_embed(templates::Status::ERROR, format!("Command {:?} must be used with the following subcommands:\n\n{}",
-						ctx.invocation_string(),
-						ctx.command()
-							.subcommands
-							.iter()
-							.map(|s| {
-								format!("- {}", s.qualified_name)
-							})
-							.collect::<Vec<String>>()
-							.join("\n"))
-					)
-						.footer(serenity::CreateEmbedFooter::new(USER_ERROR))
-					)
-					.reply(true)
-					.ephemeral(true)
+			ctx.send(
+				create_reply(
+					templates::Status::ERROR,
+					format!("Command {:?} must be used with the following subcommands:\n\n{}", ctx.invocation_string(), ctx.command()
+						.subcommands
+						.iter()
+						.map(|s| {
+							format!("- {}", s.qualified_name)
+						})
+						.collect::<Vec<String>>()
+						.join("\n")),
+					Some(USER_ERROR)
+				)
 			).await?;
 		},
 
 		FrameworkError::CommandPanic { ctx, .. } => {
 			error!("User invocation of {:?} has paniced.", ctx.invocation_string());
-			ctx.send(poise::CreateReply::default()
-				.embed(templates::status_embed(templates::Status::ERROR, "An extremely bad error has occured. Please contact the bot owner and tell them to check the logs."))
-				.reply(true)
-				.ephemeral(true)
+			ctx.send(
+				create_reply(
+					templates::Status::ERROR,
+					"An extremely bad error has occured. Please contact the bot owner and tell them to check the logs.",
+					None
+				)
 			).await?;
 		},
 
@@ -128,11 +127,12 @@ pub async fn error_handler<U>(
 				None => format!("Failed to parse argument from invocation of {:?}", ctx.invocation_string())
 			};
 			warn!("{description}: {error:?}");
-			ctx.send(poise::CreateReply::default()
-				.embed(templates::status_embed(templates::Status::ERROR, format!("{description}\n```{error:#}```"))
-					.footer(serenity::CreateEmbedFooter::new(BOT_ERROR)))
-				.reply(true)
-				.ephemeral(true)
+			ctx.send(
+				create_reply(
+					templates::Status::ERROR,
+					format!("{description}\n```{error:#}```"),
+					Some(BOT_ERROR)
+				)
 			).await?;
 		},
 
@@ -146,41 +146,45 @@ pub async fn error_handler<U>(
 
 		FrameworkError::NotAnOwner { ctx, .. } => {
 			warn!("Non-owner user attempted to invoke {:?}.", ctx.invocation_string());
-			ctx.send(poise::CreateReply::default()
-				.embed(templates::status_embed(templates::Status::ERROR, format!("{:?} can only be invoked by the owner of the bot.", ctx.invocation_string()))
-					.footer(serenity::CreateEmbedFooter::new(USER_ERROR)))
-				.reply(true)
-				.ephemeral(true)
+			ctx.send(
+				create_reply(
+					templates::Status::WARNING,
+					format!("{:?} can only be invoked by the owner of the bot.", ctx.invocation_string()),
+					Some(USER_ERROR)
+				)
 			).await?;
 		},
 
 		FrameworkError::GuildOnly { ctx, .. } => {
 			warn!("User attempted to invoke {:?} outside of a guild.", ctx.invocation_string());
-			ctx.send(poise::CreateReply::default()
-				.embed(templates::status_embed(templates::Status::ERROR, format!("{:?} can only be invoked inside of a server.", ctx.invocation_string()))
-					.footer(serenity::CreateEmbedFooter::new(USER_ERROR)))
-				.reply(true)
-				.ephemeral(true)
+			ctx.send(
+				create_reply(
+					templates::Status::WARNING,
+					format!("{:?} can only be invoked inside of a server.", ctx.invocation_string()),
+					Some(USER_ERROR)
+				)
 			).await?;
 		},
 
 		FrameworkError::DmOnly { ctx, .. } => {
 			warn!("User attempted to invoke {:?} outside of a direct message.", ctx.invocation_string());
-			ctx.send(poise::CreateReply::default()
-				.embed(templates::status_embed(templates::Status::ERROR, format!("{:?} can only be invoked inside of a direct message.", ctx.invocation_string()))
-					.footer(serenity::CreateEmbedFooter::new(USER_ERROR)))
-				.reply(true)
-				.ephemeral(true)
+			ctx.send(
+				create_reply(
+					templates::Status::WARNING,
+					format!("{:?} can only be invoked inside of a direct message.", ctx.invocation_string()),
+					Some(USER_ERROR)
+				)
 			).await?;
 		},
 
 		FrameworkError::NsfwOnly { ctx, .. } => {
 			warn!("User attempted to invoke {:?} outside of a NSFW channel.", ctx.invocation_string());
-			ctx.send(poise::CreateReply::default()
-				.embed(templates::status_embed(templates::Status::ERROR, format!("{:?} can only be invoked inside of a NSFW channel.", ctx.invocation_string()))
-					.footer(serenity::CreateEmbedFooter::new(USER_ERROR)))
-				.reply(true)
-				.ephemeral(true)
+			ctx.send(
+				create_reply(
+					templates::Status::WARNING,
+					format!("{:?} can only be invoked inside of a NSFW channel.", ctx.invocation_string()),
+					Some(USER_ERROR)
+				)
 			).await?;
 		},
 
@@ -198,7 +202,7 @@ pub async fn error_handler<U>(
 fn create_reply(
 	status: templates::Status,
 	description: impl Into<String>,
-	footer: Option<impl Into<String>>
+	footer: Option<&str>
 ) -> poise::CreateReply {
 	let mut embed = templates::status_embed(status, description);
 	if let Some(f) = footer {
