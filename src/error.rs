@@ -136,13 +136,60 @@ pub async fn error_handler<U>(
 			).await?;
 		},
 
-		FrameworkError::CommandStructureMismatch { description, ctx, .. } => {},
+		FrameworkError::CommandStructureMismatch { description, ctx, .. } => {
+			error!("Structure mismatch between registered and programmed command for {}: {description}", ctx.command.qualified_name);
+			ctx.send(
+				create_reply(
+					templates::Status::ERROR,
+					format!("Structure mismatch between registered and programmed command for {}:\n```\n{description}\n```", ctx.command.qualified_name),
+					Some(BOT_ERROR)
+				)
+			).await?;
+		},
 
-		FrameworkError::CooldownHit { remaining_cooldown, ctx, .. } => {},
+		FrameworkError::CooldownHit { remaining_cooldown, ctx, .. } => {
+			warn!("User attempted {:?} while on cooldown.", ctx.invocation_string());
+			ctx.send(
+				create_reply(
+					templates::Status::WARNING,
+					format!("You must wait **{} seconds** before attempting to invoke this command again.", remaining_cooldown.as_secs()),
+					Some(USER_ERROR)
+				)
+			).await?;
+		},
 
-		FrameworkError::MissingBotPermissions { missing_permissions, ctx, .. } => {},
+		FrameworkError::MissingBotPermissions { missing_permissions, ctx, .. } => {
+			warn!("Bot is missing permissions for {:?}: {missing_permissions}", ctx.invocation_string());
+			ctx.send(
+				create_reply(
+					templates::Status::WARNING,
+					format!("Bot requires the following permissions in order to execute {:?}: {missing_permissions}", ctx.invocation_string()),
+					None
+				)
+			).await?;
+		},
 
-		FrameworkError::MissingUserPermissions { missing_permissions, ctx, .. } => {},
+		FrameworkError::MissingUserPermissions { missing_permissions, ctx, .. } => {
+			if let Some(missing_permissions) = missing_permissions {
+				warn!("User tried executing {:?} without permissions: {missing_permissions}", ctx.invocation_string());
+				ctx.send(
+					create_reply(
+						templates::Status::WARNING,
+						format!("You must have the following permissions to execute {:?}: {missing_permissions}", ctx.invocation_string()),
+						None
+					)
+				).await?;
+			} else {
+				warn!("User tried executing {:?} without permissions.", ctx.invocation_string());
+				ctx.send(
+					create_reply(
+						templates::Status::WARNING,
+						format!("You do not have the permissions to execute {:?}.", ctx.invocation_string()),
+						None
+					)
+				).await?;
+			}
+		},
 
 		FrameworkError::NotAnOwner { ctx, .. } => {
 			warn!("Non-owner user attempted to invoke {:?}.", ctx.invocation_string());
