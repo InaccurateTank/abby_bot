@@ -20,6 +20,14 @@ mod events;
 mod structs;
 mod templates;
 mod utils;
+mod colors {
+	//! Simple module to store color constants.
+	use poise::serenity_prelude as serenity;
+
+	pub const INFO: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
+	pub const WARN: serenity::Color = serenity::Color::from_rgb(253, 253, 150);
+	pub const ERROR: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
+}
 
 const EMBED_STD: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
 const EMBED_WAIT: serenity::Color = serenity::Color::from_rgb(253, 253, 150);

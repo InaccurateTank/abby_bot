@@ -6,6 +6,7 @@ use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateActionRow, CreateButton };
 use crate::{
+	colors,
 	structs,
 	utils,
 	EMBED_FAIL, EMBED_STD, EMBED_WAIT
@@ -22,26 +23,26 @@ impl Status {
 	pub const SUCCESS: Self = Self {
 		symbol: ":white_check_mark:",
 		string: "Success",
-		color: EMBED_STD
+		color: colors::INFO
 	};
 	pub const PROCESSING: Self = Self {
 		symbol: ":gear:",
 		string: "Processing",
-		color: EMBED_WAIT
+		color: colors::WARN
 	};
 	pub const WARNING: Self = Self {
 		symbol: ":warning:",
 		string: "Warning",
-		color: EMBED_WAIT
+		color: colors::WARN
 	};
 	pub const ERROR: Self = Self {
 		symbol: ":exclamation:",
 		string: "Error",
-		color: EMBED_FAIL
+		color: colors::ERROR
 	};
 }
 
-/// Templates [`serenity::CreateEmbed`] for bot status embeds.
+/// Templates [serenity::CreateEmbed] for bot status embeds.
 pub fn status_embed(
 	status: Status,
 	description: impl Into<String>,
