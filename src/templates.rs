@@ -1,3 +1,7 @@
+//! Embed templating module for the creation of standardized messages.
+//!
+//! Contains both the functions for creation along with the [Status] struct.
+
 use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateActionRow, CreateButton };

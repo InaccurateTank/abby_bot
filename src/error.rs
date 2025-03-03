@@ -1,3 +1,5 @@
+//! Error construction and handling module for AbbyBot.
+
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
 use poise::FrameworkError;
