@@ -9,7 +9,6 @@ use tracing::{
 	error,
 	warn
 };
-
 use crate::templates;
 
 #[derive(Error, Debug)]
@@ -60,8 +59,6 @@ pub struct UserError(#[from] pub Report);
 pub async fn error_handler<U>(
 	error: poise::FrameworkError<'_, U, Report>,
 ) -> Result<()> {
-	use crate::templates;
-
 	const USER_ERROR: &str = "If you think this was an error with the bot, please contact the developer.";
 	const BOT_ERROR: &str = "This is undoubtedly an error with the bot, please contact the developer.";
 
