@@ -42,7 +42,7 @@ impl GuildSettings {
 	}
 
 	/// Updates the database entry of a given [GuildId]['serenity::GuildId'] with the values contained in the struct.
-	pub async fn update(
+	pub async fn update_entry(
 		&self,
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
