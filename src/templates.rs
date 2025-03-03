@@ -2,10 +2,51 @@ use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateActionRow, CreateButton };
 use crate::{
-	structs::misc::RoleVitals,
+	structs,
 	utils,
 	EMBED_FAIL, EMBED_STD, EMBED_WAIT
 };
+
+#[derive(Debug)]
+pub struct Status {
+	symbol: &'static str,
+	string: &'static str,
+	color: serenity::Color
+}
+
+impl Status {
+	pub const SUCCESS: Self = Self {
+		symbol: ":white_check_mark:",
+		string: "Success",
+		color: EMBED_STD
+	};
+	pub const PROCESSING: Self = Self {
+		symbol: ":gear:",
+		string: "Processing",
+		color: EMBED_WAIT
+	};
+	pub const WARNING: Self = Self {
+		symbol: ":warning:",
+		string: "Warning",
+		color: EMBED_WAIT
+	};
+	pub const ERROR: Self = Self {
+		symbol: ":exclamation:",
+		string: "Error",
+		color: EMBED_FAIL
+	};
+}
+
+/// Templates [`serenity::CreateEmbed`] for bot status embeds.
+pub fn status_embed(
+	status: Status,
+	description: impl Into<String>,
+) -> serenity::CreateEmbed {
+	serenity::CreateEmbed::new()
+		.title(format!("{0} {1} {0}", status.symbol, status.string))
+		.description(description)
+		.color(status.color)
+}
 
 /// Makes a [`serenity::CreateEmbed`] and fills it out using the builder function.
 pub fn state_embed(success: bool, text: &str) -> serenity::CreateEmbed {
@@ -30,7 +71,7 @@ pub fn processing_embed() -> serenity::CreateEmbed {
 pub fn rolelist_embed<'a>(
 	// ctx: &serenity::Context,
 	group: impl Into<String>,
-	role_list: impl IntoIterator<Item = &'a RoleVitals>
+	role_list: impl IntoIterator<Item = &'a structs::RoleVitals>
 	// guild_id: serenity::GuildId
 ) -> Result<serenity::CreateEmbed> {
 	// let mut rolelist: Vec<(String, u16)> = rolelist.into_iter().map(|r|
