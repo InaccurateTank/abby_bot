@@ -1,4 +1,6 @@
-//! Error construction and handling module for AbbyBot.
+//! Hard error construction and handling module.
+//!
+//! Soft errors (Recoverable/Ignoreable) are handled in the commands and not here.
 
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
