@@ -21,10 +21,6 @@ pub enum BotError {
 	/// User waited too long to handle thier interaction prompt.
 	InteractionTimedOut,
 
-	#[error("Feature not enabled in guild.")]
-	/// User waited too long to handle thier interaction prompt.
-	FeatureNotEnabled,
-
 	/// Command or modal input is unparseable.
 	#[error("Malformed input \"{0:?}\" is not parseable.")]
 	MalformedInput(String),
