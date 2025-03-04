@@ -242,13 +242,6 @@ pub async fn error_handler<U>(
 				).await?;
 			} else {
 				warn!("Check failed to run invocation {:?}.", ctx.invocation_string());
-				ctx.send(
-					create_reply(
-						templates::Status::ERROR,
-						format!("Check failed to run invocation {:?}.", ctx.invocation_string()),
-						Some(BOT_ERROR)
-					)
-				).await?;
 			}
 		},
 
