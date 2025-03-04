@@ -11,7 +11,7 @@ use tracing::{
 	info,
 	instrument
 };
-use crate::{ EMBED_STD, Data };
+use crate::{ colors, Data };
 use crate::database;
 use crate::utils;
 
@@ -90,7 +90,7 @@ pub async fn event_handler<'a>(
 							chid.send_message(ctx, CreateMessage::new()
 								.embed(CreateEmbed::new()
 									.title("Hello I'm Abby!")
-									.color(EMBED_STD)
+									.color(colors::INFO)
 									.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
 									.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
 								)

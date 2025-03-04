@@ -29,10 +29,6 @@ mod colors {
 	pub const ERROR: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
 }
 
-const EMBED_STD: serenity::Color = serenity::Color::from_rgb(102, 51, 102);
-const EMBED_WAIT: serenity::Color = serenity::Color::from_rgb(253, 253, 150);
-const EMBED_FAIL: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
-
 // pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Report>;
 

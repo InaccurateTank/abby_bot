@@ -1,24 +1,15 @@
+//! Various utility functions that don't fit into any other module.
+
 use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use crate::Context;
 
+/// Combines two [str] into a [String].
 pub fn concat(a: &str, b: &str) -> String {
   let mut result: String = String::with_capacity(a.len() + b.len());
   result += a;
   result += b;
   result
-}
-
-pub async fn feature_not_enabled(ctx: Context<'_>) -> Result<()> {
-	ctx.send(poise::CreateReply::default()
-		.content("")
-		.embed(serenity::CreateEmbed::default()
-			.title(":warning: Failure :warning:")
-			.color(serenity::Color::from_rgb(178, 34, 34))
-			.description("This command requires a feature that isn't enabled on the server. If this is a mistake, have an admin run `/setup bot` to change it.")
-		)
-	).await?;
-	Ok(())
 }
 
 /// Abby should never assign moderation roles and should never show @everyone.
@@ -86,4 +77,11 @@ pub async fn can_post(
 		return Ok(false)
 	}
 	Ok(true)
+}
+
+pub fn guild_or_error(ctx: Context<'_>) -> Result<serenity::Guild> {
+	let Some(guild) = ctx.guild() else {
+		return Err(serenity::Error::Model(serenity::ModelError::GuildNotFound).into())
+	};
+	Ok(guild.to_owned())
 }
