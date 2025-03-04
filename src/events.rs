@@ -27,7 +27,6 @@ async fn on_join<'a>(
 ) -> Result<()> {
 	info!("Joining guild \"{}\" (GuildId {}).", guild_name, guild_id);
 	// Do things that a bot would do on server join
-	// TODO: Log the console errors
 	debug!("Creating database entry for guild.");
 	{
 		let insert = query("INSERT INTO guild_settings (guild_id) VALUES (?);")
@@ -119,8 +118,6 @@ pub async fn event_handler<'a>(
 		// On Login
 		serenity::FullEvent::Ready { data_about_bot } => {
 			tracing::Span::current().record("event", "Ready");
-
-			// TODO: Log
 			info!("{} is connected!", data_about_bot.user.name);
 			// Set status because memes
 			let status = serenity::ActivityData {
@@ -136,7 +133,6 @@ pub async fn event_handler<'a>(
 				.await?
 				.into_iter()
 				.collect();
-			// TODO: Test this
 			for unfinished_guild in &data_about_bot.guilds {
 				if !unfinished_guild.unavailable {
 					// Unavailable being false means removal while offline
@@ -153,8 +149,6 @@ pub async fn event_handler<'a>(
 		// On Message in Channel
 		serenity::FullEvent::Message { new_message } => {
 			tracing::Span::current().record("event", "Message");
-
-			// TODO: Error Handling
 			let guild_settings = if let Some(id) = new_message.guild_id {
 				database::GuildSettings::from_query(id, &data.db).await?
 			} else {
