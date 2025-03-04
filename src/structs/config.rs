@@ -2,11 +2,16 @@ use std::{
 	fs::OpenOptions,
 	io::{Read, Write}
 };
-use color_eyre::{eyre::eyre, Result};
-use serde::{Serialize, Deserialize};
-use crate::utils;
+use color_eyre::Result;
+use crate::{
+	error::{UserError, BotError},
+	utils
+};
 
-#[derive(Debug, Serialize, Deserialize)]
+const DEFAULT_CONFIG: &str = r##"# Abbybot config file
+token = "INSERT_TOKEN""##;
+
+#[derive(Debug, serde::Deserialize)]
 pub struct Config {
 	pub token: String,
 }
@@ -21,9 +26,8 @@ impl Config {
 		let mut toml = String::new();
 		config_file.read_to_string(&mut toml)?;
 		if toml.is_empty() {
-			write!(config_file, r##"# Abbybot config file
-token = "INSERT_TOKEN""##)?;
-			Err(eyre!("Config file does not exist. Please fill out generated config file before running again."))
+			config_file.write(DEFAULT_CONFIG.as_bytes())?;
+			Err(UserError(BotError::ConfigFileMissing.into()).into())
 		} else {
 			Ok(toml::from_str(&toml)?)
 		}
