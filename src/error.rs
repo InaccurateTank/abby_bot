@@ -11,7 +11,7 @@ use tracing::{
 	error,
 	warn
 };
-use crate::templates;
+use crate::templates::status;
 
 #[derive(Error, Debug)]
 pub enum BotError {
@@ -39,18 +39,23 @@ pub enum BotError {
 	#[error("Channel {0:?} is inaccessable for posting in. Either change the permission overrides or choose a different channel.")]
 	ChannelInaccessable(String),
 
+	/// The roles channel is NULL in the database.
 	#[error("Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with \"/setup roles\".")]
 	RolesChannelUnset,
 
+	/// Failed to create the role list for whatever reason.
 	#[error("Failed to create role list for group {0:?}.")]
 	RoleListFailed(String),
 
+	/// Config file doesn't exist for whatever reason.
 	#[error("Config file does not exist. Please fill out generated config file before running again.")]
 	ConfigFileMissing,
 
+	/// Somthing failed with the confirm modal.
 	#[error("Failed to confirm via confirmation modal, aborting.")]
 	UnconfirmedModal,
 
+	/// Role already exists in a given guild.
 	#[error("A role with an identical name already exists.")]
 	RoleAlreadyExists
 }
@@ -77,19 +82,21 @@ pub async fn error_handler<U>(
 			if error.is::<UserError>() {
 				warn!("User made an error when invoking {:?}: {error:#}", ctx.invocation_string());
 				ctx.send(
-					create_reply(
-						templates::Status::WARNING,
-						format!("An error has been made while invoking {:?}:\n```\n{error:#}\n```", ctx.invocation_string()),
-						Some(USER_ERROR)
-					)
+					error_reply().embed(
+							status::warning(
+								None,
+								format!("An error has been made while invoking {:?}:\n```\n{error:#}\n```", ctx.invocation_string())
+							).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
+						)
 				).await?;
 			} else {
 				error!("An error occurred during the execution of {:?}: {error:?}", ctx.invocation_string());
 				ctx.send(
-					create_reply(
-						templates::Status::ERROR,
-						format!("An error occurred during the execution of {:?}:\n```\n{error:#}\n```", ctx.invocation_string()),
-						Some(BOT_ERROR)
+					error_reply().embed(
+						status::error(
+							None,
+							format!("An error occurred during the execution of {:?}:\n```\n{error:#}\n```", ctx.invocation_string())
+						).footer(serenity::CreateEmbedFooter::new(BOT_ERROR))
 					)
 				).await?;
 			}
@@ -98,17 +105,20 @@ pub async fn error_handler<U>(
 		FrameworkError::SubcommandRequired { ctx } => {
 			warn!("User attempted to invoke {:?}, which requires a subcommand, without a subcommand.", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::ERROR,
-					format!("Command {:?} must be used with the following subcommands:\n\n{}", ctx.invocation_string(), ctx.command()
-						.subcommands
-						.iter()
-						.map(|s| {
-							format!("- {}", s.qualified_name)
-						})
-						.collect::<Vec<String>>()
-						.join("\n")),
-					Some(USER_ERROR)
+				error_reply().embed(
+					status::error(
+						None,
+						format!(
+							"Command {:?} must be used with the following subcommands:\n```\n{}\n```", ctx.invocation_string(), ctx.command()
+							.subcommands
+							.iter()
+							.map(|s| {
+								format!("- {}", s.qualified_name)
+							})
+							.collect::<Vec<String>>()
+							.join("\n")
+						)
+					).footer(serenity::CreateEmbedFooter::new(BOT_ERROR))
 				)
 			).await?;
 		},
@@ -116,10 +126,11 @@ pub async fn error_handler<U>(
 		FrameworkError::CommandPanic { ctx, .. } => {
 			error!("User invocation of {:?} has paniced.", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::ERROR,
-					"An extremely bad error has occured. Please contact the bot owner and tell them to check the logs.",
-					None
+				error_reply().embed(
+					status::error(
+						Some("Panic"),
+						"An extremely bad error has occured. Please contact the bot owner and tell them to check the logs."
+					)
 				)
 			).await?;
 		},
@@ -131,10 +142,11 @@ pub async fn error_handler<U>(
 			};
 			warn!("{description}: {error:?}");
 			ctx.send(
-				create_reply(
-					templates::Status::ERROR,
-					format!("{description}\n```{error:#}```"),
-					Some(BOT_ERROR)
+				error_reply().embed(
+					status::error(
+						None,
+						format!("{description}\n```{error:#}```")
+					).footer(serenity::CreateEmbedFooter::new(BOT_ERROR))
 				)
 			).await?;
 		},
@@ -142,10 +154,11 @@ pub async fn error_handler<U>(
 		FrameworkError::CommandStructureMismatch { description, ctx, .. } => {
 			error!("Structure mismatch between registered and programmed command for {}: {description}", ctx.command.qualified_name);
 			ctx.send(
-				create_reply(
-					templates::Status::ERROR,
-					format!("Structure mismatch between registered and programmed command for {}:\n```\n{description}\n```", ctx.command.qualified_name),
-					Some(BOT_ERROR)
+				error_reply().embed(
+					status::error(
+						None,
+						format!("Structure mismatch between registered and programmed command for {}:\n```\n{description}\n```", ctx.command.qualified_name)
+					).footer(serenity::CreateEmbedFooter::new(BOT_ERROR))
 				)
 			).await?;
 		},
@@ -153,10 +166,11 @@ pub async fn error_handler<U>(
 		FrameworkError::CooldownHit { remaining_cooldown, ctx, .. } => {
 			warn!("User attempted {:?} while on cooldown.", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::WARNING,
-					format!("You must wait **{} seconds** before attempting to invoke this command again.", remaining_cooldown.as_secs()),
-					Some(USER_ERROR)
+				error_reply().embed(
+					status::warning(
+						None,
+						format!("You must wait **{} seconds** before attempting to invoke this command again.", remaining_cooldown.as_secs())
+					).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
 				)
 			).await?;
 		},
@@ -164,10 +178,11 @@ pub async fn error_handler<U>(
 		FrameworkError::MissingBotPermissions { missing_permissions, ctx, .. } => {
 			warn!("Bot is missing permissions for {:?}: {missing_permissions}", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::WARNING,
-					format!("Bot requires the following permissions in order to execute {:?}: {missing_permissions}", ctx.invocation_string()),
-					None
+				error_reply().embed(
+					status::warning(
+						None,
+						format!("Bot requires the following permissions in order to execute {:?}: {missing_permissions}", ctx.invocation_string())
+					)
 				)
 			).await?;
 		},
@@ -176,19 +191,21 @@ pub async fn error_handler<U>(
 			if let Some(missing_permissions) = missing_permissions {
 				warn!("User tried executing {:?} without permissions: {missing_permissions}", ctx.invocation_string());
 				ctx.send(
-					create_reply(
-						templates::Status::WARNING,
-						format!("You must have the following permissions to execute {:?}: {missing_permissions}", ctx.invocation_string()),
-						None
+					error_reply().embed(
+						status::warning(
+							None,
+							format!("You must have the following permissions to execute {:?}:\n```\n{missing_permissions:#}\n```", ctx.invocation_string())
+						).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
 					)
 				).await?;
 			} else {
 				warn!("User tried executing {:?} without permissions.", ctx.invocation_string());
 				ctx.send(
-					create_reply(
-						templates::Status::WARNING,
-						format!("You do not have the permissions to execute {:?}.", ctx.invocation_string()),
-						None
+					error_reply().embed(
+						status::warning(
+							None,
+							format!("You do not have the permissions to execute {:?}.", ctx.invocation_string())
+						).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
 					)
 				).await?;
 			}
@@ -197,10 +214,11 @@ pub async fn error_handler<U>(
 		FrameworkError::NotAnOwner { ctx, .. } => {
 			warn!("Non-owner user attempted to invoke {:?}.", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::WARNING,
-					format!("{:?} can only be invoked by the owner of the bot.", ctx.invocation_string()),
-					Some(USER_ERROR)
+				error_reply().embed(
+					status::warning(
+						None,
+						format!("{:?} can only be invoked by the owner of the bot.", ctx.invocation_string())
+					).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
 				)
 			).await?;
 		},
@@ -208,10 +226,11 @@ pub async fn error_handler<U>(
 		FrameworkError::GuildOnly { ctx, .. } => {
 			warn!("User attempted to invoke {:?} outside of a guild.", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::WARNING,
-					format!("{:?} can only be invoked inside of a server.", ctx.invocation_string()),
-					Some(USER_ERROR)
+				error_reply().embed(
+					status::warning(
+						None,
+						format!("{:?} can only be invoked inside of a server.", ctx.invocation_string())
+					).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
 				)
 			).await?;
 		},
@@ -219,10 +238,11 @@ pub async fn error_handler<U>(
 		FrameworkError::DmOnly { ctx, .. } => {
 			warn!("User attempted to invoke {:?} outside of a direct message.", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::WARNING,
-					format!("{:?} can only be invoked inside of a direct message.", ctx.invocation_string()),
-					Some(USER_ERROR)
+				error_reply().embed(
+					status::warning(
+						None,
+						format!("{:?} can only be invoked inside of a direct message.", ctx.invocation_string())
+					).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
 				)
 			).await?;
 		},
@@ -230,10 +250,11 @@ pub async fn error_handler<U>(
 		FrameworkError::NsfwOnly { ctx, .. } => {
 			warn!("User attempted to invoke {:?} outside of a NSFW channel.", ctx.invocation_string());
 			ctx.send(
-				create_reply(
-					templates::Status::WARNING,
-					format!("{:?} can only be invoked inside of a NSFW channel.", ctx.invocation_string()),
-					Some(USER_ERROR)
+				error_reply().embed(
+					status::warning(
+						None,
+						format!("{:?} can only be invoked inside of a NSFW channel.", ctx.invocation_string())
+					).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
 				)
 			).await?;
 		},
@@ -242,10 +263,11 @@ pub async fn error_handler<U>(
 			if let Some(error) = error {
 				warn!("Check failed to run for invocation {:?}: {error:?}", ctx.invocation_string());
 				ctx.send(
-					create_reply(
-						templates::Status::ERROR,
-						format!("Check failed to run for invocation {:?}:\n```\n{error:?}\n```", ctx.invocation_string()),
-						Some(BOT_ERROR)
+					error_reply().embed(
+						status::error(
+							None,
+							format!("Check failed to run for invocation {:?}:\n```\n{error:?}\n```", ctx.invocation_string())
+						).footer(serenity::CreateEmbedFooter::new(BOT_ERROR))
 					)
 				).await?;
 			} else {
@@ -268,17 +290,8 @@ pub async fn error_handler<U>(
 	Ok(())
 }
 
-fn create_reply(
-	status: templates::Status,
-	description: impl Into<String>,
-	footer: Option<&str>
-) -> poise::CreateReply {
-	let mut embed = status.to_embed(description);
-	if let Some(footer) = footer {
-		embed = embed.footer(serenity::CreateEmbedFooter::new(footer));
-	}
+fn error_reply() -> poise::CreateReply {
 	poise::CreateReply::default()
-		.embed(embed)
 		.reply(true)
 		.ephemeral(true)
 }
