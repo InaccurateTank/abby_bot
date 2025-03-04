@@ -22,11 +22,11 @@ pub enum BotError {
 	InteractionTimedOut,
 
 	/// Command or modal input is unparseable.
-	#[error("Malformed input \"{0:?}\" is not parseable.")]
+	#[error("Malformed input {0:?} is not parseable.")]
 	MalformedInput(String),
 
 	/// Command or modal input is parseable but invalid.
-	#[error("Input within argument \"{0}\" is not malformed but is invalid. Please double check the command and try again.")]
+	#[error("Input within argument {0:?} is not malformed but is invalid. Please double check the command and try again.")]
 	InvalidInput(String),
 
 	/// Error specific to the rewind command.
@@ -34,13 +34,13 @@ pub enum BotError {
 	RewindChannelMismatch,
 
 	/// Channel is not available to post in.
-	#[error("Channel \"{0}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel.")]
+	#[error("Channel {0:?} is inaccessable for posting in. Either change the permission overrides or choose a different channel.")]
 	ChannelInaccessable(String),
 
 	#[error("Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with \"/setup roles\".")]
 	RolesChannelUnset,
 
-	#[error("Failed to create role list for group \"{0}\".")]
+	#[error("Failed to create role list for group {0:?}.")]
 	RoleListFailed(String),
 
 	#[error("Config file does not exist. Please fill out generated config file before running again.")]
