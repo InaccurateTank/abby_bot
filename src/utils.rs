@@ -79,6 +79,7 @@ pub async fn can_post(
 	Ok(true)
 }
 
+/// Converts the [Option] containing a guild [CacheRef][serenity::CacheRef] into either an owned [Guild][serenity::Guild] or [Error][serenity::Error].
 pub fn guild_or_error(ctx: Context<'_>) -> Result<serenity::Guild> {
 	let Some(guild) = ctx.guild() else {
 		return Err(serenity::Error::Model(serenity::ModelError::GuildNotFound).into())
