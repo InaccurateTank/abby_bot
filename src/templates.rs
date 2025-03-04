@@ -1,4 +1,4 @@
-//! Embed templating module for the creation of standardized messages.
+//! [serenity::CreateEmbed] templating module for the creation of standardized messages.
 //!
 //! Contains both the functions for creation along with the [Status] struct.
 
@@ -15,42 +15,42 @@ use crate::{
 #[derive(Debug)]
 pub struct Status {
 	symbol: &'static str,
-	string: &'static str,
+	title: &'static str,
 	color: serenity::Color
 }
 
-impl Status {
-	pub const SUCCESS: Self = Self {
-		symbol: ":white_check_mark:",
-		string: "Success",
-		color: colors::INFO
+impl <'a> Status {
+	pub const ERROR: Self = Self {
+		symbol: ":exclamation:",
+		title: "Error",
+		color: colors::ERROR
 	};
 	pub const PROCESSING: Self = Self {
 		symbol: ":gear:",
-		string: "Processing",
+		title: "Processing",
 		color: colors::WARN
+	};
+	pub const SUCCESS: Self = Self {
+		symbol: ":white_check_mark:",
+		title: "Success",
+		color: colors::INFO
 	};
 	pub const WARNING: Self = Self {
 		symbol: ":warning:",
-		string: "Warning",
+		title: "Warning",
 		color: colors::WARN
 	};
-	pub const ERROR: Self = Self {
-		symbol: ":exclamation:",
-		string: "Error",
-		color: colors::ERROR
-	};
-}
 
-/// Templates [serenity::CreateEmbed] for bot status embeds.
-pub fn status_embed(
-	status: Status,
-	description: impl Into<String>,
-) -> serenity::CreateEmbed {
-	serenity::CreateEmbed::new()
-		.title(format!("{0} {1} {0}", status.symbol, status.string))
-		.description(description)
-		.color(status.color)
+	/// Templates [serenity::CreateEmbed] for bot status embeds.
+	pub fn to_embed(
+		self,
+		description: impl Into<String>
+	) -> serenity::CreateEmbed {
+		serenity::CreateEmbed::new()
+			.title(format!("{0} {1} {0}", self.symbol, self.title))
+			.description(description)
+			.color(self.color)
+	}
 }
 
 /// Makes a [`serenity::CreateEmbed`] and fills it out using the builder function.
@@ -103,7 +103,7 @@ pub fn rolelist_embed<'a>(
 	user_str = user_str.trim_end_matches('\n').to_string();
 	Ok(serenity::CreateEmbed::new()
 		.title(group)
-		.color(EMBED_STD)
+		.color(colors::INFO)
 		.fields([
 			("Name", name_str, true),
 			("Users", user_str, true)

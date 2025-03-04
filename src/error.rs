@@ -276,7 +276,7 @@ fn create_reply(
 	description: impl Into<String>,
 	footer: Option<&str>
 ) -> poise::CreateReply {
-	let mut embed = templates::status_embed(status, description);
+	let mut embed = status.to_embed(description);
 	if let Some(footer) = footer {
 		embed = embed.footer(serenity::CreateEmbedFooter::new(footer));
 	}
