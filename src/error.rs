@@ -30,8 +30,8 @@ pub enum BotError {
 	InvalidInput(String),
 
 	/// Error specific to the rewind command.
-	#[error("Input \"from\" is not in the same channel as \"until\".")]
-	RewindChannelMismatch,
+	#[error("Inputs are not in the same channel as each other, aborting.")]
+	InputChannelMismatch,
 
 	/// Channel is not available to post in.
 	#[error("Channel {0:?} is inaccessable for posting in. Either change the permission overrides or choose a different channel.")]
@@ -44,7 +44,13 @@ pub enum BotError {
 	RoleListFailed(String),
 
 	#[error("Config file does not exist. Please fill out generated config file before running again.")]
-	ConfigFileMissing
+	ConfigFileMissing,
+
+	#[error("Failed to confirm via confirmation modal, aborting.")]
+	UnconfirmedModal,
+
+	#[error("A role with an identical name already exists.")]
+	RoleAlreadyExists
 }
 
 #[derive(Error, Debug)]
