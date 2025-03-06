@@ -24,7 +24,7 @@ impl GuildSettings {
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
 	) -> Result<Self> {
-		sqlx::query_as("SELECT serious,messages,roles,roles_channel FROM guild_settings WHERE id = ?;")
+		sqlx::query_as("SELECT serious,messages,roles,roles_channel FROM guild_settings WHERE guild_id = ?;")
 			.bind(guild_id.get() as i64)
 			.fetch_one(db)
 			.await
