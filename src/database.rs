@@ -47,7 +47,7 @@ impl GuildSettings {
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
 	) -> Result<()> {
-		sqlx::query("UPDATE servers SET serious = ?, messages = ?, roles = ?, roles_channel = ? WHERE guild_id = ?;")
+		sqlx::query("UPDATE guild_settings SET serious = ?, messages = ?, roles = ?, roles_channel = ? WHERE guild_id = ?;")
 			.bind(self.serious)
 			.bind(self.messages)
 			.bind(self.roles)
