@@ -82,7 +82,7 @@ pub async fn event_handler<'a>(
 					.await;
 				match actually_new {
 					// New
-					Ok(n) if n == true => {
+					Ok(new) if new => {
 						on_join(ctx, framework, guild.id, &guild.name, &data.db).await?;
 						// If the bot can post in a default channel, do so. Better to disclose the join than not.
 						// TODO: Change intro message

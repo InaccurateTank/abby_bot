@@ -53,10 +53,10 @@ pub struct RoleVitals {
 	pub name: String,
 	pub users: UserCount
 }
-impl <'a> RoleVitals {
+impl RoleVitals {
 	pub fn new(
 		id: serenity::RoleId,
-		guild: &'a serenity::Guild
+		guild: &serenity::Guild
 	) -> Result<Self> {
 		let closure_id = id.to_owned();
 		let closure_members = guild.members.to_owned();

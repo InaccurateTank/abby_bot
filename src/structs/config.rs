@@ -26,7 +26,7 @@ impl Config {
 		let mut toml = String::new();
 		config_file.read_to_string(&mut toml)?;
 		if toml.is_empty() {
-			config_file.write(DEFAULT_CONFIG.as_bytes())?;
+			config_file.write_all(DEFAULT_CONFIG.as_bytes())?;
 			Err(UserError(BotError::ConfigFileMissing.into()).into())
 		} else {
 			Ok(toml::from_str(&toml)?)
