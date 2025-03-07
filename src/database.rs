@@ -92,7 +92,7 @@ impl Default for GuildSettings {
 impl FromRow<'_, SqliteRow> for GuildSettings {
 	fn from_row(row: &SqliteRow) -> sqlx::Result<Self, sqlx::Error> {
 		let mapped_roles_channel = match row.try_get::<Option<u64>, &str>("roles_channel") {
-			Ok(raw) => raw.map(|inner| serenity::ChannelId::from(inner)),
+			Ok(raw) => raw.map(serenity::ChannelId::from),
 			Err(e) => return Err(e)
 		};
 
@@ -171,7 +171,7 @@ pub async fn roles_from_query(
 
 	match res {
 		Ok(v) => Ok(v.into_iter()
-			.map(|f| serenity::RoleId::from(f))
+			.map(serenity::RoleId::from)
 			.collect()),
 		Err(e) => Err(e.into())
 	}

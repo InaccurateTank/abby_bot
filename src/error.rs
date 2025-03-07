@@ -91,8 +91,48 @@ pub async fn error_handler<U>(
 		FrameworkError::Setup { error, ..} =>
 			error!("Failed to complete setup: {error:#}"),
 
-		FrameworkError::EventHandler { error, event, .. } =>
-			error!("Failed to handle event {:?}: {error:#}", event.snake_case_name()),
+		FrameworkError::EventHandler { error, ctx, event, .. } => {
+			let message = if let serenity::FullEvent::InteractionCreate { interaction } = event {
+				match interaction {
+					serenity::Interaction::Component(interaction) => interaction.get_response(ctx).await.ok(),
+					serenity::Interaction::Modal(interaction) => interaction.get_response(ctx).await.ok(),
+					_ => None
+				}
+			} else {
+				None
+			};
+			if error.is::<UserError>() {
+				warn!("User made an error with event {:?}: {error:?}", event.snake_case_name());
+				if let Some(mut message) = message {
+					message.edit(
+						ctx,
+						serenity::EditMessage::default()
+							.embed(
+								status::warning(
+									None,
+									format!("An error has been made during event {:?}:\n```\n{error:#}\n```", event.snake_case_name())
+								).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
+							)
+							.components(vec![])
+					).await?;
+				}
+			} else {
+				error!("Failed to handle event {:?}: {error:?}", event.snake_case_name());
+				if let Some(mut message) = message {
+					message.edit(
+						ctx,
+						serenity::EditMessage::default()
+							.embed(
+								status::warning(
+									None,
+									format!("An error occurred during event {:?}:\n```\n{error:#}\n```", event.snake_case_name())
+								).footer(serenity::CreateEmbedFooter::new(BOT_ERROR))
+							)
+							.components(vec![])
+					).await?;
+				}
+			}
+		},
 
 		FrameworkError::Command { error, ctx, .. } => {
 			if error.is::<UserError>() {
