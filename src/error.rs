@@ -27,6 +27,10 @@ pub enum BotError {
 	#[error("Malformed input {0:?} is not parseable.")]
 	MalformedInput(String),
 
+	/// Interaction ID is malformed somehow.
+	#[error("The ID of the interaction is malformed somehow.")]
+	MalformedInteraction,
+
 	/// Command or modal input is parseable but invalid.
 	#[error("Input within argument {0:?} is not malformed but is invalid. Please double check the command and try again.")]
 	InvalidInput(String),
@@ -57,7 +61,19 @@ pub enum BotError {
 
 	/// Role already exists in a given guild.
 	#[error("A role with an identical name already exists.")]
-	RoleAlreadyExists
+	RoleAlreadyExists,
+
+	/// Special error for role picking due to constraints.
+	#[error("For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself. If you cannot assign them to yourself then I can't assign them to anyone anyway.")]
+	RolePickPermissions,
+
+	/// Generic error for missing permissions. Pretty much used entirely on longform interactions.
+	#[error("You must have the following permissions to use that interaction:\n```\n{0:#?}\n```")]
+	InteractionMissingPermissions(Vec<serenity::Permissions>),
+
+	/// Commands can filter being in a guild, Interactions can't somehow.
+	#[error("This interaction can only be created and used in a guild. If this is in a direct message somthing has gone wrong.")]
+	InteractionNotInGuild
 }
 
 #[derive(Error, Debug)]
