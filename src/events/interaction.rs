@@ -2,15 +2,11 @@ use std::{
 	collections::VecDeque,
 	str::FromStr
 };
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use sqlx::query;
 use crate::{
-	database,
-	structs::misc,
-	utils, templates,
-	Data,
-	EMBED_STD
+	colors, database, error::{BotError, UserError}, structs, templates, utils, Data
 };
 
 pub async fn mci_handler(
@@ -22,7 +18,7 @@ pub async fn mci_handler(
 	let mut mci_id: VecDeque<&str> = mci.data.custom_id.split_terminator('.').collect();
 
 	// Interaction futureproof
-	match mci_id.pop_front().ok_or(eyre!("Malformed interaction id."))? {
+	match mci_id.pop_front().ok_or(BotError::MalformedInteraction)? {
 		"roles" => {
 			if srv_features.roles {
 				roles_click(ctx, data, mci, &mut mci_id).await?;
@@ -40,24 +36,28 @@ async fn roles_click(
 	id_vec: &mut VecDeque<&str>
 ) -> Result<()> {
 	let Some(group_name) = id_vec.pop_back() else {
-		// TODO: Better Errors
-		return Err(eyre!("Malformed interaction id."))
+		return Err(BotError::MalformedInteraction.into())
 	};
 
-	let server = if let Some(r) = mci.guild_id
-		.ok_or(eyre!("Not a Guild"))?
-		.to_guild_cached(ctx) {
-		r.to_owned()
-	} else {
-		return Err(serenity::ModelError::GuildNotFound.into())
-	};
+	let guild = mci.guild_id
+		.ok_or(BotError::InteractionNotInGuild)?
+		.to_guild_cached(ctx)
+		.ok_or(serenity::Error::Model(serenity::ModelError::GuildNotFound))?
+		.to_owned();
+	// let guild = if let Some(r) = mci.guild_id
+	// 	.ok_or(BotError::InteractionNotInGuild)?
+	// 	.to_guild_cached(ctx) {
+	// 	r.to_owned()
+	// } else {
+	// 	return Err(serenity::ModelError::GuildNotFound.into())
+	// };
 
 	// let db_group_roles = query_as::<_, database::Role>("SELECT * FROM roles WHERE server_id = ? AND group_name = ?;")
 	// 	.bind(server.id.get() as i64)
 	// 	.bind(group_name)
 	// 	.fetch_all(&data.db)
 	// 	.await?;
-	let db_group_roles = database::roles_from_query(server.id, group_name, &data.db).await?;
+	let db_group_roles = database::roles_from_query(guild.id, group_name, &data.db).await?;
 
 	let Some(member) = mci.member.as_ref() else {
 		// TODO: Better Errors
@@ -68,24 +68,25 @@ async fn roles_click(
 		.await?
 		.guild() else {
 		// TODO: Better Errors
-		return Err(eyre!("Not a GuildChannel"))
+		return Err(BotError::InteractionNotInGuild.into())
 	};
 
-	match id_vec.pop_front().ok_or(eyre!("Malformed interaction id."))? {
+	match id_vec.pop_front().ok_or(BotError::MalformedInteraction)? {
 		// Rolelist Pick
 		"pick" => {
 			// TODO: Standardize Error
-			if server.user_permissions_in(&channel, member).manage_roles() {
-				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
-					.ephemeral(true)
-					.embed(templates::state_embed(false, "For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself. If you cannot assign them to yourself then I can't assign them to anyone anyway."))
-				)).await?;
-				return Ok(())
+			if guild.user_permissions_in(&channel, member).manage_roles() {
+				return Err(UserError(BotError::RolePickPermissions.into()).into())
+				// mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
+				// 	.ephemeral(true)
+				// 	// .embed(templates::state_embed(false, "For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself. If you cannot assign them to yourself then I can't assign them to anyone anyway."))
+				// )).await?;
+				// return Ok(())
 			}
 
 			let mut roles_list = db_group_roles.into_iter()
 				.map(|r| {
-					structs::RoleVitals::new(r, &server)
+					structs::RoleVitals::new(r, &guild)
 				}).collect::<Result<Vec<structs::RoleVitals>>>()?;
 			roles_list.sort_by(|a, b| {
 				let a_l = a.name.to_lowercase();
@@ -114,7 +115,7 @@ async fn roles_click(
 			mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 				.ephemeral(true)
 				.embed(serenity::CreateEmbed::new()
-					.color(EMBED_STD)
+					.color(colors::INFO)
 					.description("Pick roles from the list below. Roles you already have will be preselected.")
 				).components(vec![
 					serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("choose_roles", serenity::CreateSelectMenuKind::String { options: roles_list.iter()
@@ -129,26 +130,39 @@ async fn roles_click(
 			)).await?;
 
 			// Wait for response
-			let response_message = mci.get_response(ctx).await?;
-			let sec_mci = match response_message.await_component_interaction(ctx)
+			let mut response_message = mci.get_response(ctx).await?;
+			let Some(sec_mci) = response_message.await_component_interaction(ctx)
 				.author_id(member.user.id)
 				.timeout(std::time::Duration::from_secs(300))
-				.await {
-				Some(i) => i,
-				None => {
-					mci.edit_response(ctx, serenity::EditInteractionResponse::new()
-						.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-						.components(Vec::new())
-					).await?;
-					return Ok(())
-				}
+				.await else
+			{
+				response_message.delete(ctx).await?;
+				return Err(BotError::InteractionTimedOut.into())
 			};
+			// let sec_mci = match response_message.await_component_interaction(ctx)
+			// 	.author_id(member.user.id)
+			// 	.timeout(std::time::Duration::from_secs(300))
+			// 	.await {
+			// 	Some(i) => i,
+			// 	None => {
+			// 		mci.edit_response(ctx, serenity::EditInteractionResponse::new()
+			// 			.embed(templates::state_embed(false, "Interaction timed out, please try again."))
+			// 			.components(Vec::new())
+			// 		).await?;
+			// 		return Ok(())
+			// 	}
+			// };
 
 			// Processing message
-			mci.edit_response(ctx, serenity::EditInteractionResponse::new()
-				.embed(templates::processing_embed())
+			response_message.edit(ctx, serenity::EditMessage::default()
+				.embed(templates::status::processing())
 				.components(Vec::new())
 			).await?;
+			// mci.edit_response(ctx, serenity::EditInteractionResponse::new()
+			// 	.embed(templates::status::processing())
+			// 	// .embed(templates::processing_embed())
+			// 	.components(Vec::new())
+			// ).await?;
 
 			// Vector of selected roles
 			let selected_roles = match &sec_mci.data.kind {
@@ -156,11 +170,14 @@ async fn roles_click(
 					.map(|s| serenity::RoleId::from_str(s).map_err(|e| e.into()))
 					.collect::<Result<Vec<serenity::RoleId>>>()?,
 				_ => {
-					sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-						.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-						.components(Vec::new())
-					)).await?;
-					return Ok(())
+					// sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
+					// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
+					// 	.components(Vec::new())
+					// )).await?;
+					// return Ok(())
+					sec_mci.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
+					response_message.delete(ctx).await?;
+					return Err(BotError::WrongInteraction.into())
 				}
 			};
 
@@ -207,9 +224,17 @@ async fn roles_click(
 				.ephemeral(true)
 				.embed(
 					if error_list.is_empty() {
-						templates::state_embed(true, "Roles selected have been successfully applied to your server profile.")
+						templates::status::success(
+							None,
+							"Roles selected have been successfully applied to your server profile."
+						)
+						// templates::state_embed(true, "Roles selected have been successfully applied to your server profile.")
 					} else {
-						templates::state_embed(false, &format!("An error has been encountered on at least one role. Please contact the server administrator.\n\n{}", error_list.join("\n")))
+						templates::status::error(
+							None,
+							format!("An error has been encountered on at least one role. Please contact the server administrator.\n\n{}", error_list.join("\n"))
+						)
+						// templates::state_embed(false, &format!("An error has been encountered on at least one role. Please contact the server administrator.\n\n{}", error_list.join("\n")))
 					}
 				)
 			)).await?;
@@ -221,22 +246,30 @@ async fn roles_click(
 			});
 
 			mci.message.to_owned().edit(ctx, serenity::EditMessage::new()
-				.embed(templates::rolelist_embed(group_name, &roles_list)?)
+				.embed(templates::rolelist::embed(group_name, &roles_list)?)
 			).await?;
 		},
 
 		// Rolelist Edit
 		"edit" => {
-			if !server.user_permissions_in(&channel, member).manage_roles() {
-				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
-					.ephemeral(true)
-					.embed(templates::state_embed(false, "You do not have the required permissions for this."))
-				)).await?;
-				return Ok(());
+			if !guild.user_permissions_in(&channel, member).manage_roles() {
+				// mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
+				// 	.ephemeral(true)
+				// 	.embed(
+				// 		templates::status::warning(
+				// 			None,
+				// 			"You do not have the required permissions for this."
+				// 		)
+				// 	)
+				// 	// .embed(
+				// 	// 	templates::state_embed(false, "You do not have the required permissions for this."))
+				// )).await?;
+				// return Ok(());
+				return Err(UserError(BotError::InteractionMissingPermissions(vec![serenity::Permissions::MANAGE_ROLES]).into()).into())
 			}
 
 			// Select menu sorting
-			let mut server_roles: Vec<&serenity::Role> = server.roles
+			let mut server_roles: Vec<&serenity::Role> = guild.roles
 				.values()
 				.filter(|r| utils::role_filter(r))
 				.collect();
@@ -249,7 +282,7 @@ async fn roles_click(
 			mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 				.ephemeral(true)
 				.embed(serenity::CreateEmbed::new()
-					.color(EMBED_STD)
+					.color(colors::INFO)
 					.description("Please select a set of roles for the group below. Note that roles with permissions to modify the server are not available.")
 				).components(vec![
 					serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("rolelist.edit", serenity::CreateSelectMenuKind::String { options: server_roles.iter()
@@ -263,37 +296,73 @@ async fn roles_click(
 				])
 			)).await?;
 
-			let response_message = mci.get_response(ctx).await?;
-			let sec_mci = match response_message.await_component_interaction(ctx)
-				.author_id(member.user.id)
-				.timeout(std::time::Duration::from_secs(300))
-				.await {
-				Some(i) => i,
-				None => {
-					mci.edit_response(ctx, serenity::EditInteractionResponse::new()
-						.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-						.components(Vec::new())
-					).await?;
-					return Ok(())
-				}
+			let mut response_message = mci.get_response(ctx).await?;
+			let Some(sec_mci) = response_message.await_component_interaction(ctx)
+			.author_id(member.user.id)
+			.timeout(std::time::Duration::from_secs(300))
+			.await else
+			{
+				response_message.delete(ctx).await?;
+				return Err(BotError::InteractionTimedOut.into())
 			};
+			// let sec_mci = match response_message.await_component_interaction(ctx)
+			// 	.author_id(member.user.id)
+			// 	.timeout(std::time::Duration::from_secs(300))
+			// 	.await {
+			// 	Some(i) => i,
+			// 	None => {
+			// 		mci.edit_response(ctx, serenity::EditInteractionResponse::new()
+			// 			.embed(templates::state_embed(false, "Interaction timed out, please try again."))
+			// 			.components(Vec::new())
+			// 		).await?;
+			// 		return Ok(())
+			// 	}
+			// };
 
-			mci.edit_response(ctx, serenity::EditInteractionResponse::new()
-				.embed(templates::processing_embed())
+			response_message.edit(ctx, serenity::EditMessage::default()
+				.embed(templates::status::processing())
 				.components(Vec::new())
 			).await?;
+			// mci.edit_response(ctx, serenity::EditInteractionResponse::new()
+			// 	.embed(templates::status::processing())
+			// 	// .embed(templates::processing_embed())
+			// 	.components(Vec::new())
+			// ).await?;
 
-			let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &sec_mci.data.kind {
-				values.iter()
-				.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
-				.collect::<Result<Vec<structs::RoleVitals>>>()?
-			} else {
-				sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-					.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-					.components(Vec::new())
-				)).await?;
-				return Ok(())
+			let selected_roles = match &sec_mci.data.kind {
+				serenity::ComponentInteractionDataKind::StringSelect { values } => values.iter()
+					.map(|s| structs::RoleVitals::new(
+						serenity::RoleId::from_str(s)?,
+							&guild
+						)
+					)
+					.collect::<Result<Vec<structs::RoleVitals>>>()?,
+				_ => {
+					sec_mci.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
+					response_message.delete(ctx).await?;
+					return Err(BotError::WrongInteraction.into())
+				}
 			};
+			// let selected_roles = match &sec_mci.data.kind {
+			// 	serenity::ComponentInteractionDataKind::StringSelect { values } => {
+			// 		values.iter()
+			// 			.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
+			// 			.collect::<Result<Vec<structs::RoleVitals>>>()?
+			// 	},
+			// 	_ => return Err(BotError::WrongInteraction.into())
+			// };
+			// if let serenity::ComponentInteractionDataKind::StringSelect { values } = &sec_mci.data.kind {
+			// 	values.iter()
+			// 		.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &server))
+			// 		.collect::<Result<Vec<structs::RoleVitals>>>()?
+			// } else {
+			// 	sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
+			// 		.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
+			// 		.components(Vec::new())
+			// 	)).await?;
+			// 	return Ok(())
+			// 	return Err(BotError::WrongInteraction.into())
+			// };
 
 			query("DELETE FROM roles WHERE group_name = ?;")
 				.bind(group_name)
@@ -301,7 +370,7 @@ async fn roles_click(
 				.await?;
 			for entry in &selected_roles {
 				query("INSERT INTO roles (server_id, group_name, role_id) VALUES(?, ?, ?);")
-					.bind(server.id.get() as i64)
+					.bind(guild.id.get() as i64)
 					.bind(group_name)
 					.bind(entry.id.get() as i64)
 					.execute(&data.db)
@@ -310,21 +379,28 @@ async fn roles_click(
 
 			sec_mci.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 				.ephemeral(true)
-				.embed(templates::state_embed(true, &format!("Editing of group {group_name} has been completed. The original message should update shortly.")))
+				.embed(
+					templates::status::success(
+						None,
+						format!("Editing of group {group_name} has been completed. The original message should update shortly.")
+					)
+				)
+				// .embed(templates::state_embed(true, &format!("Editing of group {group_name} has been completed. The original message should update shortly.")))
 			)).await?;
 
 			mci.message.to_owned().edit(ctx, serenity::EditMessage::new()
-				.embed(templates::rolelist_embed(group_name, &selected_roles)?)
+				.embed(templates::rolelist::embed(group_name, &selected_roles)?)
 			).await?;
 		},
 
 		// Unknown
 		_ => {
-			println!("Unknown Interaction ID {}", &mci.data.custom_id);
-			mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
-				.ephemeral(true)
-				.embed(templates::state_embed(false, "Unknown Interaction ID"))
-			)).await?;
+			return Err(BotError::WrongInteraction.into())
+			// println!("Unknown Interaction ID {}", &mci.data.custom_id);
+			// mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
+			// 	.ephemeral(true)
+			// 	.embed(templates::state_embed(false, "Unknown Interaction ID"))
+			// )).await?;
 		}
 	}
 	Ok(())

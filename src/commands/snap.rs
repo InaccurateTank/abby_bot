@@ -1,8 +1,7 @@
 use color_eyre::Result;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use crate::{
-	templates,
-	Context
+	error::{BotError, UserError}, templates, utils, Context
 };
 
 /// A set of commands to quickly add things to the server. Less powerful than discords standard options.
@@ -86,20 +85,35 @@ async fn channel(
 	}
 
 	// Send interaction reply.
-	match guild_id.create_channel(ctx, builder).await {
-		Ok(c) => {
-			ctx.send(poise::CreateReply::default()
-				.ephemeral(true)
-				.embed(templates::state_embed(true, &format!("Channel {} has been successfully added to the server.", c.mention())))
-			).await?;
-		}
-		Err(e) => {
-			ctx.send(poise::CreateReply::default()
-				.ephemeral(true)
-				.embed(templates::state_embed(false, &format!("Error adding channel {name}: {e:?}")))
-			).await?;
-		}
-	};
+	ctx.send(poise::CreateReply::default()
+		.ephemeral(true)
+		.embed(
+			templates::status::success(
+				Some("Snap Complete"),
+				format!("Channel {} has been successfully added to the server.", guild_id.create_channel(ctx, builder).await?.mention())
+			)
+		)
+	).await?;
+	// match guild_id.create_channel(ctx, builder).await {
+	// 	Ok(c) => {
+	// 		ctx.send(poise::CreateReply::default()
+	// 			.ephemeral(true)
+	// 			.embed(
+	// 				templates::status::success(
+	// 					Some("Snap Complete"),
+	// 					format!("Channel {} has been successfully added to the server.", c.mention())
+	// 				)
+	// 			)
+	// 		).await?;
+	// 	}
+	// 	Err(e) => {
+	// 		// ctx.send(poise::CreateReply::default()
+	// 		// 	.ephemeral(true)
+	// 		// 	.embed(templates::state_embed(false, &format!("Error adding channel {name}: {e:?}")))
+	// 		// ).await?;
+	// 		return Err(e.into())
+	// 	}
+	// };
 	Ok(())
 }
 
@@ -115,31 +129,44 @@ async fn role(
 	#[description = "Name of the new role."]
 	name: String
 ) -> Result<()> {
-	if ctx.guild().unwrap().role_by_name(&name).is_some() {
-		ctx.send(poise::CreateReply::default()
-			.ephemeral(true)
-			.embed(templates::state_embed(false, "Role with an identical name already exists."))
-		).await?;
-		return Ok(())
-	}
+	let guild = utils::guild_or_error(ctx)?;
+	guild.role_by_name(&name)
+		.ok_or(UserError(BotError::RoleAlreadyExists.into()))?;
 
-	match ctx.guild_id()
-		.unwrap()
-		.create_role(ctx, serenity::EditRole::new()
-			.name(&name)
-		).await {
-		Ok(r) => {
-			ctx.send(poise::CreateReply::default()
-				.ephemeral(true)
-				.embed(templates::state_embed(true, &format!("Role {} has been successfully created.", r.mention())))
-			).await?;
-		},
-		Err(e) => {
-			ctx.send(poise::CreateReply::default()
-				.ephemeral(true)
-				.embed(templates::state_embed(false, &format!("Error creating role {name}: {e:?}")))
-			).await?;
-		}
-	}
+	// if guild.role_by_name(&name).is_some() {
+		// ctx.send(poise::CreateReply::default()
+		// 	.ephemeral(true)
+		// 	.embed(templates::state_embed(false, "Role with an identical name already exists."))
+		// ).await?;
+		// return Ok(())
+	// }
+
+	ctx.send(poise::CreateReply::default()
+		.ephemeral(true)
+		.embed(
+			templates::status::success(
+				Some("Snap Complete"),
+				format!("Channel {} has been successfully added to the server.", guild.create_role(ctx, serenity::EditRole::new().name(&name)).await?.mention())
+			)
+		)
+	).await?;
+	// match ctx.guild_id()
+	// 	.unwrap()
+	// 	.create_role(ctx, serenity::EditRole::new()
+	// 		.name(&name)
+	// 	).await {
+	// 	Ok(r) => {
+	// 		ctx.send(poise::CreateReply::default()
+	// 			.ephemeral(true)
+	// 			.embed(templates::state_embed(true, &format!("Role {} has been successfully created.", r.mention())))
+	// 		).await?;
+	// 	},
+	// 	Err(e) => {
+	// 		ctx.send(poise::CreateReply::default()
+	// 			.ephemeral(true)
+	// 			.embed(templates::state_embed(false, &format!("Error creating role {name}: {e:?}")))
+	// 		).await?;
+	// 	}
+	// }
 	Ok(())
 }

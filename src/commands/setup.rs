@@ -1,11 +1,15 @@
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::Result;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use sqlx::query;
+use tracing::instrument;
 use crate::{
+	checks,
+	colors,
 	database,
-	templates, utils,
-	Context,
-	EMBED_STD, EMBED_WAIT, EMBED_FAIL
+	error::{BotError, UserError},
+	templates,
+	utils,
+	Context
 };
 
 /// Administrates the bot on a per-server basis.
@@ -28,6 +32,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<()> {
 	Ok(())
 }
 
+#[instrument(skip_all)]
 /// Sets up various settings for the bot on the server.
 #[poise::command(
 	guild_only,
@@ -36,21 +41,14 @@ pub async fn setup(ctx: Context<'_>) -> Result<()> {
 	ephemeral
 )]
 async fn bot(ctx: Context<'_>) -> Result<()> {
-	let guild = if let Some(r) = ctx.guild_id()
-		.ok_or(eyre!("Not a Guild"))?
-		.to_guild_cached(ctx.cache())
-	{
-		r.to_owned()
-	} else {
-		return Err(serenity::ModelError::GuildNotFound.into())
-	};
+	let guild = utils::guild_or_error(ctx)?;
 
 	let guild_settings = database::GuildSettings::from_query(guild.id, &ctx.data().db).await?;
 
 	let reply = ctx.send(poise::CreateReply::default()
 		.embed(serenity::CreateEmbed::new()
 			.title("Bot Configuration")
-			.color(EMBED_STD)
+			.color(colors::INFO)
 			.description("Below is a select menu to choose my features on a per-server basis. These can be changed at any time by simply running the command again.")
 			.field("Serious", "Toggles the appearence of memes, injokes or other related content. This setting encompasses *all* invocations of this across all other features.", false)
 			.field("Messages", "Whether or not I should listen to message events outside of command invocations. This is mostly to reply to them based on regex.", false)
@@ -63,23 +61,23 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 		])
 	).await?;
 
-	let interaction = match reply.message().await?
+	let Some(interaction) = reply.message().await?
 		.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
 		.timeout(std::time::Duration::from_secs(300))
-		.await {
-		Some(i) => i,
-		None => {
-			reply.edit(ctx, poise::CreateReply::default()
-				.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-				.components(Vec::new())
-			).await?;
-			return Ok(())
-		}
+		.await else {
+		// reply.edit(ctx, poise::CreateReply::default()
+		// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
+		// 	.components(Vec::new())
+		// ).await?;
+		// return Ok(())
+		reply.delete(ctx).await?;
+		return Err(UserError(BotError::InteractionTimedOut.into()).into())
 	};
 
 	reply.edit(ctx, poise::CreateReply::default()
-		.embed(templates::processing_embed())
+		.embed(templates::status::processing())
+		// .embed(templates::processing_embed())
 		.components(Vec::new())
 	).await?;
 
@@ -93,11 +91,14 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 			}
 		},
 		_ => {
-			interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-				.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-				.components(Vec::new())
-			)).await?;
-			return Ok(());
+			// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
+			// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
+			// 	.components(Vec::new())
+			// )).await?;
+			// return Ok(());
+			interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
+			reply.delete(ctx).await?;
+			return Err(BotError::WrongInteraction.into())
 		}
 	};
 
@@ -124,14 +125,22 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 				.embed(
 					if let Some(channel) = default {
 						// Default channel exists
-						serenity::CreateEmbed::new()
-							.description(format!("The current default channel for role lists is {}. If this is not desired, please run `/setup roles` now.", channel.mention()))
-							.color(EMBED_WAIT)
+						templates::status::info(
+							None,
+							format!("The current default channel for role lists is {}. If this is not desired, please run `/setup roles` now.", channel.mention())
+						)
+						// serenity::CreateEmbed::new()
+						// 	.description(format!("The current default channel for role lists is {}. If this is not desired, please run `/setup roles` now.", channel.mention()))
+						// 	.color(EMBED_WAIT)
 					} else {
 						// Default channel does not exist
-						serenity::CreateEmbed::new()
-							.description("Could not setup a default channel for roles. Before creating any lists running `/setup roles` is needed.")
-							.color(EMBED_FAIL)
+						templates::status::warning(
+							None,
+							"Could not setup a default channel for roles. Before creating any lists, please run `/setup roles`."
+						)
+						// serenity::CreateEmbed::new()
+						// 	.description("Could not setup a default channel for roles. Before creating any lists, please run `/setup roles`.")
+						// 	.color(EMBED_FAIL)
 					}
 				)
 			).await?;
@@ -140,19 +149,22 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 		false if guild_settings.roles => {
 			// Unset roles channel in structure
 			updated.roles_channel = None;
-			// Query groups
-			let groups = database::groups_from_query(guild.id, &ctx.data().db).await?;
-
 			// For groups
-			for grp in groups {
+			for grp in database::groups_from_query(guild.id, &ctx.data().db).await? {
 				// Deleting messages
-				let delete = ctx.http()
+				if ctx.http()
 					.delete_message(updated.roles_channel.unwrap(), grp.message_id, Some("Role management disabled, deleting groups."))
-					.await;
-				if delete.is_err() {
+					.await
+					.is_err() {
 					ctx.send(poise::CreateReply::default()
-						.ephemeral(true)
-						.embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{}\". Entries will be removed from the database, but the message will need to be deleted manually.", grp.name)))
+						.embed(
+							templates::status::warning(
+								None,
+								format!("Either can't find or can't delete the message for the role group {:?}. Entries will be removed from the database, but the message will need to be deleted manually.", grp.name)
+							)
+						)
+						// .ephemeral(true)
+						// .embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{}\". Entries will be removed from the database, but the message will need to be deleted manually.", grp.name)))
 					).await?;
 				}
 				// Purging managed roles
@@ -171,70 +183,82 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 
 	// Confirm message
 	interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-		.embed(serenity::CreateEmbed::new()
-			.title("Feature Changes Confirmed!")
-			.color(EMBED_STD)
-			.description("Your new settings are:")
-			.fields(updated.as_array()
+		.embed(
+			templates::status::success(
+					Some("Server Settings Confirmed"),
+					"Your new settings are:"
+				).fields(updated.as_array()
 				.map(|(name, value)|  (name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false))
 			)
 		)
+		// .embed(serenity::CreateEmbed::new()
+		// 	.title("Feature Changes Confirmed!")
+		// 	.color(EMBED_STD)
+		// 	.description("Your new settings are:")
+		// 	.fields(updated.as_array()
+		// 		.map(|(name, value)|  (name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false))
+		// 	)
+		// )
 	)).await?;
 	Ok(())
 }
 
+#[instrument(skip_all)]
 /// Edits settings for the role management feature.
 #[poise::command(
 	guild_only,
 	slash_command,
+	check = "checks::roles",
 	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
 async fn roles(ctx: Context<'_>) -> Result<()> {
-	let guild = ctx.guild().unwrap().clone();
-
-	// Data gathering
-	let guild_settings = database::GuildSettings::from_query(guild.id, &ctx.data().db).await?;
-	if !guild_settings.roles {
-		utils::feature_not_enabled(ctx).await?;
-		return Ok(())
-	}
+	let guild = utils::guild_or_error(ctx)?;
+	let roles_channel = database::roles_channel_query(guild.id, &ctx.data().db)
+		.await
+		.ok();
 
 	// Channel select
 	let reply = ctx.send(poise::CreateReply::default()
 		.embed(serenity::CreateEmbed::new()
 			.title("Role Setup")
-			.color(EMBED_STD)
+			.color(colors::INFO)
 			.description("Please select a channel for role management to take place in. This channel should be completely empty save for the role lists. All interactions done with me via this channel will be ephemeral, so there should end up being no clutter.")
 		).components(vec![
-			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.roles", serenity::CreateSelectMenuKind::Channel { channel_types: Some(vec![serenity::ChannelType::Text]), default_channels: guild_settings.roles_channel
-					.map(|c| vec![c])
-				}).placeholder("Select a Channel.")
-				.min_values(0)
-				.max_values(1)
+			serenity::CreateActionRow::SelectMenu(
+				serenity::CreateSelectMenu::new(
+					"setup.roles",
+					serenity::CreateSelectMenuKind::Channel {
+						channel_types: Some(vec![serenity::ChannelType::Text]),
+						default_channels: roles_channel.map(|c| vec![c])
+					}
+				)
+					.placeholder("Select a Channel.")
+					.min_values(0)
+					.max_values(1)
 			)
 		])
 	).await?;
 
 	// Await interaction
-	let interaction = match reply.message().await?
+	let Some(interaction) = reply.message().await?
 		.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
 		.timeout(std::time::Duration::from_secs(300))
-		.await {
-			Some(i) => i,
-			None => {
-				reply.edit(ctx, poise::CreateReply::default()
-					.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-					.components(Vec::new())
-				).await?;
-				return Ok(())
-			}
+		.await else {
+			// reply.edit(ctx, poise::CreateReply::default()
+			// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
+			// 	.components(Vec::new())
+			// ).await?;
+			// return Ok(())
+			reply.delete(ctx).await?;
+			return Err(UserError(BotError::InteractionTimedOut.into()).into())
 		};
 
 	// Processing message
 	reply.edit(ctx, poise::CreateReply::default()
-		.embed(templates::processing_embed())
+		.embed(templates::status::processing())
+		// .embed(templates::processing_embed())
 		.components(Vec::new())
 	).await?;
 
@@ -242,18 +266,22 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 	let selected = match &interaction.data.kind {
 		serenity::ComponentInteractionDataKind::ChannelSelect { values } => {
 			if let Some(ch) = values.first() {
-				if utils::can_post(ctx, ch, ctx.framework().bot_id).await? { Some(*ch) }
-				else { None }
+				if utils::can_post(ctx, ch, ctx.framework().bot_id).await? {
+					Some(*ch)
+				} else {
+					return Err(UserError(BotError::ChannelInaccessable(ch.name(ctx).await?).into()).into())
+				}
 			} else {
 				utils::default_bot_channel(ctx, &guild, ctx.framework().bot_id).await?
 			}
 		}
 		_ => {
-			interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-				.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-				.components(Vec::new())
-			)).await?;
-			return Ok(());
+			// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
+			// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
+			// 	.components(Vec::new())
+			// )).await?;
+			// return Ok(());
+			return Err(BotError::WrongInteraction.into())
 		}
 	};
 
@@ -263,7 +291,7 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 
 		// Migrates if there are role messages in the old channel
 		if !old_lists.is_empty() {
-			if let Some(c) = guild_settings.roles_channel {
+			if let Some(c) = roles_channel {
 				for entry in old_lists {
 					// If the old message can't even be reached then no point trying anyway.
 					if let Ok(old_message) = c.message(ctx, entry.message_id).await {
@@ -272,7 +300,7 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 							.embed(serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned()))
 							// Add components
 							.components(vec![
-								templates::rolelist_components(&entry.name)
+								templates::rolelist::components(&entry.name)
 							])
 						).await?;
 						// Update database with new message
@@ -286,13 +314,25 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 						old_message.delete(ctx).await?;
 					} else {
 						ctx.send(poise::CreateReply::default()
-							.embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name)))
+							.embed(
+								templates::status::error(
+									None,
+									format!("Failed to migrate role list {:?}. Either the wrong channel is stored or the message doesn't exist.", entry.name)
+								)
+							)
+							// .embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name)))
 						).await?;
 					}
 				}
 			} else {
 				ctx.send(poise::CreateReply::default()
-					.embed(templates::state_embed(false, "Role lists were detected but no channel is stored for them. Existing role messages will still function, however the nature of this error means that they can't be deleted properly or migrated. In order to fix this make sure correct permissions are set on the channel where the old role lists are and then select that channel using this command."))
+					.embed(
+						templates::status::warning(
+							None,
+							"Role lists were detected but no channel is stored for them. Existing role messages will still function, however the nature of this error means that they can't be deleted properly or migrated. In order to fix this make sure correct permissions are set on the channel where the old role lists are and then select that channel using this command."
+						)
+					)
+					// .embed(templates::state_embed(false, "Role lists were detected but no channel is stored for them. Existing role messages will still function, however the nature of this error means that they can't be deleted properly or migrated. In order to fix this make sure correct permissions are set on the channel where the old role lists are and then select that channel using this command."))
 				).await?;
 			}
 		}
@@ -308,15 +348,16 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 		interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 			.embed(serenity::CreateEmbed::new()
 				.title("Role Settings Confirmed!")
-				.color(EMBED_STD)
+				.color(colors::INFO)
 				.description(format!("Roles will now be managed in {}.", chid.mention()))
 			)
 		)).await?;
 	// If selected is none, that means the channel can't be posted to.
 	} else {
-		interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-			.embed(templates::state_embed(false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel."))
-		)).await?;
+		// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
+			// .embed(templates::state_embed(false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel."))
+		// )).await?;
+		return Err(UserError(BotError::ChannelInaccessable("??Unknown??".to_string()).into()).into())
 	}
 	Ok(())
 }

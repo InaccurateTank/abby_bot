@@ -1,17 +1,12 @@
 use std::str::FromStr;
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use sqlx::{
 	query,
 	query_scalar
 };
 use crate::{
-	database,
-	structs,
-	utils, templates,
-	checks,
-	Context,
-	EMBED_STD
+	checks, colors, database, error::{BotError, UserError}, structs, templates, utils, Context
 };
 
 /// Creates or deletes a list of roles to select from.
@@ -64,18 +59,11 @@ async fn autocomplete_groups<'a>(
 )]
 async fn delete(
 	ctx: Context<'_>,
-	#[description = "Name of the role group."]
+	#[description = "Name of the role list."]
 	#[autocomplete = "autocomplete_groups"]
 	group: String
 ) -> Result<()> {
-	let guild = if let Some(r) = ctx.guild_id()
-		.ok_or(eyre!("Not a Guild"))?
-		.to_guild_cached(ctx.cache()) {
-		r.to_owned()
-	} else {
-		// return serenity::Error::Model(serenity::ModelError::GuildNotFound)
-		return Err(serenity::ModelError::GuildNotFound.into())
-	};
+	let guild = utils::guild_or_error(ctx)?;
 
 	// Info Gathering
 	let channel = database::roles_channel_query(guild.id, &ctx.data().db).await?;
@@ -85,7 +73,13 @@ async fn delete(
 	if ctx.http().delete_message(channel, message, Some(&format!("Deleting Role List \"{group}\""))).await.is_err() {
 		ctx.send(poise::CreateReply::default()
 			.ephemeral(true)
-			.embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually.")))
+			.embed(
+				templates::status::warning(
+					None,
+					format!("Either can't find or can't delete the message for the role list {group:?}. Entries will be removed from the database, but the message will need to be deleted manually.")
+				)
+			)
+			// .embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually.")))
 		).await?;
 	}
 	// Delete Database Entries
@@ -103,7 +97,8 @@ async fn delete(
 	// Respond
 	ctx.send(poise::CreateReply::default()
 		.ephemeral(true)
-		.embed(templates::state_embed(true, &format!("Role group \"{group}\" has been deleted.")))
+		.embed(templates::status::success(None, format!("Role list {group:?} has been deleted.")))
+		// .embed(templates::state_embed(true, &format!("Role group \"{group}\" has been deleted.")))
 	).await?;
 	Ok(())
 }
@@ -118,36 +113,33 @@ async fn delete(
 )]
 async fn create(
 	ctx: Context<'_>,
-	#[description = "Name of the role group."]
+	#[description = "Name of the role list."]
 	group: String
 ) -> Result<()> {
-	let guild = if let Some(r) = ctx.guild_id()
-		.ok_or(eyre!("Not a Guild"))?
-		.to_guild_cached(ctx.cache()) {
-		r.to_owned()
-	} else {
-		return Err(serenity::ModelError::GuildNotFound.into())
-	};
+	println!("This Ran");
+	let guild = utils::guild_or_error(ctx)?;
 
 	// ChannelId from role settings
 	let channel = match database::roles_channel_query(guild.id, &ctx.data().db).await {
 		Ok(chid) => {
 			// If exists but can't be posted in just stop and error
 			if !utils::can_post(ctx, &chid, ctx.framework().bot_id).await? {
-				let name = chid.name(ctx).await.unwrap();
-				ctx.send(poise::CreateReply::default()
-					.embed(templates::state_embed(false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel.")))
-				).await?;
-				return Ok(());
+				let name = chid.name(ctx).await?;
+				// ctx.send(poise::CreateReply::default()
+				// 	.embed(templates::state_embed(false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel.")))
+				// ).await?;
+				// return Ok(());
+				return Err(UserError(BotError::ChannelInaccessable(name).into()).into())
 			}
 			chid
 		},
 		Err(_) => {
 			// If it doesn't exist at all
-			ctx.send(poise::CreateReply::default()
-				.embed(templates::state_embed(false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`."))
-			).await?;
-			return Ok(());
+			// ctx.send(poise::CreateReply::default()
+			// 	.embed(templates::state_embed(false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`."))
+			// ).await?;
+			// return Ok(());
+			return Err(UserError(BotError::RolesChannelUnset.into()).into())
 		}
 	};
 
@@ -171,7 +163,7 @@ async fn create(
 	// The role selection menu.
 	let reply = ctx.send(poise::CreateReply::default()
 		.embed(serenity::CreateEmbed::new()
-			.color(EMBED_STD)
+			.color(colors::INFO)
 			.description("Please select a set of roles for the group below. Note that roles with permissions to modify the server are not available.")
 		).components(vec![
 			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("rolelist.new", serenity::CreateSelectMenuKind::String { options: select_menu.clone() })
@@ -190,18 +182,20 @@ async fn create(
 				i
 			},
 			None => {
-				reply.edit(ctx, poise::CreateReply::default()
-					.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-				).await?;
-
-				return Ok(())
+				// reply.edit(ctx, poise::CreateReply::default()
+				// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
+				// ).await?;
+				// return Ok(())
+				reply.delete(ctx).await?;
+				return Err(UserError(BotError::InteractionTimedOut.into()).into())
 			}
 		};
 
 	// Processing message
 	reply.edit(ctx, poise::CreateReply::default()
 		.content("")
-		.embed(templates::processing_embed())
+		.embed(templates::status::processing())
+		// .embed(templates::processing_embed())
 		.components(Vec::new())
 	)
 	.await?;
@@ -211,17 +205,19 @@ async fn create(
 		.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
 		.collect::<Result<Vec<structs::RoleVitals>>>()?
 	} else {
-		interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-			.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-			.components(Vec::new())
-		)).await?;
-		return Ok(())
+		// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
+		// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
+		// 	.components(Vec::new())
+		// )).await?;
+		// return Ok(())
+		interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
+		return Err(BotError::WrongInteraction.into())
 	};
 
 	// Send message with roles.
 	if let Ok(msg) = channel.send_message(ctx, serenity::CreateMessage::new()
-			.embed(templates::rolelist_embed(&group, &selected_roles)?)
-			.components(vec![templates::rolelist_components(&group)])
+			.embed(templates::rolelist::embed(&group, &selected_roles)?)
+			.components(vec![templates::rolelist::components(&group)])
 		).await {
 		// Add roles if successful
 		query("INSERT INTO role_groups (guild_id, group_name, message) VALUES (?, ?, ?);")
@@ -241,13 +237,15 @@ async fn create(
 		}
 		// Notify Success
 		reply.edit(ctx, poise::CreateReply::default()
-			.embed(templates::state_embed(true, &format!("Rolelist for group \"{group}\" has been created.")))
+			.embed(templates::status::success(None, format!("Role list for group {group:?} has been created.")))
+			// .embed(templates::state_embed(true, &format!("Rolelist for group \"{group}\" has been created.")))
 		).await?;
 	} else {
 		// Notify Failure
-		reply.edit(ctx, poise::CreateReply::default()
-			.embed(templates::state_embed(false, &format!("Failed to create role list for group \"{group}\".")))
-		).await?;
+		// reply.edit(ctx, poise::CreateReply::default()
+		// 	.embed(templates::state_embed(false, &format!("Failed to create role list for group \"{group}\".")))
+		// ).await?;
+		return Err(BotError::RoleListFailed(group).into())
 	}
 	Ok(())
 }

@@ -9,8 +9,11 @@ fn feature_not_enabled(
 ) -> poise::CreateReply {
 	poise::CreateReply::default()
 		.embed(
-			templates::Status::WARNING.to_embed(format!("The {feature:?} feature is not enabled in this server.")))
-		.reply(true)
+			templates::status::warning(
+				Some("Feature Not Enabled"),
+				format!("The {feature:?} feature is not enabled in this server.")
+			)
+		).reply(true)
 		.ephemeral(true)
 }
 
