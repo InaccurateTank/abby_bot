@@ -173,23 +173,33 @@ async fn create(
 		])).await?;
 
 	// Await interaction
-	let interaction = match reply.message().await?
+	let Some(interaction) = reply.message().await?
 		.await_component_interaction(ctx)
 		.author_id(ctx.author().id)
 		.timeout(std::time::Duration::from_secs(300))
-		.await {
-			Some(i) => {
-				i
-			},
-			None => {
-				// reply.edit(ctx, poise::CreateReply::default()
-				// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-				// ).await?;
-				// return Ok(())
-				reply.delete(ctx).await?;
-				return Err(UserError(BotError::InteractionTimedOut.into()).into())
-			}
-		};
+		.await else
+	{
+		reply.delete(ctx).await?;
+		return Err(UserError(BotError::InteractionTimedOut.into()).into())
+	};
+
+	// let interaction = match reply.message().await?
+	// 	.await_component_interaction(ctx)
+	// 	.author_id(ctx.author().id)
+	// 	.timeout(std::time::Duration::from_secs(300))
+	// 	.await {
+	// 		Some(i) => {
+	// 			i
+	// 		},
+	// 		None => {
+	// 			// reply.edit(ctx, poise::CreateReply::default()
+	// 			// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
+	// 			// ).await?;
+	// 			// return Ok(())
+	// 			reply.delete(ctx).await?;
+	// 			return Err(UserError(BotError::InteractionTimedOut.into()).into())
+	// 		}
+	// 	};
 
 	// Processing message
 	reply.edit(ctx, poise::CreateReply::default()
@@ -202,8 +212,8 @@ async fn create(
 
 	let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind {
 		values.iter()
-		.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
-		.collect::<Result<Vec<structs::RoleVitals>>>()?
+			.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
+			.collect::<Result<Vec<structs::RoleVitals>>>()?
 	} else {
 		// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 		// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
