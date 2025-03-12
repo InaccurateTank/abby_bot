@@ -21,10 +21,3 @@ tracing-error = { version = "0.2" }
 tracing-subscriber = { version = "0.3" }
 thiserror = { version = "2.0" }
 color-eyre = { version = "0.6" }
-
-[dev-dependencies]
-brunch = "0.8"
-
-[[bench]]
-name = "concat"
-harness = false
