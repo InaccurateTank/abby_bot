@@ -160,7 +160,7 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 						.embed(
 							templates::status::warning(
 								None,
-								format!("Either can't find or can't delete the message for the role group {:?}. Entries will be removed from the database, but the message will need to be deleted manually.", grp.name)
+								format!("Either can't find or can't delete the message for the role group {:?}. Entries will be removed from the database, but the message will need to be deleted manually.", grp.group_name)
 							)
 						)
 						// .ephemeral(true)
@@ -170,7 +170,7 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 				// Purging managed roles
 				query("DELETE FROM roles WHERE guild_id = ? AND group_name = ?")
 					.bind(guild.id.get() as i64)
-					.bind(grp.name)
+					.bind(grp.group_name)
 					.execute(&ctx.data().db)
 					.await?;
 			}
@@ -300,14 +300,14 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 							.embed(serenity::CreateEmbed::from(old_message.embeds.first().unwrap().to_owned()))
 							// Add components
 							.components(vec![
-								templates::rolelist::components(&entry.name)
+								templates::rolelist::components(&entry.group_name)
 							])
 						).await?;
 						// Update database with new message
 						query("UPDATE role_groups SET group_message = ? WHERE guild_id = ? AND group_name = ?;")
 							.bind(guild.id.get() as i64)
 							.bind(new_message.id.get() as i64)
-							.bind(entry.name)
+							.bind(entry.group_name)
 							.execute(&ctx.data().db)
 							.await?;
 						// Delete old message
@@ -317,7 +317,7 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 							.embed(
 								templates::status::error(
 									None,
-									format!("Failed to migrate role list {:?}. Either the wrong channel is stored or the message doesn't exist.", entry.name)
+									format!("Failed to migrate role list {:?}. Either the wrong channel is stored or the message doesn't exist.", entry.group_name)
 								)
 							)
 							// .embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name)))

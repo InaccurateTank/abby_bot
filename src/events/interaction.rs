@@ -4,7 +4,6 @@ use std::{
 };
 use color_eyre::Result;
 use poise::serenity_prelude as serenity;
-use sqlx::query;
 use crate::{
 	colors, database, error::{BotError, UserError}, structs, templates, utils, Data
 };
@@ -252,6 +251,8 @@ async fn roles_click(
 
 		// Rolelist Edit
 		"edit" => {
+			use sqlx::query;
+
 			if !guild.user_permissions_in(&channel, member).manage_roles() {
 				// mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 				// 	.ephemeral(true)

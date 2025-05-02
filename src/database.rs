@@ -111,7 +111,7 @@ impl FromRow<'_, SqliteRow> for GuildSettings {
 #[derive(FromRow, Debug)]
 pub struct Group {
 	/// Name of the role group
-	pub name: String,
+	pub group_name: String,
 	#[sqlx(try_from = "u64")]
 	/// [`serenity::MessageId`] that the group is posted in.
 	pub message_id: serenity::MessageId,
