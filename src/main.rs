@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
 	let config = structs::Config::new(&data_folder)?;
 
 	// DB
-	let db_url = format!("sqlite:{data_folder}sqlite.db");
+	let db_url = format!("sqlite://{data_folder}sqlite.db");
 	// Check if DB exists
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
 		warn!("Database absent in '{data_folder}', creating new one.");
