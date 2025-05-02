@@ -116,7 +116,7 @@ async fn create(
 	#[description = "Name of the role list."]
 	group: String
 ) -> Result<()> {
-	println!("This Ran");
+	// println!("This Ran");
 	let guild = utils::guild_or_error(ctx)?;
 
 	// ChannelId from role settings

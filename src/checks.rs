@@ -42,7 +42,7 @@ pub async fn roles(ctx: Context<'_>) -> Result<bool> {
 		.bind(id.get() as i64)
 		.fetch_one(&ctx.data().db)
 		.await?;
-	println!("{roles}");
+	// println!("Role Check: {roles}");
 	if !roles {
 		ctx.send(feature_not_enabled("roles")).await?;
 		return Ok(false)
