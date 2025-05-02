@@ -12,6 +12,26 @@ pub fn concat(a: &str, b: &str) -> String {
   result
 }
 
+/// Optimized concatenate macro that combines multiple string slices into a [String].
+///
+/// The macro accepts zero or more arguments where every argument implements `AsRef<str>`.
+///
+/// # Example
+/// ```rust
+/// 	concat!("Hello", String::from(" "), "World");
+/// ```
+#[macro_export]
+macro_rules! concat {
+	() => { String::with_capacity(0) };
+	($($s:expr),+) => {{
+		let mut len = 0;
+		$(len += $s.len();)+
+		let mut res = String::with_capacity(len);
+		$(res.push_str($s.as_ref());)+
+		res
+	}};
+}
+
 /// Abby should never assign moderation roles and should never show @everyone.
 ///
 /// Returns [true] when the role is safe to assign.

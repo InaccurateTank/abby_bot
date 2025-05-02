@@ -1,7 +1,14 @@
 //! Templating submodule that contains the constructors for status messages of various kinds.
 
 use poise::serenity_prelude as serenity;
-use crate::colors;
+use crate::{colors, concat};
+
+fn template_title (
+	icon: &str,
+	title: &str
+) -> String {
+	concat!(icon, " ", title, " ", icon)
+}
 
 pub fn error(
 	title: Option<&str>,
@@ -9,7 +16,7 @@ pub fn error(
 ) -> serenity::CreateEmbed {
 	let title = title.unwrap_or("Error");
 	serenity::CreateEmbed::default()
-		.title(format!(":exclamation: {title} :exclamation:"))
+		.title(template_title(":exclamation:", title))
 		.description(description)
 		.color(colors::ERROR)
 }
@@ -20,14 +27,14 @@ pub fn info(
 ) -> serenity::CreateEmbed {
 	let title = title.unwrap_or("Info");
 	serenity::CreateEmbed::default()
-		.title(format!(":information_source: {title} :information_source:"))
+		.title(template_title(":information_source:", title))
 		.description(description)
 		.color(colors::INFO)
 }
 
 pub fn processing() -> serenity::CreateEmbed {
 	serenity::CreateEmbed::default()
-		.title(":gear: Processing :gear:")
+		.title(template_title(":gear:", "Processing"))
 		.description("Please wait...")
 		.color(colors::WARN)
 		.footer(serenity::CreateEmbedFooter::new("This will finish before the heat death of the universe, I promise."))
@@ -39,7 +46,7 @@ pub fn success(
 ) -> serenity::CreateEmbed {
 	let title = title.unwrap_or("Success");
 	serenity::CreateEmbed::default()
-		.title(format!(":white_check_mark: {title} :white_check_mark:"))
+		.title(template_title(":white_check_mark:", title))
 		.description(description)
 		.color(colors::INFO)
 }
@@ -50,7 +57,7 @@ pub fn warning(
 ) -> serenity::CreateEmbed {
 	let title = title.unwrap_or("Warning");
 	serenity::CreateEmbed::default()
-		.title(format!(":warning: {title} :warning:"))
+		.title(template_title(":warning:", title))
 		.description(description)
 		.color(colors::WARN)
 }
