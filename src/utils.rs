@@ -4,14 +4,6 @@ use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use crate::Context;
 
-/// Combines two [str] into a [String].
-pub fn concat(a: &str, b: &str) -> String {
-  let mut result: String = String::with_capacity(a.len() + b.len());
-  result += a;
-  result += b;
-  result
-}
-
 /// Optimized concatenate macro that combines multiple string slices into a [String].
 ///
 /// The macro accepts zero or more arguments where every argument implements `AsRef<str>`.

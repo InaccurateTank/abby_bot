@@ -1,12 +1,12 @@
 use color_eyre::Result;
 use crate::Context;
-use crate::{checks, utils};
+use crate::{checks, concat};
 
 fn byte_to_emoji(value: u8) -> String {
   let mut buffer = String::new();
   let mut value = value;
   if value == 0 {
-    buffer = utils::concat(&buffer, "❤️");
+    buffer = concat!(&buffer, "❤️");
   }
   loop {
     let (emoji, subtract) = match value {
@@ -17,10 +17,10 @@ fn byte_to_emoji(value: u8) -> String {
       1..=4 => (",", 1),
       0 => break,
     };
-    buffer = utils::concat(&buffer, emoji);
+    buffer = concat!(&buffer, emoji);
     value -= subtract;
   }
-  buffer = utils::concat(&buffer, "👉👈");
+  buffer = concat!(&buffer, "👉👈");
   buffer
 }
 

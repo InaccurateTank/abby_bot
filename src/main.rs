@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 
 	// Data Folder From Opts
 	let data_folder = if !opts.data.ends_with('/') {
-		utils::concat(&opts.data, "/")
+		concat!(&opts.data, "/")
 	} else {
 		opts.data
 	};

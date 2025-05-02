@@ -5,7 +5,7 @@ use poise::serenity_prelude as serenity;
 use crate::{
 	colors,
 	structs,
-	utils
+	concat
 };
 
 pub fn embed<'a>(
@@ -15,8 +15,8 @@ pub fn embed<'a>(
 	let mut name_str = String::new();
 	let mut user_str = String::new();
 	for r in role_list {
-		name_str = utils::concat(&name_str, &format!("{}\n", r.name));
-		user_str = utils::concat(&user_str, &format!("{}\n", r.users.get_calculated()?));
+		name_str = concat!(&name_str, &format!("{}\n", r.name));
+		user_str = concat!(&user_str, &format!("{}\n", r.users.get_calculated()?));
 	}
 	name_str = name_str.trim_end_matches('\n').to_string();
 	user_str = user_str.trim_end_matches('\n').to_string();
@@ -31,10 +31,10 @@ pub fn embed<'a>(
 
 pub fn components(group: &str) -> serenity::CreateActionRow {
 	serenity::CreateActionRow::Buttons(vec![
-		serenity::CreateButton::new(utils::concat("roles.pick.", group))
+		serenity::CreateButton::new(concat!("roles.pick.", group))
 			.label("Choose")
 			.style(serenity::ButtonStyle::Primary),
-			serenity::CreateButton::new(utils::concat("roles.edit.", group))
+			serenity::CreateButton::new(concat!("roles.edit.", group))
 			.label("Modify")
 			.style(serenity::ButtonStyle::Danger)
 	])

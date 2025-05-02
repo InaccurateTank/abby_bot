@@ -5,7 +5,7 @@ use std::{
 use color_eyre::Result;
 use crate::{
 	error::{UserError, BotError},
-	utils
+	concat
 };
 
 const DEFAULT_CONFIG: &str = r##"# Abbybot config file
@@ -22,7 +22,7 @@ impl Config {
 			.truncate(false)
 			.read(true)
 			.write(true)
-			.open(utils::concat(folder, "config.toml"))?;
+			.open(concat!(folder, "config.toml"))?;
 		let mut toml = String::new();
 		config_file.read_to_string(&mut toml)?;
 		if toml.is_empty() {
