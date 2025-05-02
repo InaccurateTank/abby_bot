@@ -10,7 +10,7 @@ use crate::Context;
 ///
 /// # Example
 /// ```rust
-/// 	concat!("Hello", String::from(" "), "World");
+///     concat!("Hello", String::from(" "), "World");
 /// ```
 #[macro_export]
 macro_rules! concat {

@@ -18,9 +18,9 @@ use crate::utils;
 mod message;
 mod interaction;
 
-async fn on_join<'a>(
+async fn on_join(
 	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache> + AsRef<serenity::Http>,
-	framework: poise::FrameworkContext<'a, Data, Report>,
+	framework: poise::FrameworkContext<'_, Data, Report>,
 	guild_id: serenity::GuildId,
 	guild_name: &str,
 	db: &sqlx::Pool<sqlx::Sqlite>
