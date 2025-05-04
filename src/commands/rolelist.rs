@@ -66,7 +66,8 @@ async fn delete(
 	let guild = utils::guild_or_error(ctx)?;
 
 	// Info Gathering
-	let channel = database::roles_channel_query(guild.id, &ctx.data().db).await?;
+	let channel = database::roles_channel_query(guild.id, &ctx.data().db).await?
+		.ok_or(BotError::RolesChannelUnset)?;
 	let message = database::group_message_query(guild.id, &group, &ctx.data().db).await?;
 
 	// Deletions
@@ -120,20 +121,20 @@ async fn create(
 	let guild = utils::guild_or_error(ctx)?;
 
 	// ChannelId from role settings
-	let channel = match database::roles_channel_query(guild.id, &ctx.data().db).await {
-		Ok(chid) => {
+	let channel = match database::roles_channel_query(guild.id, &ctx.data().db).await? {
+		Some(chid) => {
 			// If exists but can't be posted in just stop and error
 			if !utils::can_post(ctx, &chid, ctx.framework().bot_id).await? {
-				let name = chid.name(ctx).await?;
+				// let name = chid.name(ctx).await?;
 				// ctx.send(poise::CreateReply::default()
 				// 	.embed(templates::state_embed(false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel.")))
 				// ).await?;
 				// return Ok(());
-				return Err(UserError(BotError::ChannelInaccessable(name).into()).into())
+				return Err(UserError(BotError::ChannelInaccessable.into()).into())
 			}
 			chid
 		},
-		Err(_) => {
+		None => {
 			// If it doesn't exist at all
 			// ctx.send(poise::CreateReply::default()
 			// 	.embed(templates::state_embed(false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`."))

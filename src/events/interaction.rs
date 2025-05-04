@@ -251,8 +251,6 @@ async fn roles_click(
 
 		// Rolelist Edit
 		"edit" => {
-			use sqlx::query;
-
 			if !guild.user_permissions_in(&channel, member).manage_roles() {
 				// mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 				// 	.ephemeral(true)
@@ -365,12 +363,12 @@ async fn roles_click(
 			// 	return Err(BotError::WrongInteraction.into())
 			// };
 
-			query("DELETE FROM roles WHERE group_name = ?;")
+			sqlx::query("DELETE FROM roles WHERE group_name = ?;")
 				.bind(group_name)
 				.execute(&data.db)
 				.await?;
 			for entry in &selected_roles {
-				query("INSERT INTO roles (server_id, group_name, role_id) VALUES(?, ?, ?);")
+				sqlx::query("INSERT INTO roles (guild_id, group_name, role_id) VALUES(?, ?, ?);")
 					.bind(guild.id.get() as i64)
 					.bind(group_name)
 					.bind(entry.id.get() as i64)

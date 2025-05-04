@@ -40,8 +40,8 @@ pub enum BotError {
 	InputChannelMismatch,
 
 	/// Channel is not available to post in.
-	#[error("Channel {0:?} is inaccessable for posting in. Either change the permission overrides or choose a different channel.")]
-	ChannelInaccessable(String),
+	#[error("Channel lacks permissions for viewing, posting or both. Either change the permission overrides or choose a different channel.")]
+	ChannelInaccessable,
 
 	/// The roles channel is NULL in the database.
 	#[error("Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with \"/setup roles\".")]

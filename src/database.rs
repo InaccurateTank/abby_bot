@@ -107,6 +107,36 @@ impl FromRow<'_, SqliteRow> for GuildSettings {
 	}
 }
 
+pub async fn roles_channel_query(
+	guild_id: serenity::GuildId,
+	db: &sqlx::SqlitePool
+) -> Result<Option<serenity::ChannelId>> {
+	sqlx::query_scalar::<_, Option<u64>>("SELECT roles_channel FROM guild_settings WHERE guild_id = ?;")
+		.bind(guild_id.get() as i64)
+		.fetch_one(db)
+		.await
+		.map_or_else(
+			|e| Err(e.into()),
+			|v| Ok(v.map(serenity::ChannelId::from))
+		)
+	// match res {
+	// 	Ok(v) => match v {
+	// 		Some(v),
+	// 		None Ok(None)
+	// 	},
+	// 	Err(e) => Err(e.into())
+	// }
+		// .map_or_else(
+		// 	|e| Err(e.into()),
+		// 	|v| match v {
+
+		// 	}
+		// 	}
+			// Ok(serenity::ChannelId::from(v))
+		// )
+}
+
+// Role Groups Table
 
 #[derive(FromRow, Debug)]
 pub struct Group {
@@ -117,26 +147,12 @@ pub struct Group {
 	pub message_id: serenity::MessageId,
 }
 
-pub async fn roles_channel_query(
-	guild_id: serenity::GuildId,
-	db: &sqlx::SqlitePool
-) -> Result<serenity::ChannelId> {
-	sqlx::query_scalar::<_, u64>("SELECT roles_channel FROM guild_settings WHERE guild_id = ?;")
-		.bind(guild_id.get() as i64)
-		.fetch_one(db)
-		.await
-		.map_or_else(
-			|e| Err(e.into()),
-			|v| Ok(serenity::ChannelId::from(v))
-		)
-}
-
 pub async fn group_message_query(
 	guild_id: serenity::GuildId,
 	group_name: &str,
 	db: &sqlx::SqlitePool
 ) -> Result<serenity::MessageId> {
-	sqlx::query_scalar::<_, u64>("SELECT group_message FROM role_groups WHERE guild_id = ? AND group_name = ?;")
+	sqlx::query_scalar::<_, u64>("SELECT message_id FROM role_groups WHERE guild_id = ? AND group_name = ?;")
 		.bind(guild_id.get() as i64)
 		.bind(group_name)
 		.fetch_one(db)
@@ -157,6 +173,8 @@ pub async fn groups_from_query(
 		.await
 		.map_err(|e| e.into())
 }
+
+// Roles Table
 
 pub async fn roles_from_query(
 	guild_id: serenity::GuildId,

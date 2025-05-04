@@ -215,8 +215,7 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 async fn roles(ctx: Context<'_>) -> Result<()> {
 	let guild = utils::guild_or_error(ctx)?;
 	let roles_channel = database::roles_channel_query(guild.id, &ctx.data().db)
-		.await
-		.ok();
+		.await?;
 
 	// Channel select
 	let reply = ctx.send(poise::CreateReply::default()
@@ -269,7 +268,7 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 				if utils::can_post(ctx, ch, ctx.framework().bot_id).await? {
 					Some(*ch)
 				} else {
-					return Err(UserError(BotError::ChannelInaccessable(ch.name(ctx).await?).into()).into())
+					return Err(UserError(BotError::ChannelInaccessable.into()).into())
 				}
 			} else {
 				utils::default_bot_channel(ctx, &guild, ctx.framework().bot_id).await?
@@ -357,7 +356,7 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 		// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
 			// .embed(templates::state_embed(false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel."))
 		// )).await?;
-		return Err(UserError(BotError::ChannelInaccessable("??Unknown??".to_string()).into()).into())
+		return Err(UserError(BotError::ChannelInaccessable.into()).into())
 	}
 	Ok(())
 }

@@ -76,16 +76,20 @@ pub async fn can_post(
 	chid: &serenity::ChannelId,
 	user: serenity::UserId
 ) -> Result<bool> {
-	let Some(channel) = chid.to_channel(ctx).await?.guild() else {
+	let Ok(channel) = chid.to_channel(ctx).await else {
+		// If the channel id can't be converted into a channel it's probably not visible.
+		return Ok(false)
+	};
+	let Some(guild_channel) = channel.guild() else {
 		// If the channel has no guild it's a private channel.
 		return Ok(true)
 	};
-	let guild = channel.guild(&ctx)
+	let guild = guild_channel.guild(&ctx)
 		// Frankly if the explicitly filtered guild channel has no guild, we have bigger issues.
 		.unwrap()
 		.to_owned();
 	let member = guild.member(ctx, user).await?;
-	if !guild.user_permissions_in(&channel, &member).send_messages() {
+	if !guild.user_permissions_in(&guild_channel, &member).send_messages() {
 		return Ok(false)
 	}
 	Ok(true)
