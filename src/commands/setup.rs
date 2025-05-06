@@ -209,7 +209,6 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 	guild_only,
 	slash_command,
 	check = "checks::roles",
-	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
 async fn roles(ctx: Context<'_>) -> Result<()> {

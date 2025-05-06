@@ -14,7 +14,6 @@ use crate::{
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="MANAGE_GUILD",
 	category="Administration",
 	ephemeral,
 	subcommands("channel", "role")
@@ -35,7 +34,7 @@ enum ChannelKind {
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="MANAGE_GUILD",
+	required_permissions="MANAGE_CHANNELS",
 	ephemeral
 )]
 async fn channel(
@@ -121,7 +120,7 @@ async fn channel(
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="MANAGE_GUILD",
+	required_permissions="MANAGE_ROLES",
 	ephemeral
 )]
 async fn role(
