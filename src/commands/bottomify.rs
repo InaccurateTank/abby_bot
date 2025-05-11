@@ -28,7 +28,7 @@ fn byte_to_emoji(value: u8) -> String {
 ///
 /// Listen this is literally just a bytecode translator. That's it. I don't know what to tell ya.
 #[poise::command(
-	check = "checks::serious",
+	check = "checks::unserious",
   slash_command,
   category = "Misc"
 )]

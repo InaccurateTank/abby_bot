@@ -11,7 +11,7 @@ use tracing::{
 	info,
 	instrument
 };
-use crate::{ colors, Data };
+use crate::{ colors, commands, Data };
 use crate::database;
 use crate::utils;
 
@@ -19,8 +19,6 @@ mod message;
 mod interaction;
 
 async fn on_join(
-	ctx: impl serenity::CacheHttp + Copy + AsRef<serenity::Cache> + AsRef<serenity::Http>,
-	framework: poise::FrameworkContext<'_, Data, Report>,
 	guild_id: serenity::GuildId,
 	guild_name: &str,
 	db: &sqlx::Pool<sqlx::Sqlite>
@@ -37,9 +35,6 @@ async fn on_join(
 			return Err(e.into())
 		}
 	}
-	// Register commands in new server
-	// TODO: Change to register commangs via settings
-	poise::builtins::register_in_guild(ctx, framework.options().commands.as_slice(), guild_id).await?;
 	Ok(())
 }
 
@@ -83,7 +78,7 @@ pub async fn event_handler<'a>(
 				match actually_new {
 					// New
 					Ok(new) if new => {
-						on_join(ctx, framework, guild.id, &guild.name, &data.db).await?;
+						on_join(guild.id, &guild.name, &data.db).await?;
 						// If the bot can post in a default channel, do so. Better to disclose the join than not.
 						// TODO: Change intro message
 						if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
@@ -119,6 +114,8 @@ pub async fn event_handler<'a>(
 		serenity::FullEvent::Ready { data_about_bot } => {
 			tracing::Span::current().record("event", "Ready");
 			info!("{} is connected!", data_about_bot.user.name);
+			// Register global commands
+			poise::builtins::register_globally(ctx, &commands::global_commands()).await?;
 			// Set status because memes
 			let status = serenity::ActivityData {
 				name: "Everything".to_string(),
@@ -141,7 +138,7 @@ pub async fn event_handler<'a>(
 					// Servers that arn't in the database have been joined while offline
 					// Can't send a join message from here due to incomplete guild data
 					let partial = unfinished_guild.id.to_partial_guild(ctx).await.unwrap();
-					on_join(ctx, framework, partial.id, &partial.name, &data.db).await?;
+					on_join(partial.id, &partial.name, &data.db).await?;
 				}
 			}
 		},

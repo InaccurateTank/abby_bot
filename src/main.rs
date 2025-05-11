@@ -40,9 +40,9 @@ pub struct Data {
 #[derive(Debug, Options)]
 struct Opts {
 	help: bool,
-	#[options(help = "Set data folder location.", default = "data/")]
+	#[options(help = "Set data folder location.", default = "./data/")]
 	data: String,
-	#[options(count, help = "Set data folder location.")]
+	#[options(no_long, count, help = "Increase logging verbosity to DEBUG. Repeat once for TRACE data.")]
 	verbose: u8
 }
 
@@ -93,15 +93,11 @@ async fn main() -> Result<()> {
 	// Bot Options
 	let options = poise::FrameworkOptions {
 		commands: vec![
-			commands::help(),
-			commands::about(),
-			commands::register(),
-			commands::setup(),
-			commands::bottomify(),
-			commands::rolelist(),
-			commands::snap(),
-			commands::rewind()
-		],
+			commands::global_commands(),
+			commands::admin_commands(),
+			commands::unserious_commands(),
+			commands::role_commands()
+		].into_iter().flatten().collect(),
 		prefix_options: poise::PrefixFrameworkOptions {
 			prefix: Some("~".into()),
 			edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(3600)).into()),

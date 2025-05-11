@@ -222,6 +222,7 @@ async fn create(
 		// )).await?;
 		// return Ok(())
 		interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
+		reply.delete(ctx).await?;
 		return Err(BotError::WrongInteraction.into())
 	};
 

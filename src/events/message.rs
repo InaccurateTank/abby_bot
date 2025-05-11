@@ -6,7 +6,7 @@ use regex::Regex;
 // Public handler function for module.
 pub async fn handler(ctx: &serenity::Context, msg: &serenity::Message, guild_settings: database::GuildSettings) -> Result<()> {
 	let content = msg.content.as_str();
-	if !guild_settings.serious {
+	if guild_settings.unserious {
 		borger(ctx, msg, content).await?;
 		v(ctx, msg, content).await?;
 	}

@@ -59,21 +59,18 @@ async fn roles_click(
 	let db_group_roles = database::roles_from_query(guild.id, group_name, &data.db).await?;
 
 	let Some(member) = mci.member.as_ref() else {
-		// TODO: Better Errors
 		return Err(serenity::ModelError::MemberNotFound.into())
 	};
 	let Some(channel) = mci.channel_id
 		.to_channel(ctx)
 		.await?
 		.guild() else {
-		// TODO: Better Errors
 		return Err(BotError::InteractionNotInGuild.into())
 	};
 
 	match id_vec.pop_front().ok_or(BotError::MalformedInteraction)? {
 		// Rolelist Pick
 		"pick" => {
-			// TODO: Standardize Error
 			if guild.user_permissions_in(&channel, member).manage_roles() {
 				return Err(UserError(BotError::RolePickPermissions.into()).into())
 				// mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()

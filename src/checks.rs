@@ -17,19 +17,26 @@ fn feature_not_enabled(
 		.ephemeral(true)
 }
 
-pub async fn serious(ctx: Context<'_>) -> Result<bool> {
+pub async fn unserious(ctx: Context<'_>) -> Result<bool> {
 	// Bypass check if it's in a DM. It shouldn't be there anyway, but who cares if it is.
 	let Some(id) = ctx.guild_id() else {
 		return Ok(true)
 	};
-	let serious = sqlx::query_scalar::<_, bool>("SELECT serious FROM guild_settings WHERE guild_id = ?;")
+	let unserious = sqlx::query_scalar::<_, bool>("SELECT unserious FROM guild_settings WHERE guild_id = ?;")
 		.bind(id.get() as i64)
 		.fetch_one(&ctx.data().db)
-		.await?;
-	if !serious {
-		ctx.send(feature_not_enabled("serious")).await?;
-		return Ok(false)
-	}
+		.await;
+	match unserious {
+		Ok(v) => 	if !v {
+			ctx.send(feature_not_enabled("unserious")).await?;
+			return Ok(false)
+		},
+		Err(e) => return Err(e.into())
+	};
+	// if !unserious {
+	// 	ctx.send(feature_not_enabled("unserious")).await?;
+	// 	return Ok(false)
+	// }
 	Ok(true)
 }
 
@@ -41,11 +48,18 @@ pub async fn roles(ctx: Context<'_>) -> Result<bool> {
 	let roles = sqlx::query_scalar::<_, bool>("SELECT roles FROM guild_settings WHERE guild_id = ?;")
 		.bind(id.get() as i64)
 		.fetch_one(&ctx.data().db)
-		.await?;
+		.await;
+	match roles {
+		Ok(v) => if !v {
+			ctx.send(feature_not_enabled("roles")).await?;
+			return Ok(false)
+		},
+		Err(e) => return Err(e.into())
+	};
 	// println!("Role Check: {roles}");
-	if !roles {
-		ctx.send(feature_not_enabled("roles")).await?;
-		return Ok(false)
-	}
+	// if !roles {
+	// 	ctx.send(feature_not_enabled("roles")).await?;
+	// 	return Ok(false)
+	// }
 	Ok(true)
 }

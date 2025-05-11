@@ -9,8 +9,10 @@ use crate::concat;
 
 #[derive(Debug, Clone)]
 pub struct GuildSettings {
-	/// Whether the server is serious or not, default `true`.
-	pub serious: bool,
+	/// Whether the server will allow unserious and/or meme content or not, default `true`.
+	pub unserious: bool,
+	/// Whether the bot should allow generic administration work commands.
+	pub admin: bool,
 	/// Whether the bot should respond to message events, default `false`.
 	pub messages: bool,
 	/// Whether the bot should manage roles, default `false`.
@@ -24,7 +26,7 @@ impl GuildSettings {
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
 	) -> Result<Self> {
-		sqlx::query_as("SELECT serious,messages,roles,roles_channel FROM guild_settings WHERE guild_id = ?;")
+		sqlx::query_as("SELECT admin,unserious,messages,roles,roles_channel FROM guild_settings WHERE guild_id = ?;")
 			.bind(guild_id.get() as i64)
 			.fetch_one(db)
 			.await
@@ -34,7 +36,8 @@ impl GuildSettings {
 	/// While the standard default function is useful for servers, some minor changes are needed for handling private messages.
 	pub fn private_default() -> Self {
 		Self {
-			serious: true,
+			admin: false,
+			unserious: false,
 			messages: true,
 			roles: false,
 			roles_channel: None
@@ -47,8 +50,9 @@ impl GuildSettings {
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
 	) -> Result<()> {
-		sqlx::query("UPDATE guild_settings SET serious = ?, messages = ?, roles = ?, roles_channel = ? WHERE guild_id = ?;")
-			.bind(self.serious)
+		sqlx::query("UPDATE guild_settings SET admin = ?, unserious = ?, messages = ?, roles = ?, roles_channel = ? WHERE guild_id = ?;")
+			.bind(self.admin)
+			.bind(self.unserious)
 			.bind(self.messages)
 			.bind(self.roles)
 			.bind(self.roles_channel.map(|id| id.get() as i64))
@@ -60,9 +64,10 @@ impl GuildSettings {
 	}
 
 	/// All true/false options as an array.
-	pub fn as_array(&self) -> [(&str, bool); 3] {
+	pub fn as_array(&self) -> [(&str, bool); 4] {
 		[
-			("serious", self.serious),
+			("admin", self.admin),
+			("unserious", self.unserious),
 			("messages", self.messages),
 			("roles", self.roles)
 		]
@@ -82,7 +87,8 @@ impl GuildSettings {
 impl Default for GuildSettings {
 	fn default() -> Self {
 		Self {
-			serious: true,
+			admin: false,
+			unserious: false,
 			messages: false,
 			roles: false,
 			roles_channel: None
@@ -98,7 +104,8 @@ impl FromRow<'_, SqliteRow> for GuildSettings {
 
 		Ok(
 			Self {
-				serious: row.try_get::<bool, &str>("serious")?,
+				admin: row.try_get::<bool, &str>("admin")?,
+				unserious: row.try_get::<bool, &str>("unserious")?,
 				messages: row.try_get::<bool, &str>("messages")?,
 				roles: row.try_get::<bool, &str>("roles")?,
 				roles_channel: mapped_roles_channel

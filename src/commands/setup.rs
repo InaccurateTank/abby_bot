@@ -1,10 +1,10 @@
 use color_eyre::Result;
 use poise::serenity_prelude::{self as serenity, Mentionable};
-use sqlx::query;
 use tracing::instrument;
 use crate::{
 	checks,
 	colors,
+	commands,
 	database,
 	error::{BotError, UserError},
 	templates,
@@ -37,7 +37,6 @@ pub async fn setup(ctx: Context<'_>) -> Result<()> {
 #[poise::command(
 	guild_only,
 	slash_command,
-	required_permissions="MANAGE_GUILD",
 	ephemeral
 )]
 async fn bot(ctx: Context<'_>) -> Result<()> {
@@ -50,9 +49,10 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 			.title("Bot Configuration")
 			.color(colors::INFO)
 			.description("Below is a select menu to choose my features on a per-server basis. These can be changed at any time by simply running the command again.")
-			.field("Serious", "Toggles the appearence of memes, injokes or other related content. This setting encompasses *all* invocations of this across all other features.", false)
-			.field("Messages", "Whether or not I should listen to message events outside of command invocations. This is mostly to reply to them based on regex.", false)
-			.field("Roles", "Toggles role management features. Note that the subcommand is global so while it will still exist, it will simply do nothing.", false)
+			.field("Admin", "Toggles the usability of all server administration commands. Off by default for security (through obscurity) reasons.", false)
+			.field("Unserious", "Toggles the appearence of memes, injokes or other related content. This setting encompasses all invocations of this across all other features.", false)
+			.field("Messages", "Whether or not messages should be listened to outside of the standard text command context. This is mostly to reply to them based on regex.", false)
+			.field("Roles", "Allows the creation and management of role lists to allow members to self-assign roles.", false)
 		).components(vec![
 			serenity::CreateActionRow::SelectMenu(serenity::CreateSelectMenu::new("setup.bot", serenity::CreateSelectMenuKind::String { options: guild_settings.as_selectmenuoptions() })
 				.placeholder("Please select features...")
@@ -84,7 +84,8 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 	let mut updated = match &interaction.data.kind {
 		serenity::ComponentInteractionDataKind::StringSelect { values } => {
 			database::GuildSettings {
-				serious: values.contains(&"enable_serious".to_string()),
+				admin: values.contains(&"enable_admin".to_string()),
+				unserious: values.contains(&"enable_unserious".to_string()),
 				messages: values.contains(&"enable_messages".to_string()),
 				roles: values.contains(&"enable_roles".to_string()),
 				roles_channel: guild_settings.roles_channel
@@ -102,50 +103,49 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 		}
 	};
 
+	let mut updated_commands: Vec<poise::Command<crate::Data, color_eyre::Report>> = Vec::new();
+
+	if updated.admin {
+		updated_commands.extend(commands::admin_commands());
+	}
+
 	// Changed Serious
-	match updated.serious {
-		// Enabled
-		true if !guild_settings.roles => {},
-		// Disabled
-		false if guild_settings.roles => {},
-		// Same
-		_ => ()
+	if updated.unserious {
+		updated_commands.extend(commands::unserious_commands());
 	}
 
 	// Changed Roles
 	match updated.roles {
 		// Enabled
-		true if !guild_settings.roles => {
-			// Find default channel in i64 form (for database)
-			let default = utils::default_bot_channel(ctx, &guild, ctx.framework().bot_id).await?;
-			// Set roles channel in structure
-			updated.roles_channel = default;
-			// Send message
-			ctx.send(poise::CreateReply::default()
-				.embed(
-					if let Some(channel) = default {
-						// Default channel exists
-						templates::status::info(
-							None,
-							format!("The current default channel for role lists is {}. If this is not desired, please run `/setup roles` now.", channel.mention())
-						)
-						// serenity::CreateEmbed::new()
-						// 	.description(format!("The current default channel for role lists is {}. If this is not desired, please run `/setup roles` now.", channel.mention()))
-						// 	.color(EMBED_WAIT)
-					} else {
-						// Default channel does not exist
-						templates::status::warning(
-							None,
-							"Could not setup a default channel for roles. Before creating any lists, please run `/setup roles`."
-						)
-						// serenity::CreateEmbed::new()
-						// 	.description("Could not setup a default channel for roles. Before creating any lists, please run `/setup roles`.")
-						// 	.color(EMBED_FAIL)
-					}
-				)
-			).await?;
+		true => {
+			// Changed from Disabled
+			if !guild_settings.roles {
+				// Find default channel
+				let default = utils::default_bot_channel(ctx, &guild, ctx.framework().bot_id).await?;
+				// Set roles channel in structure
+				updated.roles_channel = default;
+				// Send message
+				ctx.send(poise::CreateReply::default()
+					.embed(
+						if let Some(channel) = default {
+							// Default channel exists
+							templates::status::info(
+								None,
+								format!("The current default channel for role lists is {}. If this is not desired, please run `/setup roles` now.", channel.mention())
+							)
+						} else {
+							// Default channel does not exist
+							templates::status::warning(
+								None,
+								"Could not setup a default channel for roles. Before creating any lists, please run `/setup roles`."
+							)
+						}
+					)
+				).await?;
+			}
+			updated_commands.extend(commands::role_commands());
 		},
-		// Disabled
+		// Changed from Enabled
 		false if guild_settings.roles => {
 			// Unset roles channel in structure
 			updated.roles_channel = None;
@@ -163,22 +163,23 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 								format!("Either can't find or can't delete the message for the role group {:?}. Entries will be removed from the database, but the message will need to be deleted manually.", grp.group_name)
 							)
 						)
-						// .ephemeral(true)
-						// .embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{}\". Entries will be removed from the database, but the message will need to be deleted manually.", grp.name)))
 					).await?;
 				}
 				// Purging managed roles
-				query("DELETE FROM roles WHERE guild_id = ? AND group_name = ?")
+				sqlx::query("DELETE FROM roles WHERE guild_id = ? AND group_name = ?")
 					.bind(guild.id.get() as i64)
 					.bind(grp.group_name)
 					.execute(&ctx.data().db)
 					.await?;
 			}
 		},
-		// Same
-		_ => ()
+		_ => {}
 	}
 
+	// Register Commands
+	poise::builtins::register_in_guild(ctx, &updated_commands, guild.id).await?;
+
+	// Update Database
 	updated.update_entry(guild.id, &ctx.data().db).await?;
 
 	// Confirm message
@@ -279,6 +280,8 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 			// 	.components(Vec::new())
 			// )).await?;
 			// return Ok(());
+			interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
+			reply.delete(ctx).await?;
 			return Err(BotError::WrongInteraction.into())
 		}
 	};
@@ -302,7 +305,7 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 							])
 						).await?;
 						// Update database with new message
-						query("UPDATE role_groups SET group_message = ? WHERE guild_id = ? AND group_name = ?;")
+						sqlx::query("UPDATE role_groups SET group_message = ? WHERE guild_id = ? AND group_name = ?;")
 							.bind(guild.id.get() as i64)
 							.bind(new_message.id.get() as i64)
 							.bind(entry.group_name)
@@ -336,7 +339,7 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 		}
 
 		// Update the database with the new channel
-		query("UPDATE guild_settings SET roles_channel = ? WHERE guild_id = ?;")
+		sqlx::query("UPDATE guild_settings SET roles_channel = ? WHERE guild_id = ?;")
 			.bind(chid.get() as i64)
 			.bind(ctx.guild_id().unwrap().get() as i64)
 			.execute(&ctx.data().db)

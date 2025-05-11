@@ -1,7 +1,8 @@
 -- Server Settings
 CREATE TABLE guild_settings (
 	guild_id			INT		PRIMARY KEY NOT NULL,
-	serious				BOOL	NOT NULL DEFAULT true,
+	admin					BOOL	NOT NULL DEFAULT false,
+	unserious			BOOL	NOT NULL DEFAULT false,
 	messages			BOOL	NOT NULL DEFAULT false,
 	roles					BOOL	NOT NULL DEFAULT false,
 	roles_channel	INT		DEFAULT	NULL
