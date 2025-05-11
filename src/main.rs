@@ -37,6 +37,7 @@ pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
 }
 
+// TODO: Better secret keeping capabilities
 #[derive(Debug, Options)]
 struct Opts {
 	help: bool,
