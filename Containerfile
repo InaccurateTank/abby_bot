@@ -1,4 +1,4 @@
-FROM docker.io/rust:1.79-bookworm as builder
+FROM docker.io/rust:1.86-bookworm as builder
 WORKDIR /build
 COPY . .
 
