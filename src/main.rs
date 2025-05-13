@@ -1,4 +1,7 @@
-use std::str::FromStr;
+use std::{
+	path::PathBuf,
+	str::FromStr
+};
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
 use gumdrop::Options;
@@ -37,12 +40,31 @@ pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
 }
 
+#[cfg(not(target_os = "windows"))]
+fn to_pathbuf(s: &str) -> PathBuf {
+	use std::path::MAIN_SEPARATOR_STR;
+	if !s.ends_with(MAIN_SEPARATOR_STR) {
+		PathBuf::from(concat!(s, MAIN_SEPARATOR_STR))
+	} else {
+		PathBuf::from(s)
+	}
+}
+#[cfg(target_os = "windows")]
+fn to_pathbuf(s: &str) -> PathBuf {
+	use std::path::{MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
+	let mut path = s.replace("/", MAIN_SEPARATOR_STR);
+	if !path.ends_with(MAIN_SEPARATOR) {
+		path.push(MAIN_SEPARATOR);
+	}
+	PathBuf::from(path)
+}
+
 // TODO: Better secret keeping capabilities
 #[derive(Debug, Options)]
 struct Opts {
 	help: bool,
-	#[options(help = "Set data folder location.", default = "./data/")]
-	data: String,
+	#[options(help = "Path to the directory where persistent data will be stored.", default = "./data", meta = "<PATH>", parse(from_str = "to_pathbuf"))]
+	data_dir: PathBuf,
 	#[options(no_long, count, help = "Increase logging verbosity to DEBUG. Repeat once for TRACE data.")]
 	verbose: u8
 }
@@ -59,21 +81,34 @@ async fn main() -> Result<()> {
 	install_tracing(&opts);
 
 	// Data Folder From Opts
-	let data_folder = if !opts.data.ends_with('/') {
-		concat!(&opts.data, "/")
-	} else {
-		opts.data
-	};
+	// let data_folder = opts.data_dir.to_string_lossy();
+
+	// let data_folder = if !opts.data_dir.ends_with('/') {
+	// 	concat!(&opts.data_dir, "/")
+	// } else {
+	// 	opts.data_dir
+	// };
+	// let config_folder = if let Some(dir) = opts.config_dir {
+	// 	dir
+	// } else {
+	// 	concat!(&data_folder, "/config")
+	// };
+
+	// let config_folder = if !opts.config_dir.ends_with('/') {
+	// 	concat!(&opts.config_dir, "/")
+	// } else {
+	// 	opts.config_dir
+	// };
 
 	info!("Loading configuration.");
 	// Config
-	let config = structs::Config::new(&data_folder)?;
+	let config = structs::Config::new(&opts.data_dir)?;
 
 	// DB
-	let db_url = format!("sqlite://{data_folder}sqlite.db");
+	let db_url = format!("sqlite://{}sqlite.db", opts.data_dir.to_string_lossy());
 	// Check if DB exists
 	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-		warn!("Database absent in '{data_folder}', creating new one.");
+		warn!("Database absent in '{}', creating new one.", opts.data_dir.to_string_lossy());
 		match Sqlite::create_database(&db_url).await {
 			Ok(_) => debug!("Database creation successful."),
 			Err(error) => panic!("error: {error}")
