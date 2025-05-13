@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
 
 	info!("Loading configuration.");
 	// Config
-	let config = structs::Config::new(&opts.data_dir)?;
+	let config = structs::Config::load(&opts.data_dir)?;
 
 	// DB
 	let db_url = format!("sqlite://{}sqlite.db", opts.data_dir.to_string_lossy());
