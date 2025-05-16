@@ -1,10 +1,7 @@
-use std::{
-	path::PathBuf,
-	str::FromStr
-};
+use std::str::FromStr;
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
-use gumdrop::Options;
+// use gumdrop::Options;
 use sqlx::{
 	migrate::MigrateDatabase,
 	Sqlite,
@@ -40,42 +37,14 @@ pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
 }
 
-#[cfg(not(target_os = "windows"))]
-fn to_pathbuf(s: &str) -> PathBuf {
-	use std::path::MAIN_SEPARATOR_STR;
-	if !s.ends_with(MAIN_SEPARATOR_STR) {
-		PathBuf::from(concat!(s, MAIN_SEPARATOR_STR))
-	} else {
-		PathBuf::from(s)
-	}
-}
-#[cfg(target_os = "windows")]
-fn to_pathbuf(s: &str) -> PathBuf {
-	use std::path::{MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
-	let mut path = s.replace("/", MAIN_SEPARATOR_STR);
-	if !path.ends_with(MAIN_SEPARATOR) {
-		path.push(MAIN_SEPARATOR);
-	}
-	PathBuf::from(path)
-}
-
-// TODO: Better secret keeping capabilities
-#[derive(Debug, Options)]
-struct Opts {
-	help: bool,
-	#[options(help = "Path to the directory where persistent data will be stored.", default = "./data", meta = "<PATH>", parse(from_str = "to_pathbuf"))]
-	data_dir: PathBuf,
-	#[options(no_long, count, help = "Increase logging verbosity to DEBUG. Repeat once for TRACE data.")]
-	verbose: u8
-}
-
 #[instrument]
 #[tokio::main]
 async fn main() -> Result<()> {
 	color_eyre::install()?;
 
+	// TODO: Better secret keeping capabilities
 	// Opts
-	let opts = Opts::parse_args_default_or_exit();
+	let opts = structs::Opts::parse();
 
 	// Installing tracing subscriber
 	install_tracing(&opts);
@@ -215,7 +184,7 @@ async fn main() -> Result<()> {
 }
 
 fn install_tracing(
-	options: &Opts
+	options: &structs::Opts
 ) {
 	use tracing::Level;
 	use tracing_error::ErrorLayer;
