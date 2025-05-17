@@ -17,7 +17,7 @@ pub struct Opts {
 	#[options(help = "Path to the directory where persistent data will be stored.", default = "data", meta = "<PATH>", parse(from_str = "to_pathbuf"))]
 	pub data_dir: PathBuf,
 	#[options(help = "The path to the bot configuration file. (default: <data_dir>/config.toml)", meta = "<PATH>", parse(from_str = "to_pathbuf"))]
-	pub configuration: PathBuf,
+	pub config: PathBuf,
 	#[options(no_long, count, help = "Increase logging verbosity to DEBUG. Repeat once for TRACE data.")]
 	pub verbose: u8
 }
@@ -32,8 +32,8 @@ impl Opts {
 			res.data_dir.push(MAIN_SEPARATOR_STR);
 		}
 		// default configuration location
-		if res.configuration.as_os_str().is_empty() {
-			res.configuration = res.data_dir.join("config.toml");
+		if res.config.as_os_str().is_empty() {
+			res.config = res.data_dir.join("config.toml");
 		}
 		res
 	}

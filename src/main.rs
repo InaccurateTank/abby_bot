@@ -69,8 +69,8 @@ async fn main() -> Result<()> {
 	// };
 
 	// Config
-	info!("Loading configuration {}", opts.configuration.to_string_lossy());
-	let config = structs::Config::load(opts.configuration)?;
+	info!("Loading configuration {}", opts.config.to_string_lossy());
+	let config = structs::Config::load(opts.config)?;
 
 	// // DB
 	// let db_url = format!("sqlite://{}sqlite.db", opts.data_dir.to_string_lossy());
