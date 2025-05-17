@@ -48,52 +48,9 @@ async fn main() -> Result<()> {
 	// Installing tracing subscriber
 	install_tracing(&opts);
 
-	// Data Folder From Opts
-	// let data_folder = opts.data_dir.to_string_lossy();
-
-	// let data_folder = if !opts.data_dir.ends_with('/') {
-	// 	concat!(&opts.data_dir, "/")
-	// } else {
-	// 	opts.data_dir
-	// };
-	// let config_folder = if let Some(dir) = opts.config_dir {
-	// 	dir
-	// } else {
-	// 	concat!(&data_folder, "/config")
-	// };
-
-	// let config_folder = if !opts.config_dir.ends_with('/') {
-	// 	concat!(&opts.config_dir, "/")
-	// } else {
-	// 	opts.config_dir
-	// };
-
 	// Config
 	info!("Loading configuration {}", opts.config.to_string_lossy());
 	let config = structs::Config::load(opts.config)?;
-
-	// // DB
-	// let db_url = format!("sqlite://{}sqlite.db", opts.data_dir.to_string_lossy());
-	// // Check if DB exists
-	// if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-	// 	warn!("Database absent in '{}', creating new one.", opts.data_dir.to_string_lossy());
-	// 	// std::fs::exists(path);
-	// 	match Sqlite::create_database(&db_url).await {
-	// 		Ok(_) => debug!("Database creation successful."),
-	// 		Err(error) => panic!("error: {error}")
-	// 	}
-	// }
-	// info!("Connecting to database.");
-
-
-	// Set DB options
-	// let db_opts = SqliteConnectOptions::new()
-	// 	.filename(db_url)
-	// 	.create_if_missing(true)
-	// 	.foreign_keys(true);
-	// let db_opts = SqliteConnectOptions::from_str(&db_url)?
-	// 	.foreign_keys(true);
-	// Connect and migrate
 
 	// Data Directory
 	if !opts.data_dir.try_exists()? {
@@ -177,21 +134,8 @@ async fn main() -> Result<()> {
 	let mut client = serenity::ClientBuilder::new(config.read_token()?, intents)
 		.framework(framework)
 		.await?;
-	// 	 {
-	// 	Ok(c) => c,
-	// 	Err(e) => {
-	// 		error!("Error with Discord client: {e:?}");
-	// 		return Ok(())
-	// 	}
-	// };
 
 	client.start_autosharded().await.map_err(Into::into)
-
-	// if let Err(e) = client.start().await {
-	// 	error!("Client error: {e:?}");
-	// 	return Ok(())
-	// }
-	// Ok(())
 }
 
 fn install_tracing(
