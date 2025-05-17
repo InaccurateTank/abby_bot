@@ -7,7 +7,7 @@ use sqlx::{
 };
 use crate::concat;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct GuildSettings {
 	/// Whether the server will allow unserious and/or meme content or not, default `true`.
 	pub unserious: bool,
@@ -84,17 +84,17 @@ impl GuildSettings {
 		opts
 	}
 }
-impl Default for GuildSettings {
-	fn default() -> Self {
-		Self {
-			admin: false,
-			unserious: false,
-			messages: false,
-			roles: false,
-			roles_channel: None
-		}
-	}
-}
+// impl Default for GuildSettings {
+// 	fn default() -> Self {
+// 		Self {
+// 			admin: false,
+// 			unserious: false,
+// 			messages: false,
+// 			roles: false,
+// 			roles_channel: None
+// 		}
+// 	}
+// }
 impl FromRow<'_, SqliteRow> for GuildSettings {
 	fn from_row(row: &SqliteRow) -> sqlx::Result<Self, sqlx::Error> {
 		let mapped_roles_channel = match row.try_get::<Option<u64>, &str>("roles_channel") {

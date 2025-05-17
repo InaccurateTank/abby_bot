@@ -25,3 +25,7 @@ sd-notify = { version = "0.4.5", optional = true }
 
 [features]
 systemd = ["dep:sd-notify"]
+
+[lints.clippy]
+# Kinda need this for futureproofing stuff
+single_match = "allow"

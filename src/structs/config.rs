@@ -20,7 +20,7 @@ impl Config {
 		path: impl AsRef<std::path::Path>
 	) -> Result<Self, Report> {
 		let config_path = path.as_ref();
-		match fs::read_to_string(&config_path) {
+		match fs::read_to_string(config_path) {
 			Ok(file) => Ok(toml::from_str(&file)?),
 			Err(e) => {
 				let generated: Result<bool, io::Error> = if e.kind() == io::ErrorKind::NotFound {
