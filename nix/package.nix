@@ -2,7 +2,7 @@
   lib,
   rustPlatform,
   openssl,
-  pkg-config,
+  pkg-config
 }:
 rustPlatform.buildRustPackage {
   pname = "abby_bot";
@@ -12,9 +12,11 @@ rustPlatform.buildRustPackage {
 
   buildInputs = [openssl];
 
+	buildFeatures = ["systemd"];
+
   src = ../.;
 
-  cargoHash = "sha256-9wHNUHgHYnZsGx9t+LXYi+pQRQL0wDIAGnYbZ8693pY=";
+  cargoHash = "sha256-NBOfqlT5l91e9i+2kdEI2Uj1/cBnY1LTTDflDfZZ3+0=";
 
   meta = {
     description = "A mediocre general purpose discord bot written in Rust.";

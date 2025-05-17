@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 poise = { version = "0.6" }
-tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.45", features = ["macros", "rt-multi-thread", "signal"] }
 regex = { version = "1.11" }
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 gumdrop = { version = "0.8" }
@@ -21,3 +21,7 @@ tracing-error = { version = "0.2" }
 tracing-subscriber = { version = "0.3" }
 thiserror = { version = "2.0" }
 color-eyre = { version = "0.6" }
+sd-notify = { version = "0.4.5", optional = true }
+
+[features]
+systemd = ["dep:sd-notify"]
