@@ -14,6 +14,17 @@ use tracing::{
 use crate::templates::status;
 
 #[derive(Error, Debug)]
+pub enum ConfigError {
+	#[error("Could not read the configuration file {path}")]
+	MissingFile {
+		path: Box<std::path::Path>,
+		source: std::io::Error
+	},
+	#[error("Either token or token_file could not be read.")]
+	Token
+}
+
+#[derive(Error, Debug)]
 pub enum BotError {
 	#[error("Somehow recieved wrong interaction ID during a filtered interaction wait.")]
 	/// Bot recieved an interaction on a call that it shouldn't have.
@@ -50,10 +61,6 @@ pub enum BotError {
 	/// Failed to create the role list for whatever reason.
 	#[error("Failed to create role list for group {0:?}.")]
 	RoleListFailed(String),
-
-	/// Config file doesn't exist for whatever reason.
-	#[error("Config file does not exist. Please fill out generated config file before running again.")]
-	ConfigFileMissing,
 
 	/// Somthing failed with the confirm modal.
 	#[error("Failed to confirm via confirmation modal, aborting.")]

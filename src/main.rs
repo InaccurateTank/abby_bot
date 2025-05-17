@@ -1,10 +1,10 @@
-use std::str::FromStr;
+// use std::str::FromStr;
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
 // use gumdrop::Options;
 use sqlx::{
-	migrate::MigrateDatabase,
-	Sqlite,
+	// migrate::MigrateDatabase,
+	// Sqlite,
 	sqlite::{SqliteConnectOptions, SqlitePoolOptions}
 };
 use tracing::{
@@ -42,8 +42,7 @@ pub struct Data {
 async fn main() -> Result<()> {
 	color_eyre::install()?;
 
-	// TODO: Better secret keeping capabilities
-	// Opts
+	// Options
 	let opts = structs::Opts::parse();
 
 	// Installing tracing subscriber
@@ -69,28 +68,50 @@ async fn main() -> Result<()> {
 	// 	opts.config_dir
 	// };
 
-	info!("Loading configuration.");
 	// Config
-	let config = structs::Config::load(&opts.data_dir)?;
+	info!("Loading configuration {}", opts.configuration.to_string_lossy());
+	let config = structs::Config::load(opts.configuration)?;
 
-	// DB
-	let db_url = format!("sqlite://{}sqlite.db", opts.data_dir.to_string_lossy());
-	// Check if DB exists
-	if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-		warn!("Database absent in '{}', creating new one.", opts.data_dir.to_string_lossy());
-		match Sqlite::create_database(&db_url).await {
-			Ok(_) => debug!("Database creation successful."),
-			Err(error) => panic!("error: {error}")
-		}
-	}
-	info!("Connecting to database.");
+	// // DB
+	// let db_url = format!("sqlite://{}sqlite.db", opts.data_dir.to_string_lossy());
+	// // Check if DB exists
+	// if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
+	// 	warn!("Database absent in '{}', creating new one.", opts.data_dir.to_string_lossy());
+	// 	// std::fs::exists(path);
+	// 	match Sqlite::create_database(&db_url).await {
+	// 		Ok(_) => debug!("Database creation successful."),
+	// 		Err(error) => panic!("error: {error}")
+	// 	}
+	// }
+	// info!("Connecting to database.");
+
+
 	// Set DB options
-	let db_opts = SqliteConnectOptions::from_str(&db_url)?
-		.foreign_keys(true);
+	// let db_opts = SqliteConnectOptions::new()
+	// 	.filename(db_url)
+	// 	.create_if_missing(true)
+	// 	.foreign_keys(true);
+	// let db_opts = SqliteConnectOptions::from_str(&db_url)?
+	// 	.foreign_keys(true);
 	// Connect and migrate
+
+	// Data Directory
+	if !opts.data_dir.try_exists()? {
+		warn!("Attempting to initialize missing data directory {}", opts.data_dir.to_string_lossy());
+		std::fs::create_dir_all(&opts.data_dir)?;
+	}
+
+	// Database
+	info!("Connecting to database");
 	let pool = SqlitePoolOptions::new()
 		.max_connections(5)
-		.connect_with(db_opts).await?;
+		.connect_with(
+			// Connection options
+			SqliteConnectOptions::new()
+				.filename(opts.data_dir.join("sqlite.db"))
+				.create_if_missing(true)
+				.foreign_keys(true)
+	).await?;
 	sqlx::migrate!("./migrations")
 		.run(&pool)
 		.await?;
@@ -136,8 +157,11 @@ async fn main() -> Result<()> {
 				let sm = framework.shard_manager().clone();
 				let db = pool.clone();
 				tokio::spawn(async move {
-					#[cfg(target_os = "linux")]
+					#[cfg(not(target_os = "windows"))]
 					{
+						#[cfg(feature = "systemd")]
+						sd_notify::notify(false, &[sd_notify::NotifyState::Ready]);
+
 						use tokio::signal::unix::{signal, SignalKind};
 						let mut sigint = signal(SignalKind::interrupt()).unwrap();
 						let mut sigterm = signal(SignalKind::terminate()).unwrap();
@@ -145,6 +169,9 @@ async fn main() -> Result<()> {
 							_ = sigint.recv() => {},
 							_ = sigterm.recv() => {}
 						}
+
+						#[cfg(feature = "systemd")]
+						sd_notify::notify(true, &[sd_notify::NotifyState::Stopping]);
 					}
 					#[cfg(target_os = "windows")]
 					{
@@ -167,20 +194,24 @@ async fn main() -> Result<()> {
 		})
 		.build();
 
-	let mut client = match serenity::ClientBuilder::new(config.token, intents)
+	let mut client = serenity::ClientBuilder::new(config.read_token()?, intents)
 		.framework(framework)
-		.await {
-		Ok(c) => c,
-		Err(e) => {
-			error!("Error with Discord client: {e:?}");
-			return Ok(())
-		}
-	};
+		.await?;
+	// 	 {
+	// 	Ok(c) => c,
+	// 	Err(e) => {
+	// 		error!("Error with Discord client: {e:?}");
+	// 		return Ok(())
+	// 	}
+	// };
 
-	if let Err(e) = client.start().await {
-		error!("Client error: {e:?}");
-	}
-	Ok(())
+	client.start_autosharded().await.map_err(Into::into)
+
+	// if let Err(e) = client.start().await {
+	// 	error!("Client error: {e:?}");
+	// 	return Ok(())
+	// }
+	// Ok(())
 }
 
 fn install_tracing(

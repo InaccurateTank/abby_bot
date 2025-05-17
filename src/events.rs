@@ -18,6 +18,7 @@ use crate::utils;
 mod message;
 mod interaction;
 
+#[instrument(skip(db))]
 async fn on_join(
 	guild_id: serenity::GuildId,
 	guild_name: &str,
@@ -38,6 +39,7 @@ async fn on_join(
 	Ok(())
 }
 
+#[instrument(skip(db))]
 // Private on leave function
 async fn on_leave(
 	guild_id: serenity::GuildId,

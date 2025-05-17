@@ -1,50 +1,62 @@
-use color_eyre::Result;
-use crate::error::{UserError, BotError};
+use std::{fs, io};
+use color_eyre::{Report, Section};
+use tracing::{info, instrument, warn};
+use crate::error::ConfigError;
 
 const DEFAULT_CONFIG: &str = r##"# Abbybot config file
-token = "INSERT_TOKEN""##;
+token = "INSERT_TOKEN"
+# Alternatively you can use a file with the token inside of it.
+# This will be parsed before the token setting.
+# token_file = "PATH_TO_TOKEN"##;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct Config {
-	pub token: String,
+	pub token: Option<String>,
+	pub token_file: Option<String>
 }
 impl Config {
+	#[instrument(fields(path = %path.as_ref().to_string_lossy()))]
 	pub fn load(
 		path: impl AsRef<std::path::Path>
-	) -> Result<Self> {
-		match std::fs::read_to_string(path.as_ref().join("config.toml")) {
-			// File exists
-			Ok(file) => {
-				// Return config file or deserializing error
-				Ok(toml::from_str(&file)?)
-			},
-			// File doesn't exist
+	) -> Result<Self, Report> {
+		let config_path = path.as_ref();
+		match fs::read_to_string(&config_path) {
+			Ok(file) => Ok(toml::from_str(&file)?),
 			Err(e) => {
-				match e.kind() {
-					// File does not exist
-					std::io::ErrorKind::NotFound => {
-						std::fs::write(path, DEFAULT_CONFIG)?;
-						return Err(UserError(BotError::ConfigFileMissing.into()).into())
-					},
-					// Some other issue occured
-					_ => Err(UserError(e.into()).into())
-				}
+				let generated: Result<bool, io::Error> = if e.kind() == io::ErrorKind::NotFound {
+					if let Some(folder) = config_path.parent() {
+						fs::create_dir_all(folder)?;
+					}
+					fs::write(config_path, DEFAULT_CONFIG)?;
+					Ok(true)
+				} else {
+					Ok(false)
+				};
+
+				Err(ConfigError::MissingFile {
+					path: config_path.into(),
+					source: e
+				}).with_suggestion(|| {
+					if generated.is_ok_and(|x|x) {
+						"Please fill out the generated config file before running."
+					} else {
+						"Please make sure the configuration path is either correct or writable before running."
+					}
+				})
 			}
 		}
-		// Ok(toml::from_str(&config_file?)?)
-		// let mut config_file = OpenOptions::new()
-		// 	.create(true)
-		// 	.truncate(false)
-		// 	.read(true)
-		// 	.write(true)
-		// 	.open(path.as_ref().join("config.toml"))?;
-		// let mut toml = String::new();
-		// config_file.read_to_string(&mut toml)?;
-		// if toml.is_empty() {
-			// config_file.write_all(DEFAULT_CONFIG.as_bytes())?;
-	// 		Err(UserError(BotError::ConfigFileMissing.into()).into())
-	// 	} else {
-	// 		Ok(toml::from_str(&toml)?)
-	// 	}
+	}
+
+	#[instrument(skip(self))]
+	pub fn read_token(&self) -> Result<String, Report> {
+		if let Some(p) = &self.token_file {
+			info!("Loading token from configuration.");
+			Ok(fs::read_to_string(p)?)
+		} else if let Some(t) = &self.token {
+			info!("Loading token from token file.");
+			Ok(t.to_owned())
+		} else {
+			Err(ConfigError::Token.into())
+		}
 	}
 }
