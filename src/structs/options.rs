@@ -2,11 +2,11 @@ use std::path::{PathBuf, MAIN_SEPARATOR_STR};
 use gumdrop::Options;
 use tracing::instrument;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(unix)]
 fn to_pathbuf(s: &str) -> PathBuf {
 	PathBuf::from(s)
 }
-#[cfg(target_os = "windows")]
+#[cfg(windows)]
 fn to_pathbuf(s: &str) -> PathBuf {
 	PathBuf::from(s.replace("/", MAIN_SEPARATOR_STR))
 }

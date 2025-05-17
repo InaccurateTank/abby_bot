@@ -157,36 +157,16 @@ async fn main() -> Result<()> {
 				let sm = framework.shard_manager().clone();
 				let db = pool.clone();
 				tokio::spawn(async move {
-					#[cfg(not(target_os = "windows"))]
-					{
-						#[cfg(feature = "systemd")]
-						sd_notify::notify(false, &[sd_notify::NotifyState::Ready]);
+					wait_until_shutdown().await;
+					warn!("Shutdown command recieved, complying.");
 
-						use tokio::signal::unix::{signal, SignalKind};
-						let mut sigint = signal(SignalKind::interrupt()).unwrap();
-						let mut sigterm = signal(SignalKind::terminate()).unwrap();
-						tokio::select! {
-							_ = sigint.recv() => {},
-							_ = sigterm.recv() => {}
-						}
+					#[cfg(feature = "systemd")]
+					sd_notify::notify(true, &[sd_notify::NotifyState::Stopping]);
 
-						#[cfg(feature = "systemd")]
-						sd_notify::notify(true, &[sd_notify::NotifyState::Stopping]);
-					}
-					#[cfg(target_os = "windows")]
-					{
-						use tokio::signal::windows::{ctrl_c, ctrl_close};
-						let mut c = ctrl_c().unwrap();
-						let mut close = ctrl_close().unwrap();
-						tokio::select! {
-							_ = c.recv() => {},
-							_ = close.recv() => {}
-						}
-					}
-					info!("Shutting Down");
 					db.close().await;
 					sm.shutdown_all().await;
 				});
+
 				Ok(Data {
 					db: pool
 				})
@@ -235,4 +215,31 @@ fn install_tracing(
 		.with(fmt_layer)
 		.with(ErrorLayer::default())
 		.init();
+}
+
+#[cfg(unix)]
+async fn wait_until_shutdown() {
+	use tokio::signal::unix as signal;
+	let (mut sighup, mut sigint, mut sigterm) = (
+		signal::signal(signal::SignalKind::hangup()).unwrap(),
+		signal::signal(signal::SignalKind::interrupt()).unwrap(),
+		signal::signal(signal::SignalKind::terminate()).unwrap()
+	);
+	tokio::select!(
+		v = sighup.recv() => v.unwrap(),
+		v = sigint.recv() => v.unwrap(),
+		v = sigterm.recv() => v.unwrap()
+	);
+}
+#[cfg(windows)]
+async fn wait_until_shutdown() {
+	use tokio::signal::windows as signal;
+	let (mut sigint, mut sigbreak) = (
+		signal::ctrl_c().unwrap(),
+		signal::ctrl_break().unwrap()
+	);
+	tokio::select!(
+		v = sigint.recv() => v.unwrap(),
+		v = sigbreak.recv() => v.unwrap()
+	);
 }

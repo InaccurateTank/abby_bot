@@ -115,6 +115,10 @@ pub async fn event_handler<'a>(
 		// On Login
 		serenity::FullEvent::Ready { data_about_bot } => {
 			tracing::Span::current().record("event", "Ready");
+
+			#[cfg(feature = "systemd")]
+			sd_notify::notify(false, &[sd_notify::NotifyState::Ready]);
+
 			info!("{} is connected!", data_about_bot.user.name);
 			// Register global commands
 			poise::builtins::register_globally(ctx, &commands::global_commands()).await?;
