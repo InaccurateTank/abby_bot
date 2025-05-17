@@ -50,10 +50,10 @@ impl Config {
 	#[instrument(skip(self))]
 	pub fn read_token(&self) -> Result<String, Report> {
 		if let Some(p) = &self.token_file {
-			info!("Loading token from configuration.");
+			info!("Loading token from token file.");
 			Ok(fs::read_to_string(p)?)
 		} else if let Some(t) = &self.token {
-			info!("Loading token from token file.");
+			info!("Loading token from configuration.");
 			Ok(t.to_owned())
 		} else {
 			Err(ConfigError::Token.into())
