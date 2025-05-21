@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
-use serenity::{ CreateMessage, CreateEmbed };
+use serenity::{ CreateMessage, CreateEmbed, CreateEmbedFooter };
 use sqlx::{
 	query,
 	query_scalar
@@ -82,15 +82,14 @@ pub async fn event_handler<'a>(
 					Ok(new) if new => {
 						on_join(guild.id, &guild.name, &data.db).await?;
 						// If the bot can post in a default channel, do so. Better to disclose the join than not.
-						// TODO: Change intro message
 						if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
 							chid.send_message(ctx, CreateMessage::new()
 								.embed(CreateEmbed::new()
-									.title("Hello I'm Abby!")
+									.title("Hello I'm AbbyBot!")
 									.color(colors::INFO)
-									.description("I am general purpose discord bot. To start using my local features on this server, please have an admin run `/setup bot`. For other global commands type /help.")
-									.field("Disclosure", format!("I operate off a database to keep track of settings between servers and reboots. The database consists entirely of booleans and numerical IDs with zero user information or identifying data. If this still concerns you, you can browse the entire implementation at my repository [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-								)
+									.description("In order to use any non-global commands `/setup bot` now. The full list of commands and their details can be found by running `/help`.")
+									.field("Privacy", format!("In order to save per-server settings a database is used to store data based on its id number. If you have concerns the full implementation is viewable [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
+									.footer(CreateEmbedFooter::new("This is a one time message and should not be sent again.")))
 							).await?;
 						}
 					},
