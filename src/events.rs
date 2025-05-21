@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
-use serenity::{ CreateMessage, CreateEmbed, CreateEmbedFooter };
+use serenity::{ CreateMessage, CreateEmbedFooter };
 use sqlx::{
 	query,
 	query_scalar
@@ -11,9 +11,13 @@ use tracing::{
 	info,
 	instrument
 };
-use crate::{ colors, commands, Data };
-use crate::database;
-use crate::utils;
+use crate::{
+	commands,
+	database,
+	templates,
+	utils,
+	Data
+};
 
 mod message;
 mod interaction;
@@ -84,12 +88,11 @@ pub async fn event_handler<'a>(
 						// If the bot can post in a default channel, do so. Better to disclose the join than not.
 						if let Some(chid) = utils::default_bot_channel(ctx, guild, framework.bot_id).await? {
 							chid.send_message(ctx, CreateMessage::new()
-								.embed(CreateEmbed::new()
-									.title("Hello I'm AbbyBot!")
-									.color(colors::INFO)
-									.description("In order to use any non-global commands `/setup bot` now. The full list of commands and their details can be found by running `/help`.")
+								.embed(
+									templates::status::info(Some("Hello I'm AbbyBot"), "In order to use any non-global commands `/setup bot` now. The full list of commands and their details can be found by running `/help`.")
 									.field("Privacy", format!("In order to save per-server settings a database is used to store data based on its id number. If you have concerns the full implementation is viewable [here]({}).", env!("CARGO_PKG_REPOSITORY")), true)
-									.footer(CreateEmbedFooter::new("This is a one time message and should not be sent again.")))
+									.footer(CreateEmbedFooter::new("This is a one time message and should not be sent again."))
+								)
 							).await?;
 						}
 					},
