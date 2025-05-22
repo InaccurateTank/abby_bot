@@ -16,7 +16,7 @@ rustPlatform.buildRustPackage {
 
   src = ../.;
 
-  cargoHash = "sha256-/EQXdX6U2/Iv/lkObUlglChifPefkyZC/QH745pB3/I=";
+  cargoHash = "sha256-LTp+HUqBW8k6x0I6Y97oSJQr8AKbYVY9P0qqUM0ZaBU=";
 
   meta = {
     description = "A mediocre general purpose discord bot written in Rust.";
