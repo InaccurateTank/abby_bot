@@ -41,15 +41,6 @@ async fn on_leave(
 	// Deletion cascades now so this is all we need
 	database::delete_guild(guild_id, db).await?;
 	Ok(())
-	// let result = query("DELETE FROM guild_settings WHERE guild_id = ?;")
-	// 	.bind(guild_id.get() as i64)
-	// 	.execute(db)
-	// 	.await;
-
-	// match result {
-	// 	Ok(_) => Ok(()),
-	// 	Err(e) => Err(e.into())
-	// }
 }
 
 #[instrument(skip_all, fields(event))]
@@ -124,11 +115,6 @@ pub async fn event_handler<'a>(
 			ctx.set_activity(Some(status));
 			// If servers have been removed, run a purge
 			let db_guilds = database::select_guilds(&data.db).await?;
-			// let db_guilds: HashSet<u64> = query_scalar("SELECT guild_id FROM guild_settings;")
-			// 	.fetch_all(&data.db)
-			// 	.await?
-			// 	.into_iter()
-			// 	.collect();
 			for unfinished_guild in &data_about_bot.guilds {
 				if !unfinished_guild.unavailable {
 					// Unavailable being false means removal while offline

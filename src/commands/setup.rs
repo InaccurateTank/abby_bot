@@ -66,11 +66,6 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 		.author_id(ctx.author().id)
 		.timeout(std::time::Duration::from_secs(300))
 		.await else {
-		// reply.edit(ctx, poise::CreateReply::default()
-		// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-		// 	.components(Vec::new())
-		// ).await?;
-		// return Ok(())
 		reply.delete(ctx).await?;
 		return Err(UserError(BotError::InteractionTimedOut.into()).into())
 	};
@@ -92,11 +87,6 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 			}
 		},
 		_ => {
-			// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-			// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-			// 	.components(Vec::new())
-			// )).await?;
-			// return Ok(());
 			interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
 			reply.delete(ctx).await?;
 			return Err(BotError::WrongInteraction.into())
@@ -192,14 +182,6 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 				.map(|(name, value)|  (name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false))
 			)
 		)
-		// .embed(serenity::CreateEmbed::new()
-		// 	.title("Feature Changes Confirmed!")
-		// 	.color(EMBED_STD)
-		// 	.description("Your new settings are:")
-		// 	.fields(updated.as_array()
-		// 		.map(|(name, value)|  (name[0..1].to_uppercase() + &name[1..], if value {"Enabled"} else {"Disabled"}, false))
-		// 	)
-		// )
 	)).await?;
 	Ok(())
 }
@@ -245,11 +227,6 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 		.author_id(ctx.author().id)
 		.timeout(std::time::Duration::from_secs(300))
 		.await else {
-			// reply.edit(ctx, poise::CreateReply::default()
-			// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-			// 	.components(Vec::new())
-			// ).await?;
-			// return Ok(())
 			reply.delete(ctx).await?;
 			return Err(UserError(BotError::InteractionTimedOut.into()).into())
 		};
@@ -257,7 +234,6 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 	// Processing message
 	reply.edit(ctx, poise::CreateReply::default()
 		.embed(templates::status::processing())
-		// .embed(templates::processing_embed())
 		.components(Vec::new())
 	).await?;
 
@@ -275,11 +251,6 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 			}
 		}
 		_ => {
-			// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-			// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-			// 	.components(Vec::new())
-			// )).await?;
-			// return Ok(());
 			interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
 			reply.delete(ctx).await?;
 			return Err(BotError::WrongInteraction.into())
@@ -321,7 +292,6 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 									format!("Failed to migrate role list {:?}. Either the wrong channel is stored or the message doesn't exist.", entry.group_name)
 								)
 							)
-							// .embed(templates::state_embed(false, &format!("Failed to migrate role list \"{}\". Either the wrong channel is stored or the message doesn't exist.", entry.name)))
 						).await?;
 					}
 				}
@@ -333,7 +303,6 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 							"Role lists were detected but no channel is stored for them. Existing role messages will still function, however the nature of this error means that they can't be deleted properly or migrated. In order to fix this make sure correct permissions are set on the channel where the old role lists are and then select that channel using this command."
 						)
 					)
-					// .embed(templates::state_embed(false, "Role lists were detected but no channel is stored for them. Existing role messages will still function, however the nature of this error means that they can't be deleted properly or migrated. In order to fix this make sure correct permissions are set on the channel where the old role lists are and then select that channel using this command."))
 				).await?;
 			}
 		}
@@ -355,9 +324,6 @@ async fn roles(ctx: Context<'_>) -> Result<()> {
 		)).await?;
 	// If selected is none, that means the channel can't be posted to.
 	} else {
-		// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-			// .embed(templates::state_embed(false, "Channel is inaccessable for posting in. Either change the permission overrides or choose a different channel."))
-		// )).await?;
 		return Err(UserError(BotError::ChannelInaccessable.into()).into())
 	}
 	Ok(())

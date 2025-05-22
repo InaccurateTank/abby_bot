@@ -98,26 +98,6 @@ async fn channel(
 			)
 		)
 	).await?;
-	// match guild_id.create_channel(ctx, builder).await {
-	// 	Ok(c) => {
-	// 		ctx.send(poise::CreateReply::default()
-	// 			.ephemeral(true)
-	// 			.embed(
-	// 				templates::status::success(
-	// 					Some("Snap Complete"),
-	// 					format!("Channel {} has been successfully added to the server.", c.mention())
-	// 				)
-	// 			)
-	// 		).await?;
-	// 	}
-	// 	Err(e) => {
-	// 		// ctx.send(poise::CreateReply::default()
-	// 		// 	.ephemeral(true)
-	// 		// 	.embed(templates::state_embed(false, &format!("Error adding channel {name}: {e:?}")))
-	// 		// ).await?;
-	// 		return Err(e.into())
-	// 	}
-	// };
 	Ok(())
 }
 
@@ -137,14 +117,6 @@ async fn role(
 	guild.role_by_name(&name)
 		.ok_or(UserError(BotError::RoleAlreadyExists.into()))?;
 
-	// if guild.role_by_name(&name).is_some() {
-		// ctx.send(poise::CreateReply::default()
-		// 	.ephemeral(true)
-		// 	.embed(templates::state_embed(false, "Role with an identical name already exists."))
-		// ).await?;
-		// return Ok(())
-	// }
-
 	ctx.send(poise::CreateReply::default()
 		.ephemeral(true)
 		.embed(
@@ -154,23 +126,5 @@ async fn role(
 			)
 		)
 	).await?;
-	// match ctx.guild_id()
-	// 	.unwrap()
-	// 	.create_role(ctx, serenity::EditRole::new()
-	// 		.name(&name)
-	// 	).await {
-	// 	Ok(r) => {
-	// 		ctx.send(poise::CreateReply::default()
-	// 			.ephemeral(true)
-	// 			.embed(templates::state_embed(true, &format!("Role {} has been successfully created.", r.mention())))
-	// 		).await?;
-	// 	},
-	// 	Err(e) => {
-	// 		ctx.send(poise::CreateReply::default()
-	// 			.ephemeral(true)
-	// 			.embed(templates::state_embed(false, &format!("Error creating role {name}: {e:?}")))
-	// 		).await?;
-	// 	}
-	// }
 	Ok(())
 }

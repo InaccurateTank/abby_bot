@@ -80,7 +80,6 @@ async fn delete(
 					format!("Either can't find or can't delete the message for the role list {group:?}. Entries will be removed from the database, but the message will need to be deleted manually.")
 				)
 			)
-			// .embed(templates::state_embed(false, &format!("Either can't find or can't delete the message for the role group \"{group}\". Entries will be removed from the database, but the message will need to be deleted manually.")))
 		).await?;
 	}
 	// Delete Database Entries
@@ -99,7 +98,6 @@ async fn delete(
 	ctx.send(poise::CreateReply::default()
 		.ephemeral(true)
 		.embed(templates::status::success(None, format!("Role list {group:?} has been deleted.")))
-		// .embed(templates::state_embed(true, &format!("Role group \"{group}\" has been deleted.")))
 	).await?;
 	Ok(())
 }
@@ -117,7 +115,6 @@ async fn create(
 	#[description = "Name of the role list."]
 	group: String
 ) -> Result<()> {
-	// println!("This Ran");
 	let guild = utils::guild_or_error(ctx)?;
 
 	// ChannelId from role settings
@@ -125,21 +122,12 @@ async fn create(
 		Some(chid) => {
 			// If exists but can't be posted in just stop and error
 			if !utils::can_post(ctx, &chid, ctx.framework().bot_id).await? {
-				// let name = chid.name(ctx).await?;
-				// ctx.send(poise::CreateReply::default()
-				// 	.embed(templates::state_embed(false, &format!("Channel \"{name}\" is inaccessable for posting in. Either change the permission overrides or choose a different channel.")))
-				// ).await?;
-				// return Ok(());
 				return Err(UserError(BotError::ChannelInaccessable.into()).into())
 			}
 			chid
 		},
 		None => {
 			// If it doesn't exist at all
-			// ctx.send(poise::CreateReply::default()
-			// 	.embed(templates::state_embed(false, "Roles channel is not set and for safety will not be infered. In order to use this command please set the channel with `/setup roles`."))
-			// ).await?;
-			// return Ok(());
 			return Err(UserError(BotError::RolesChannelUnset.into()).into())
 		}
 	};
@@ -184,24 +172,6 @@ async fn create(
 		return Err(UserError(BotError::InteractionTimedOut.into()).into())
 	};
 
-	// let interaction = match reply.message().await?
-	// 	.await_component_interaction(ctx)
-	// 	.author_id(ctx.author().id)
-	// 	.timeout(std::time::Duration::from_secs(300))
-	// 	.await {
-	// 		Some(i) => {
-	// 			i
-	// 		},
-	// 		None => {
-	// 			// reply.edit(ctx, poise::CreateReply::default()
-	// 			// 	.embed(templates::state_embed(false, "Interaction timed out, please try again."))
-	// 			// ).await?;
-	// 			// return Ok(())
-	// 			reply.delete(ctx).await?;
-	// 			return Err(UserError(BotError::InteractionTimedOut.into()).into())
-	// 		}
-	// 	};
-
 	// Processing message
 	reply.edit(ctx, poise::CreateReply::default()
 		.content("")
@@ -216,11 +186,6 @@ async fn create(
 			.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
 			.collect::<Result<Vec<structs::RoleVitals>>>()?
 	} else {
-		// interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
-		// 	.embed(templates::state_embed(false, "Somehow recieved wrong interaction, please report this."))
-		// 	.components(Vec::new())
-		// )).await?;
-		// return Ok(())
 		interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await?;
 		reply.delete(ctx).await?;
 		return Err(BotError::WrongInteraction.into())
@@ -250,13 +215,9 @@ async fn create(
 		// Notify Success
 		reply.edit(ctx, poise::CreateReply::default()
 			.embed(templates::status::success(None, format!("Role list for group {group:?} has been created.")))
-			// .embed(templates::state_embed(true, &format!("Rolelist for group \"{group}\" has been created.")))
 		).await?;
 	} else {
 		// Notify Failure
-		// reply.edit(ctx, poise::CreateReply::default()
-		// 	.embed(templates::state_embed(false, &format!("Failed to create role list for group \"{group}\".")))
-		// ).await?;
 		return Err(BotError::RoleListFailed(group).into())
 	}
 	Ok(())

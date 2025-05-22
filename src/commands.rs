@@ -95,14 +95,3 @@ async fn about(
 	).await?;
 	Ok(())
 }
-
-// /// Registers slash commands either within this server or globally. Only usable by the bot owner.
-// #[poise::command(
-// 	prefix_command,
-// 	category="General", hide_in_help,
-// 	owners_only
-// )]
-// pub async fn register(ctx: Context<'_>) -> Result<()> {
-// 	poise::builtins::register_application_commands_buttons(ctx).await?;
-// 	Ok(())
-// }

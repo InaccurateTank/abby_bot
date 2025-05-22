@@ -84,17 +84,6 @@ impl GuildSettings {
 		opts
 	}
 }
-// impl Default for GuildSettings {
-// 	fn default() -> Self {
-// 		Self {
-// 			admin: false,
-// 			unserious: false,
-// 			messages: false,
-// 			roles: false,
-// 			roles_channel: None
-// 		}
-// 	}
-// }
 impl FromRow<'_, SqliteRow> for GuildSettings {
 	fn from_row(row: &SqliteRow) -> sqlx::Result<Self, sqlx::Error> {
 		let mapped_roles_channel = match row.try_get::<Option<u64>, &str>("roles_channel") {
@@ -126,21 +115,6 @@ pub async fn roles_channel_query(
 			|e| Err(e.into()),
 			|v| Ok(v.map(serenity::ChannelId::from))
 		)
-	// match res {
-	// 	Ok(v) => match v {
-	// 		Some(v),
-	// 		None Ok(None)
-	// 	},
-	// 	Err(e) => Err(e.into())
-	// }
-		// .map_or_else(
-		// 	|e| Err(e.into()),
-		// 	|v| match v {
-
-		// 	}
-		// 	}
-			// Ok(serenity::ChannelId::from(v))
-		// )
 }
 
 pub enum CheckGuildSetting {

@@ -1,12 +1,6 @@
-// use std::str::FromStr;
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
-// use gumdrop::Options;
-use sqlx::{
-	// migrate::MigrateDatabase,
-	// Sqlite,
-	sqlite::{SqliteConnectOptions, SqlitePoolOptions}
-};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tracing::{
 	instrument,
 	debug, error, info, warn
@@ -29,7 +23,6 @@ mod colors {
 	pub const ERROR: serenity::Color = serenity::Color::from_rgb(178, 34, 34);
 }
 
-// pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Report>;
 
 pub struct Data {

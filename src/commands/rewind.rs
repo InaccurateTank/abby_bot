@@ -12,16 +12,13 @@ fn id_split(url: String) -> Result<[u64;2]> {
 	// Need to check if everything is in the correct format first
 	let id_vec = url.split('/').collect::<Vec<&str>>();
 	let [chstr, msgstr] = id_vec.as_slice()[id_vec.len()-2..] else {
-		// return Err(error::Error::MalformedInput(url).into())
 		return Err(UserError(BotError::MalformedInput(url).into()).into())
 	};
 	// Start Parsing
 	let Ok(channel_result) = chstr.parse::<u64>() else {
-		// return Err(error::Error::MalformedInput(url).into())
 		return Err(UserError(BotError::MalformedInput(url).into()).into())
 	};
 	let Ok(message_result) = msgstr.parse::<u64>() else {
-		// return Err(error::Error::MalformedInput(url).into())
 		return Err(UserError(BotError::MalformedInput(url).into()).into())
 	};
 	// Return
@@ -61,17 +58,6 @@ pub async fn rewind(
 	// Parse from values
 	let (from_channel, from_id) = id_split(from)
 		.map(|[c, m]| (serenity::ChannelId::new(c), serenity::MessageId::new(m)))?;
-	// let (from_channel, from_id) = match id_split(from) {
-	// 	Ok([chid, msgid]) => (serenity::ChannelId::new(chid), serenity::MessageId::new(msgid)),
-	// 	Err(err) => {
-	// 		// Input failure
-	// 		ctx.send(poise::CreateReply::default()
-	// 			.ephemeral(true)
-	// 			.embed(templates::state_embed(false, &format!("from: {}", err)))
-	// 		).await?;
-	// 		return Ok(())
-	// 	}
-	// };
 
 	// Confirm
 	let conf = ConfirmModal::execute(ctx).await?
@@ -83,49 +69,21 @@ pub async fn rewind(
 		}).is_none();
 	if conf {
 		// Confirm failure
-		// ctx.send(poise::CreateReply::default()
-		// 	.ephemeral(true)
-		// 	.embed(templates::state_embed(false, "Confirmation failed, aborting."))
-		// ).await?;
-		// return Ok(());
 		return Err(UserError(BotError::UnconfirmedModal.into()).into())
 	}
 
 	// Fetch messages, including the message selected.
 	let mut messages = match from_channel.messages(ctx, serenity::GetMessages::new().after(from_id)).await {
 		Ok(value) => value,
-		Err(_) => {
-			// from message Id is bad
-			// ctx.send(poise::CreateReply::default()
-			// 	.ephemeral(true)
-			// 	.embed(templates::state_embed(false, "Input `from` is parseable but isn't valid. Either the id was entered incorrectly or doesn't exist in this server."))
-			// ).await?;
-			return Err(UserError(BotError::InvalidInput("from".to_string()).into()).into())
-		}
+		Err(_) => return Err(UserError(BotError::InvalidInput("from".to_string()).into()).into())
 	};
 	messages.push(ctx.http().get_message(from_channel, from_id).await?);
 
 	if let Some(until_value) = until {
 		let (until_channel, until_id) = id_split(until_value)
 			.map(|[c, m]| (serenity::ChannelId::new(c), serenity::MessageId::new(m)))?;
-		// let [until_channel, until_id] = match id_split(until_value) {
-		// 	Ok([chid, msgid]) => [chid, msgid],
-		// 	Err(err_box) => {
-		// 		// Input failure
-		// 		ctx.send(poise::CreateReply::default()
-		// 			.ephemeral(true)
-		// 			.embed(templates::state_embed(false, &format!("until: {}", err_box)))
-		// 		).await?;
-		// 		return Ok(())
-		// 	}
-		// };
 		// If they arn't from the same channel
 		if from_channel != until_channel {
-			// ctx.send(poise::CreateReply::default()
-			// 	.ephemeral(true)
-			// 	.embed(templates::state_embed(false, "Inputs are not in the same channel as each other. Aborting."))
-			// ).await?;
-			// return Ok(())
 			return Err(UserError(BotError::InputChannelMismatch.into()).into())
 		}
 		// Find the position of the until message
@@ -135,11 +93,6 @@ pub async fn rewind(
 			Some(v) => v,
 			None => {
 				// until message id is bad
-				// ctx.send(poise::CreateReply::default()
-				// 	.ephemeral(true)
-				// 	.embed(templates::state_embed(false, "until: Input is parseable but isn't valid. Either the id was entered incorrectly or doesn't exist in this server."))
-				// ).await?;
-				// return Ok(());
 				return Err(UserError(BotError::InvalidInput("until".to_string()).into()).into())
 			}
 		};
@@ -166,7 +119,6 @@ pub async fn rewind(
 				format!("Messages {} through {} successfully deleted. An archive of the deleted messages has been attached for moderation purposes.", &messages.first().unwrap().id, &messages.last().unwrap().id)
 			)
 		)
-		// .embed(templates::state_embed(true, &format!("Messages {} through {} successfully deleted. An archive of the deleted messages has been attached for moderation purposes.", &messages.first().unwrap().id, &messages.last().unwrap().id)))
 	).await?;
 	Ok(())
 }
