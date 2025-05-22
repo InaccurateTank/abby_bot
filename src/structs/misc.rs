@@ -1,5 +1,7 @@
 use color_eyre::{eyre::eyre, Result};
 use poise::serenity_prelude as serenity;
+use tracing::warn;
+use crate::error::BotError;
 
 #[derive(Debug)]
 pub enum UserCount {
@@ -7,12 +9,19 @@ pub enum UserCount {
 	Calculated(u8)
 }
 impl UserCount {
-	pub fn get_calculated(&self) -> Result<&u8> {
-		if let Self::Calculated(v) = &self {
+	pub fn get(&self) -> Result<&u8> {
+		if let Self::Calculated(v) = self {
 			Ok(v)
 		} else {
-			// TODO: Better Errors
-			Err(eyre!("Not Calculated"))
+			Err(BotError::UserCountNotCalculated.into())
+		}
+	}
+
+	pub fn get_mut(&mut self) -> Result<&mut u8> {
+		if let Self::Calculated(v) = self {
+			Ok(v)
+		} else {
+			Err(BotError::UserCountNotCalculated.into())
 		}
 	}
 
@@ -20,29 +29,20 @@ impl UserCount {
 		if let Self::Working(result) = self {
 			*self = Self::Calculated(result.await?)
 		} else {
-			// TODO: Better Errors
-			return Err(eyre!("Already Calculated"))
+			warn!("Attempt to solve already solved user count.");
 		}
 		Ok(())
 	}
 
 	pub fn decrement(&mut self) -> Result<()> {
-		if let Self::Calculated(v) = self {
-			*v = v.saturating_sub(1);
-		} else {
-			// TODO: Better Errors
-			return Err(eyre!("Not Calculated"))
-		}
+		let v = self.get_mut()?;
+		*v = v.saturating_sub(1);
 		Ok(())
 	}
 
 	pub fn increment(&mut self) -> Result<()> {
-		if let Self::Calculated(v) = self {
-			*v = v.saturating_add(1);
-		} else {
-			// TODO: Better Errors
-			return Err(eyre!("Not Calculated"))
-		}
+		let v = self.get_mut()?;
+		*v = v.saturating_add(1);
 		Ok(())
 	}
 }

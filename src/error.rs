@@ -80,7 +80,10 @@ pub enum BotError {
 
 	/// Commands can filter being in a guild, Interactions can't somehow.
 	#[error("This interaction can only be created and used in a guild. If this is in a direct message somthing has gone wrong.")]
-	InteractionNotInGuild
+	InteractionNotInGuild,
+
+	#[error("The user count thread has somehow been called before it was calculated.")]
+	UserCountNotCalculated
 }
 
 #[derive(Error, Debug)]

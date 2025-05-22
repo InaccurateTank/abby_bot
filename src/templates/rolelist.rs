@@ -16,7 +16,7 @@ pub fn embed<'a>(
 	let mut user_str = String::new();
 	for r in role_list {
 		name_str = concat!(&name_str, &format!("{}\n", r.name));
-		user_str = concat!(&user_str, &format!("{}\n", r.users.get_calculated()?));
+		user_str = concat!(&user_str, &format!("{}\n", r.users.get()?));
 	}
 	name_str = name_str.trim_end_matches('\n').to_string();
 	user_str = user_str.trim_end_matches('\n').to_string();
