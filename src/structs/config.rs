@@ -1,32 +1,62 @@
-use std::{
-	fs::OpenOptions,
-	io::{Read, Write}
-};
-use serde::{Serialize, Deserialize};
-use crate::{
-	utils,
-	Error,
-};
+use std::{fs, io};
+use color_eyre::{Report, Section};
+use tracing::{info, instrument, warn};
+use crate::error::ConfigError;
 
-#[derive(Debug, Serialize, Deserialize)]
+const DEFAULT_CONFIG: &str = r##"# Abbybot config file
+token = "INSERT_TOKEN"
+# Alternatively you can use a file with the token inside of it.
+# This will be parsed before the token setting.
+# token_file = "PATH_TO_TOKEN"##;
+
+#[derive(serde::Deserialize)]
 pub struct Config {
-	pub token: String,
+	pub token: Option<String>,
+	pub token_file: Option<String>
 }
 impl Config {
-	pub fn new(folder: &str) -> Result<Self, Error> {
-		let mut file = OpenOptions::new()
-			.create(true)
-			.read(true)
-			.write(true)
-			.open(utils::concat(folder, "config.toml"))?;
-		let mut toml = String::new();
-		file.read_to_string(&mut toml)?;
-		if toml.is_empty() {
-			write!(file, r##"# Abbybot config file
-token = "INSERT_TOKEN""##)?;
-			Err(String::from("Config file does not exist. Please fill out generated config file before running again.").into())
+	#[instrument(fields(path = %path.as_ref().to_string_lossy()))]
+	pub fn load(
+		path: impl AsRef<std::path::Path>
+	) -> Result<Self, Report> {
+		let config_path = path.as_ref();
+		match fs::read_to_string(config_path) {
+			Ok(file) => Ok(toml::from_str(&file)?),
+			Err(e) => {
+				let generated: Result<bool, io::Error> = if e.kind() == io::ErrorKind::NotFound {
+					if let Some(folder) = config_path.parent() {
+						fs::create_dir_all(folder)?;
+					}
+					fs::write(config_path, DEFAULT_CONFIG)?;
+					Ok(true)
+				} else {
+					Ok(false)
+				};
+
+				Err(ConfigError::MissingFile {
+					path: config_path.into(),
+					source: e
+				}).with_suggestion(|| {
+					if generated.is_ok_and(|x|x) {
+						"Please fill out the generated config file before running."
+					} else {
+						"Please make sure the configuration path is either correct or writable before running."
+					}
+				})
+			}
+		}
+	}
+
+	#[instrument(skip(self))]
+	pub fn read_token(&self) -> Result<String, Report> {
+		if let Some(p) = &self.token_file {
+			info!("Loading token from token file.");
+			Ok(fs::read_to_string(p)?)
+		} else if let Some(t) = &self.token {
+			info!("Loading token from configuration.");
+			Ok(t.to_owned())
 		} else {
-			Ok(toml::from_str(&toml)?)
+			Err(ConfigError::Token.into())
 		}
 	}
 }

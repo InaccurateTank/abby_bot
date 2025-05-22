@@ -3,22 +3,29 @@ name = "abby_bot"
 authors = ["inaccuratetank"]
 description = "A poorly assembled custom chatbot"
 repository = "https://git.inaccuratetank.gay/inaccuratetank/abby_bot"
-version = "0.4.0"
-edition = "2021"
+version = "1.0.0"
+edition = "2024"
+publish = false
 
 [dependencies]
-poise = { version = "0.6" }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
-regex = { version = "1.10" }
-time = { version = "0.3", features = ["formatting", "local-offset"] }
+color-eyre = { version = "0.6" }
 gumdrop = { version = "0.8" }
-sqlx = { version = "0.7", features = [ "runtime-tokio-native-tls", "sqlite" ] }
-serde = { version = "1" }
+poise = { version = "0.6" }
+sqlx = { version = "0.8", features = [ "runtime-tokio-native-tls", "sqlite" ] }
+serde = { version = "1.0" }
+thiserror = { version = "2.0" }
+time = { version = "0.3", features = ["formatting", "local-offset"] }
+tokio = { version = "1.45", features = ["macros", "rt-multi-thread", "signal"] }
 toml = { version = "0.8" }
+tracing = { version = "0.1" }
+tracing-error = { version = "0.2" }
+tracing-subscriber = { version = "0.3" }
+regex = { version = "1.11" }
+sd-notify = { version = "0.4.5", optional = true }
 
-[dev-dependencies]
-brunch = "0.5"
+[features]
+systemd = ["dep:sd-notify"]
 
-[[bench]]
-name = "concat"
-harness = false
+[lints.clippy]
+# Kinda need this for futureproofing stuff
+single_match = "allow"

@@ -1,11 +1,11 @@
-FROM docker.io/rust:1.76-bullseye as builder
+FROM docker.io/rust:1.86-bookworm as builder
 WORKDIR /build
 COPY . .
 
 RUN mkdir /data &&\
 	cargo build --release
 
-FROM gcr.io/distroless/cc-debian11
+FROM gcr.io/distroless/cc-debian12
 COPY --from=builder /build/target/release/abby_bot /bot
 COPY --from=builder /data /data
 VOLUME [ "/data" ]

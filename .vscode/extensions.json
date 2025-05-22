@@ -1,9 +1,13 @@
 {
-    "recommendations": [
-			"rust-lang.rust-analyzer",
-			"tamasfe.even-better-toml",
-			"editorconfig.editorconfig",
-			"sanaajani.taskrunnercode",
-			"alexcvzz.vscode-sqlite"
-		]
+	"recommendations": [
+		"jeff-hykin.better-dockerfile-syntax",
+		"ms-azuretools.vscode-containers",
+		"fill-labs.dependi",
+		"editorconfig.editorconfig",
+		"tamasfe.even-better-toml",
+		"bbenoist.Nix",
+		"rust-lang.rust-analyzer",
+		"alexcvzz.vscode-sqlite",
+		"Gruntfuggly.todo-tree"
+	]
 }

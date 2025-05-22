@@ -1,21 +1,12 @@
-use crate::{Context, Error};
-use crate::{
-	structs::db,
-	utils
-};
-
-// fn concat(a: &str, b: &str) -> String {
-//   let mut result: String = String::with_capacity(a.len() + b.len());
-//   result += a;
-//   result += b;
-//   result
-// }
+use color_eyre::Result;
+use crate::Context;
+use crate::{checks, concat};
 
 fn byte_to_emoji(value: u8) -> String {
   let mut buffer = String::new();
   let mut value = value;
   if value == 0 {
-    buffer = utils::concat(&buffer, "❤️");
+    buffer = concat!(&buffer, "❤️");
   }
   loop {
     let (emoji, subtract) = match value {
@@ -26,10 +17,10 @@ fn byte_to_emoji(value: u8) -> String {
       1..=4 => (",", 1),
       0 => break,
     };
-    buffer = utils::concat(&buffer, emoji);
+    buffer = concat!(&buffer, emoji);
     value -= subtract;
   }
-  buffer = utils::concat(&buffer, "👉👈");
+  buffer = concat!(&buffer, "👉👈");
   buffer
 }
 
@@ -37,6 +28,7 @@ fn byte_to_emoji(value: u8) -> String {
 ///
 /// Listen this is literally just a bytecode translator. That's it. I don't know what to tell ya.
 #[poise::command(
+	check = "checks::unserious",
   slash_command,
   category = "Misc"
 )]
@@ -44,15 +36,7 @@ pub async fn bottomify(
   ctx: Context<'_>,
   #[description = "Text to translate"]
   plead: String
-) -> Result<(), Error> {
-	let srv_features = sqlx::query_as::<_, db::Server>("SELECT * FROM servers WHERE srvid = ?;")
-		.bind(ctx.guild_id().unwrap().get() as i64)
-		.fetch_one(&ctx.data().db)
-		.await?;
-	if srv_features.serious {
-		utils::feature_not_enabled(ctx).await?;
-		return Ok(())
-	}
+) -> Result<()> {
   let result = plead.bytes().map(byte_to_emoji).collect::<String>();
 	ctx.send(poise::CreateReply::default()
 		.content(result)

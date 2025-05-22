@@ -1,5 +1,53 @@
-use crate::{Context, Error};
+use color_eyre::{Result, Report};
 use poise::serenity_prelude as serenity;
+use crate::{Context, Data};
+
+mod bottomify;
+use bottomify::*;
+
+mod setup;
+use setup::*;
+
+mod rolelist;
+use rolelist::*;
+
+mod snap;
+use snap::*;
+
+mod rewind;
+use rewind::*;
+
+/// Vector of globally registered commands.
+pub fn global_commands() -> Vec<poise::Command<Data, Report>> {
+	vec![
+		help(),
+		about(),
+		setup()
+	]
+}
+
+/// Vector of administration commands.
+pub fn admin_commands() -> Vec<poise::Command<Data, Report>> {
+	vec![
+		snap(),
+		rewind()
+	]
+}
+
+
+/// Vector of role management commands.
+pub fn role_commands() -> Vec<poise::Command<Data, Report>> {
+	vec![
+		rolelist()
+	]
+}
+
+/// Vector of meme and otherwise unserious commands.
+pub fn unserious_commands() -> Vec<poise::Command<Data, Report>> {
+	vec![
+		bottomify()
+	]
+}
 
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -12,12 +60,12 @@ const REPO: &str = env!("CARGO_PKG_REPOSITORY");
 	category="General",
 	track_edits
 )]
-pub async fn help(
+async fn help(
 	ctx: Context<'_>,
 	#[description = "Specific command to show help about"]
 	#[autocomplete = "poise::builtins::autocomplete_command"]
 	command: Option<String>
-) -> Result<(), Error> {
+) -> Result<()> {
 	let config = poise::builtins::HelpConfiguration {
 		extra_text_at_bottom: "\
 If this is used as a prefix command, the invoking message can be edited to change my response.",
@@ -33,9 +81,9 @@ If this is used as a prefix command, the invoking message can be edited to chang
 	category="General",
 	ephemeral
 )]
-pub async fn about(
+async fn about(
 	ctx:Context<'_>
-) -> Result<(), Error> {
+) -> Result<()> {
 	ctx.send(poise::CreateReply::default()
 		.embed(serenity::CreateEmbed::new()
 			.color(serenity::Color::new(663366))
@@ -45,16 +93,5 @@ pub async fn about(
 			.field("Repository", REPO, false)
 			.footer(serenity::CreateEmbedFooter::new("Made with incompetence")))
 	).await?;
-	Ok(())
-}
-
-/// Registers slash commands either within this server or globally. Only usable by the bot owner.
-#[poise::command(
-	prefix_command,
-	category="General", hide_in_help,
-	owners_only
-)]
-pub async fn register(ctx: Context<'_>) -> Result<(), Error> {
-	poise::builtins::register_application_commands_buttons(ctx).await?;
 	Ok(())
 }
