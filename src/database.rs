@@ -30,7 +30,7 @@ impl GuildSettings {
 			.bind(guild_id.get() as i64)
 			.fetch_one(db)
 			.await
-			.map_err(|e| e.into())
+			.map_err(Into::into)
 	}
 
 	/// While the standard default function is useful for servers, some minor changes are needed for handling private messages.
@@ -60,7 +60,7 @@ impl GuildSettings {
 			.execute(db)
 			.await
 			.map(|_| ())
-			.map_err(|e| e.into())
+			.map_err(Into::into)
 	}
 
 	/// All true/false options as an array.
@@ -202,7 +202,7 @@ pub async fn groups_from_query(
 		.bind(guild_id.get() as i64)
 		.fetch_all(db)
 		.await
-		.map_err(|e| e.into())
+		.map_err(Into::into)
 }
 
 // Roles Table
