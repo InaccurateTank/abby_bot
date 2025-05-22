@@ -1,11 +1,7 @@
-use std::collections::HashSet;
 use color_eyre::{Report, Result};
 use poise::serenity_prelude as serenity;
 use serenity::{ CreateMessage, CreateEmbedFooter };
-use sqlx::{
-	query,
-	query_scalar
-};
+use sqlx::query_scalar;
 use tracing::{
 	debug,
 	info,
@@ -31,15 +27,7 @@ async fn on_join(
 	info!("Joining guild \"{}\" (GuildId {}).", guild_name, guild_id);
 	// Do things that a bot would do on server join
 	debug!("Creating database entry for guild.");
-	{
-		let insert = query("INSERT INTO guild_settings (guild_id) VALUES (?);")
-			.bind(guild_id.get() as i64)
-			.execute(db)
-			.await;
-		if let Err(e) = insert {
-			return Err(e.into())
-		}
-	}
+	database::insert_guild(guild_id, db).await?;
 	Ok(())
 }
 
@@ -51,15 +39,17 @@ async fn on_leave(
 ) -> Result<()> {
 	info!("Removing guild {guild_id} from database.");
 	// Deletion cascades now so this is all we need
-	let result = query("DELETE FROM guild_settings WHERE guild_id = ?;")
-		.bind(guild_id.get() as i64)
-		.execute(db)
-		.await;
+	database::delete_guild(guild_id, db).await?;
+	Ok(())
+	// let result = query("DELETE FROM guild_settings WHERE guild_id = ?;")
+	// 	.bind(guild_id.get() as i64)
+	// 	.execute(db)
+	// 	.await;
 
-	match result {
-		Ok(_) => Ok(()),
-		Err(e) => Err(e.into())
-	}
+	// match result {
+	// 	Ok(_) => Ok(()),
+	// 	Err(e) => Err(e.into())
+	// }
 }
 
 #[instrument(skip_all, fields(event))]
@@ -133,11 +123,12 @@ pub async fn event_handler<'a>(
 			};
 			ctx.set_activity(Some(status));
 			// If servers have been removed, run a purge
-			let db_guilds: HashSet<u64> = query_scalar("SELECT guild_id FROM guild_settings;")
-				.fetch_all(&data.db)
-				.await?
-				.into_iter()
-				.collect();
+			let db_guilds = database::select_guilds(&data.db).await?;
+			// let db_guilds: HashSet<u64> = query_scalar("SELECT guild_id FROM guild_settings;")
+			// 	.fetch_all(&data.db)
+			// 	.await?
+			// 	.into_iter()
+			// 	.collect();
 			for unfinished_guild in &data_about_bot.guilds {
 				if !unfinished_guild.unavailable {
 					// Unavailable being false means removal while offline

@@ -21,7 +21,7 @@ pub async fn admin(ctx: Context<'_>) -> Result<bool> {
 	let Some(id) = ctx.guild_id() else {
 		return Ok(false)
 	};
-	match database::CheckSingle::Admin.query(&id, &ctx.data().db).await {
+	match database::CheckGuildSetting::Admin.query(&id, &ctx.data().db).await {
 		Ok(v) => if !v {
 			ctx.send(feature_not_enabled("roles")).await?;
 			return Ok(false)
@@ -40,7 +40,7 @@ pub async fn roles(ctx: Context<'_>) -> Result<bool> {
 	// 	.bind(id.get() as i64)
 	// 	.fetch_one(&ctx.data().db)
 	// 	.await;
-	match database::CheckSingle::Role.query(&id, &ctx.data().db).await {
+	match database::CheckGuildSetting::Role.query(&id, &ctx.data().db).await {
 		Ok(v) => if !v {
 			ctx.send(feature_not_enabled("roles")).await?;
 			return Ok(false)
@@ -64,7 +64,7 @@ pub async fn unserious(ctx: Context<'_>) -> Result<bool> {
 	// 	.bind(id.get() as i64)
 	// 	.fetch_one(&ctx.data().db)
 	// 	.await;
-	match database::CheckSingle::Unserious.query(&id, &ctx.data().db).await {
+	match database::CheckGuildSetting::Unserious.query(&id, &ctx.data().db).await {
 		Ok(v) => 	if !v {
 			ctx.send(feature_not_enabled("unserious")).await?;
 			return Ok(false)

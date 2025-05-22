@@ -45,11 +45,11 @@ impl GuildSettings {
 	}
 
 	/// Updates the database entry of a given [GuildId]['serenity::GuildId'] with the values contained in the struct.
-	pub async fn update_entry(
+	pub async fn update(
 		&self,
 		guild_id: serenity::GuildId,
 		db: &sqlx::SqlitePool
-	) -> Result<()> {
+	) -> Result<sqlx::sqlite::SqliteQueryResult> {
 		sqlx::query("UPDATE guild_settings SET admin = ?, unserious = ?, messages = ?, roles = ?, roles_channel = ? WHERE guild_id = ?;")
 			.bind(self.admin)
 			.bind(self.unserious)
@@ -59,7 +59,7 @@ impl GuildSettings {
 			.bind(guild_id.get() as i64)
 			.execute(db)
 			.await
-			.map(|_| ())
+			// .map(|_| ())
 			.map_err(Into::into)
 	}
 
@@ -143,12 +143,13 @@ pub async fn roles_channel_query(
 		// )
 }
 
-pub enum CheckSingle {
+#[derive(Debug)]
+pub enum CheckGuildSetting {
 	Admin,
 	Role,
 	Unserious
 }
-impl CheckSingle {
+impl CheckGuildSetting {
 	pub async fn query(
 		&self,
 		guild_id: &serenity::GuildId,
@@ -165,6 +166,40 @@ impl CheckSingle {
 			.await
 			.map_err(Into::into)
 	}
+}
+
+pub async fn select_guilds(
+	db: &sqlx::SqlitePool
+) -> Result<std::collections::HashSet<u64>> {
+	let result = sqlx::query_scalar::<_, u64>("SELECT guild_id FROM guild_settings;")
+		.fetch_all(db)
+		.await;
+	match result {
+		Ok(r) => Ok(r.into_iter().collect()),
+		Err(e) => Err(e.into()),
+	}
+}
+
+pub async fn insert_guild(
+	guild_id: serenity::GuildId,
+	db: &sqlx::SqlitePool
+) -> Result<sqlx::sqlite::SqliteQueryResult> {
+	sqlx::query("INSERT INTO guild_settings (guild_id) VALUES (?);")
+		.bind(guild_id.get() as i64)
+		.execute(db)
+		.await
+		.map_err(Into::into)
+}
+
+pub async fn delete_guild(
+	guild_id: serenity::GuildId,
+	db: &sqlx::SqlitePool
+) -> Result<sqlx::sqlite::SqliteQueryResult> {
+	sqlx::query("DELETE FROM guild_settings WHERE guild_id = ?;")
+		.bind(guild_id.get() as i64)
+		.execute(db)
+		.await
+		.map_err(Into::into)
 }
 
 // Role Groups Table

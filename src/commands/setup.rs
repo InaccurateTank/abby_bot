@@ -180,7 +180,7 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 	poise::builtins::register_in_guild(ctx, &updated_commands, guild.id).await?;
 
 	// Update Database
-	updated.update_entry(guild.id, &ctx.data().db).await?;
+	updated.update(guild.id, &ctx.data().db).await?;
 
 	// Confirm message
 	interaction.create_response(ctx, serenity::CreateInteractionResponse::UpdateMessage(serenity::CreateInteractionResponseMessage::new()
