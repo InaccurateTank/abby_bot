@@ -176,6 +176,11 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 		_ => {}
 	}
 
+	// Changed Unserious
+	if updated.unserious {
+		updated_commands.extend(commands::unserious_commands());
+	}
+
 	// Register Commands
 	poise::builtins::register_in_guild(ctx, &updated_commands, guild.id).await?;
 

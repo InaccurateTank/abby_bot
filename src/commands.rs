@@ -34,17 +34,18 @@ pub fn admin_commands() -> Vec<poise::Command<Data, Report>> {
 	]
 }
 
-/// Vector of meme and otherwise unserious commands.
-pub fn unserious_commands() -> Vec<poise::Command<Data, Report>> {
-	vec![
-		bottomify()
-	]
-}
 
 /// Vector of role management commands.
 pub fn role_commands() -> Vec<poise::Command<Data, Report>> {
 	vec![
 		rolelist()
+	]
+}
+
+/// Vector of meme and otherwise unserious commands.
+pub fn unserious_commands() -> Vec<poise::Command<Data, Report>> {
+	vec![
+		bottomify()
 	]
 }
 
