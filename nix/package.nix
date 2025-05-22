@@ -6,7 +6,7 @@
 }:
 rustPlatform.buildRustPackage {
   pname = "abby_bot";
-  version = "0.5.0";
+  version = "1.0.0";
 
   nativeBuildInputs = [pkg-config];
 
@@ -16,7 +16,7 @@ rustPlatform.buildRustPackage {
 
   src = ../.;
 
-  cargoHash = "sha256-LTp+HUqBW8k6x0I6Y97oSJQr8AKbYVY9P0qqUM0ZaBU=";
+  cargoHash = "sha256-A2xkNKuCizeA1LKGvQ5U1Hot9bEfXb0Fp4Mt4sSQ64Q=";
 
   meta = {
     description = "A mediocre general purpose discord bot written in Rust.";

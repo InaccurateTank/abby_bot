@@ -3,7 +3,7 @@ name = "abby_bot"
 authors = ["inaccuratetank"]
 description = "A poorly assembled custom chatbot"
 repository = "https://git.inaccuratetank.gay/inaccuratetank/abby_bot"
-version = "0.5.0"
+version = "1.0.0"
 edition = "2024"
 publish = false
 
