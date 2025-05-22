@@ -3,7 +3,6 @@ use poise::serenity_prelude as serenity;
 use tracing::warn;
 use crate::error::BotError;
 
-#[derive(Debug)]
 pub enum UserCount {
 	Working(tokio::task::JoinHandle<u8>),
 	Calculated(u8)
@@ -47,7 +46,6 @@ impl UserCount {
 	}
 }
 
-#[derive(Debug)]
 pub struct RoleVitals {
 	pub id: serenity::RoleId,
 	pub name: String,

@@ -11,7 +11,7 @@ fn to_pathbuf(s: &str) -> PathBuf {
 	PathBuf::from(s.replace("/", MAIN_SEPARATOR_STR))
 }
 
-#[derive(Debug, Options)]
+#[derive(Options)]
 pub struct Opts {
 	pub help: bool,
 	#[options(help = "Path to the directory where persistent data will be stored.", default = "data", meta = "<PATH>", parse(from_str = "to_pathbuf"))]

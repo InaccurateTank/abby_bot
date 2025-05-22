@@ -28,7 +28,7 @@ pub async fn snap(ctx: Context<'_>) -> Result<()> {
 	Ok(())
 }
 
-#[derive(Debug, poise::ChoiceParameter)]
+#[derive(poise::ChoiceParameter)]
 enum ChannelKind {
 	Text,
 	Voice,

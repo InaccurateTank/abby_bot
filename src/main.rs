@@ -32,7 +32,6 @@ mod colors {
 // pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Report>;
 
-#[derive(Debug)]
 pub struct Data {
 	pub db: sqlx::Pool<sqlx::Sqlite>
 }

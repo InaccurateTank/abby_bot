@@ -9,7 +9,7 @@ token = "INSERT_TOKEN"
 # This will be parsed before the token setting.
 # token_file = "PATH_TO_TOKEN"##;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct Config {
 	pub token: Option<String>,
 	pub token_file: Option<String>

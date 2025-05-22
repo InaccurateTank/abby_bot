@@ -28,7 +28,7 @@ fn id_split(url: String) -> Result<[u64;2]> {
 	Ok([channel_result, message_result])
 }
 
-#[derive(Debug, poise::Modal)]
+#[derive(poise::Modal)]
 #[name = "Continue with mass delete?"]
 struct ConfirmModal {
 	#[placeholder = "Insert the final number in the from URL to continue"]

@@ -7,7 +7,7 @@ use sqlx::{
 };
 use crate::concat;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Default)]
 pub struct GuildSettings {
 	/// Whether the server will allow unserious and/or meme content or not, default `true`.
 	pub unserious: bool,
@@ -143,7 +143,6 @@ pub async fn roles_channel_query(
 		// )
 }
 
-#[derive(Debug)]
 pub enum CheckGuildSetting {
 	Admin,
 	Role,
@@ -204,7 +203,7 @@ pub async fn delete_guild(
 
 // Role Groups Table
 
-#[derive(FromRow, Debug)]
+#[derive(FromRow)]
 pub struct Group {
 	/// Name of the role group
 	pub group_name: String,
