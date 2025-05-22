@@ -143,6 +143,30 @@ pub async fn roles_channel_query(
 		// )
 }
 
+pub enum CheckSingle {
+	Admin,
+	Role,
+	Unserious
+}
+impl CheckSingle {
+	pub async fn query(
+		&self,
+		guild_id: &serenity::GuildId,
+		db: &sqlx::SqlitePool
+	) -> Result<bool> {
+		let text = match self {
+			Self::Admin => "SELECT admin FROM guild_settings WHERE guild_id = ?;",
+			Self::Role => "SELECT roles FROM guild_settings WHERE guild_id = ?;",
+			Self::Unserious => "SELECT unserious FROM guild_settings WHERE guild_id = ?;",
+		};
+		sqlx::query_scalar::<_, bool>(text)
+			.bind(guild_id.get() as i64)
+			.fetch_one(db)
+			.await
+			.map_err(Into::into)
+	}
+}
+
 // Role Groups Table
 
 #[derive(FromRow, Debug)]

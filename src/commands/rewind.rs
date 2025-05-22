@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use color_eyre::{Report, Result};
 use poise::{serenity_prelude as serenity, Modal};
 use crate::{
+	checks,
 	Data,
 	templates,
 	error::{BotError, UserError}
@@ -46,6 +47,7 @@ struct ConfirmModal {
 #[poise::command(
 	guild_only,
 	slash_command,
+	check = "checks::admin",
 	required_permissions="MANAGE_MESSAGES",
 	ephemeral
 )]

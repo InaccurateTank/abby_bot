@@ -109,11 +109,6 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 		updated_commands.extend(commands::admin_commands());
 	}
 
-	// Changed Serious
-	if updated.unserious {
-		updated_commands.extend(commands::unserious_commands());
-	}
-
 	// Changed Roles
 	match updated.roles {
 		// Enabled

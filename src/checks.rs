@@ -1,7 +1,6 @@
 use color_eyre::Result;
 use crate::{
-	Context,
-	templates
+	database, templates, Context
 };
 
 fn feature_not_enabled(
@@ -17,16 +16,31 @@ fn feature_not_enabled(
 		.ephemeral(true)
 }
 
+pub async fn admin(ctx: Context<'_>) -> Result<bool> {
+	// Admin commands are guild exclusive. They shouldn't even be *registered* outside of one.
+	let Some(id) = ctx.guild_id() else {
+		return Ok(false)
+	};
+	match database::CheckSingle::Admin.query(&id, &ctx.data().db).await {
+		Ok(v) => if !v {
+			ctx.send(feature_not_enabled("roles")).await?;
+			return Ok(false)
+		},
+		Err(e) => return Err(e.into())
+	};
+	Ok(true)
+}
+
 pub async fn roles(ctx: Context<'_>) -> Result<bool> {
 	// Role management is a server exclusive feature. Somthing is deeply wrong if we're not in a guild.
 	let Some(id) = ctx.guild_id() else {
 		return Ok(false)
 	};
-	let roles = sqlx::query_scalar::<_, bool>("SELECT roles FROM guild_settings WHERE guild_id = ?;")
-		.bind(id.get() as i64)
-		.fetch_one(&ctx.data().db)
-		.await;
-	match roles {
+	// let roles = sqlx::query_scalar::<_, bool>("SELECT roles FROM guild_settings WHERE guild_id = ?;")
+	// 	.bind(id.get() as i64)
+	// 	.fetch_one(&ctx.data().db)
+	// 	.await;
+	match database::CheckSingle::Role.query(&id, &ctx.data().db).await {
 		Ok(v) => if !v {
 			ctx.send(feature_not_enabled("roles")).await?;
 			return Ok(false)
@@ -46,11 +60,11 @@ pub async fn unserious(ctx: Context<'_>) -> Result<bool> {
 	let Some(id) = ctx.guild_id() else {
 		return Ok(true)
 	};
-	let unserious = sqlx::query_scalar::<_, bool>("SELECT unserious FROM guild_settings WHERE guild_id = ?;")
-		.bind(id.get() as i64)
-		.fetch_one(&ctx.data().db)
-		.await;
-	match unserious {
+	// let unserious = sqlx::query_scalar::<_, bool>("SELECT unserious FROM guild_settings WHERE guild_id = ?;")
+	// 	.bind(id.get() as i64)
+	// 	.fetch_one(&ctx.data().db)
+	// 	.await;
+	match database::CheckSingle::Unserious.query(&id, &ctx.data().db).await {
 		Ok(v) => 	if !v {
 			ctx.send(feature_not_enabled("unserious")).await?;
 			return Ok(false)

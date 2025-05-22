@@ -1,7 +1,11 @@
 use color_eyre::Result;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use crate::{
-	error::{BotError, UserError}, templates, utils, Context
+	checks,
+	error::{BotError, UserError},
+	templates,
+	utils,
+	Context
 };
 
 /// A set of commands to quickly add things to the server. Less powerful than discords standard options.
@@ -14,6 +18,7 @@ use crate::{
 #[poise::command(
 	guild_only,
 	slash_command,
+	check = "checks::admin",
 	category="Administration",
 	ephemeral,
 	subcommands("channel", "role")
