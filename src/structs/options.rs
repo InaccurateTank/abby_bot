@@ -1,4 +1,4 @@
-use std::path::{PathBuf, MAIN_SEPARATOR_STR};
+use std::path::PathBuf;
 use gumdrop::Options;
 use tracing::instrument;
 
@@ -8,6 +8,7 @@ fn to_pathbuf(s: &str) -> PathBuf {
 }
 #[cfg(windows)]
 fn to_pathbuf(s: &str) -> PathBuf {
+	use std::path::MAIN_SEPARATOR_STR;
 	PathBuf::from(s.replace("/", MAIN_SEPARATOR_STR))
 }
 
@@ -27,13 +28,11 @@ impl Opts {
 	/// Thin wrapper around [parse_args_default_or_exit][gumdrop::Options::parse_args_default_or_exit()]
 	pub fn parse() -> Self {
 		let mut res = Opts::parse_args_default_or_exit();
-		// data_dir is a directory, thus should end with a seperator
-		if res.data_dir.ends_with(MAIN_SEPARATOR_STR) {
-			res.data_dir.push(MAIN_SEPARATOR_STR);
-		}
 		// default configuration location
 		if res.config.as_os_str().is_empty() {
-			res.config = res.data_dir.join("config.toml");
+			res.config = res.data_dir.join("config");
+			res.config.set_extension("toml");
+			println!("{}", res.config.to_string_lossy());
 		}
 		res
 	}
