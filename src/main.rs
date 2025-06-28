@@ -51,13 +51,14 @@ async fn main() -> Result<()> {
 	}
 
 	// Database
-	info!("Connecting to database");
+	let db_file = opts.data_dir.join("sqlite.db");
+	info!("Connecting to database at {}", db_file.to_string_lossy());
 	let pool = SqlitePoolOptions::new()
 		.max_connections(5)
 		.connect_with(
 			// Connection options
 			SqliteConnectOptions::new()
-				.filename(opts.data_dir.join("sqlite.db"))
+				.filename(db_file)
 				.create_if_missing(true)
 				.foreign_keys(true)
 	).await?;
