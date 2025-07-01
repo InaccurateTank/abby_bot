@@ -8,13 +8,16 @@ use crate::{
 	concat
 };
 
-pub fn embed<'a>(
+pub async fn embed<'a>(
 	group: impl Into<String>,
-	role_list: impl IntoIterator<Item = &'a structs::RoleVitals>
+	role_list: impl IntoIterator<Item = &'a mut structs::RoleVitals>
 ) -> Result<serenity::CreateEmbed> {
 	let mut name_str = String::new();
 	let mut user_str = String::new();
 	for r in role_list {
+		if let structs::UserCount::Working(_) = r.users {
+			r.users.solve().await?;
+		}
 		name_str = concat!(&name_str, &format!("{}\n", r.name));
 		user_str = concat!(&user_str, &format!("{}\n", r.users.get()?));
 	}

@@ -181,7 +181,7 @@ async fn create(
 	)
 	.await?;
 
-	let selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind {
+	let mut selected_roles = if let serenity::ComponentInteractionDataKind::StringSelect { values } = &interaction.data.kind {
 		values.iter()
 			.map(|s| structs::RoleVitals::new(serenity::RoleId::from_str(s)?, &guild))
 			.collect::<Result<Vec<structs::RoleVitals>>>()?
@@ -193,11 +193,11 @@ async fn create(
 
 	// Send message with roles.
 	if let Ok(msg) = channel.send_message(ctx, serenity::CreateMessage::new()
-			.embed(templates::rolelist::embed(&group, &selected_roles)?)
+			.embed(templates::rolelist::embed(&group, &mut selected_roles).await?)
 			.components(vec![templates::rolelist::components(&group)])
 		).await {
 		// Add roles if successful
-		query("INSERT INTO role_groups (guild_id, group_name, message) VALUES (?, ?, ?);")
+		query("INSERT INTO role_groups (guild_id, group_name, message_id) VALUES (?, ?, ?);")
 			.bind(guild.id.get() as i64)
 			.bind(&group)
 			.bind(msg.id.get() as i64)

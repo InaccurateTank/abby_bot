@@ -60,6 +60,11 @@ async fn roles_click(
 		// Rolelist Pick
 		"pick" => {
 			if guild.user_permissions_in(&channel, member).manage_roles() {
+				let error = UserError(BotError::RolePickPermissions.into());
+				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
+					.ephemeral(true)
+					.embed(templates::status::error(None, format!("{error}")))
+				)).await?;
 				return Err(UserError(BotError::RolePickPermissions.into()).into())
 			}
 
@@ -92,7 +97,7 @@ async fn roles_click(
 			)).await?;
 
 			// Wait for response
-			let mut response_message = mci.get_response(ctx).await?;
+			let response_message = mci.get_response(ctx).await?;
 			let Some(sec_mci) = response_message.await_component_interaction(ctx)
 				.author_id(member.user.id)
 				.timeout(std::time::Duration::from_secs(300))
@@ -103,7 +108,7 @@ async fn roles_click(
 			};
 
 			// Processing message
-			response_message.edit(ctx, serenity::EditMessage::default()
+			mci.edit_response(ctx, serenity::EditInteractionResponse::new()
 				.embed(templates::status::processing())
 				.components(Vec::new())
 			).await?;
@@ -162,14 +167,8 @@ async fn roles_click(
 				)
 			)).await?;
 
-			roles_list.sort_by(|a, b| {
-				let a_l = a.name.to_lowercase();
-				let b_l = b.name.to_lowercase();
-				a_l.cmp(&b_l)
-			});
-
 			mci.message.to_owned().edit(ctx, serenity::EditMessage::new()
-				.embed(templates::rolelist::embed(group_name, &roles_list)?)
+				.embed(templates::rolelist::embed(group_name, &mut roles_list).await?)
 			).await?;
 		},
 
@@ -207,22 +206,23 @@ async fn roles_click(
 				])
 			)).await?;
 
-			let mut response_message = mci.get_response(ctx).await?;
+			let response_message = mci.get_response(ctx).await?;
 			let Some(sec_mci) = response_message.await_component_interaction(ctx)
-			.author_id(member.user.id)
-			.timeout(std::time::Duration::from_secs(300))
-			.await else
+				.author_id(member.user.id)
+				.timeout(std::time::Duration::from_secs(300))
+				.await else
 			{
 				response_message.delete(ctx).await?;
 				return Err(BotError::InteractionTimedOut.into())
 			};
 
-			response_message.edit(ctx, serenity::EditMessage::default()
+			// Processing message
+			mci.edit_response(ctx, serenity::EditInteractionResponse::new()
 				.embed(templates::status::processing())
 				.components(Vec::new())
 			).await?;
 
-			let selected_roles = match &sec_mci.data.kind {
+			let mut selected_roles = match &sec_mci.data.kind {
 				serenity::ComponentInteractionDataKind::StringSelect { values } => values.iter()
 					.map(|s| structs::RoleVitals::new(
 						serenity::RoleId::from_str(s)?,
@@ -261,7 +261,7 @@ async fn roles_click(
 			)).await?;
 
 			mci.message.to_owned().edit(ctx, serenity::EditMessage::new()
-				.embed(templates::rolelist::embed(group_name, &selected_roles)?)
+				.embed(templates::rolelist::embed(group_name, &mut selected_roles).await?)
 			).await?;
 		},
 

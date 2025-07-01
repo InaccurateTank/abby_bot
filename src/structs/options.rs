@@ -32,7 +32,6 @@ impl Opts {
 		if res.config.as_os_str().is_empty() {
 			res.config = res.data_dir.join("config");
 			res.config.set_extension("toml");
-			println!("{}", res.config.to_string_lossy());
 		}
 		res
 	}

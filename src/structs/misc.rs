@@ -26,7 +26,7 @@ impl UserCount {
 
 	pub async fn solve(&mut self) -> Result<()> {
 		if let Self::Working(result) = self {
-			*self = Self::Calculated(result.await?)
+			*self = Self::Calculated(result.await?);
 		} else {
 			warn!("Attempt to solve already solved user count.");
 		}
@@ -58,11 +58,9 @@ impl RoleVitals {
 	) -> Result<Self> {
 		let closure_id = id.to_owned();
 		let closure_members = guild.members.to_owned();
-		let spawn = tokio::spawn(async move {
+		let spawn = tokio::task::spawn_blocking(move || {
 			closure_members.into_iter()
-				.filter(|(_, m)| {
-					m.roles.contains(&closure_id)
-				}).count() as u8
+				.filter(|(_, m)| m.roles.contains(&closure_id)).count() as u8
 		});
 
 		let name = guild.roles
