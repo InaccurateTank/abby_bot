@@ -1,10 +1,7 @@
 use std::str::FromStr;
 use color_eyre::Result;
 use poise::serenity_prelude as serenity;
-use sqlx::{
-	query,
-	query_scalar
-};
+use sqlx::query;
 use crate::{
 	checks, colors, database, error::{BotError, UserError}, structs, templates, utils, Context
 };
@@ -40,14 +37,11 @@ async fn autocomplete_groups<'a>(
 	let guild_id = ctx.guild_id()
 		.unwrap();
 
-	let groups: Vec<String> = query_scalar("SELECT group_name from role_groups WHERE server_id = ?")
-		.bind(guild_id.get() as i64)
-		.fetch_all(&ctx.data().db)
+	database::groups_from_query(guild_id, &ctx.data().db)
 		.await
-		.unwrap();
-
-	groups.into_iter()
-		.filter(move |f| f.starts_with(partial))
+		.unwrap()
+		.into_iter()
+		.filter_map(move |f| if f.group_name.starts_with(partial) {Some(f.group_name)} else {None})
 }
 
 #[poise::command(
