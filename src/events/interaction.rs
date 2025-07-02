@@ -178,7 +178,7 @@ async fn roles_click(
 
 		// Rolelist Edit
 		"edit" => {
-			if true {// !guild.user_permissions_in(&channel, member).manage_roles() {
+			if !guild.user_permissions_in(&channel, member).manage_roles() {
 				let permissions = serenity::Permissions::MANAGE_ROLES;
 				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 					.ephemeral(true)
