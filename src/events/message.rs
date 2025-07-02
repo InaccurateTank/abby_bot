@@ -1,4 +1,5 @@
 use color_eyre::Result;
+use tracing::instrument;
 use crate::database;
 use poise::serenity_prelude as serenity;
 use regex::Regex;
@@ -13,6 +14,7 @@ pub async fn handler(ctx: &serenity::Context, msg: &serenity::Message, guild_set
 	Ok(())
 }
 
+#[instrument(skip_all)]
 async fn borger(ctx: &serenity::Context, msg: &serenity::Message, content: &str) -> Result<()> {
   if Regex::new(r"(?i)\S*b[ou]rger\b")?.is_match(content) {
     let time = time::OffsetDateTime::now_utc()
@@ -23,6 +25,7 @@ async fn borger(ctx: &serenity::Context, msg: &serenity::Message, content: &str)
   Ok(())
 }
 
+#[instrument(skip_all)]
 async fn v(ctx: &serenity::Context, msg: &serenity::Message, content: &str) -> Result<()> {
   if Regex::new(r"(?i)\S*vore\b")?.is_match(content) {
 		msg.reply(ctx, "https://i.imgur.com/59urJXr.png").await?;

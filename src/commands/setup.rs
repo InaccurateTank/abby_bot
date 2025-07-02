@@ -1,6 +1,5 @@
 use color_eyre::Result;
 use poise::serenity_prelude::{self as serenity, Mentionable};
-use tracing::instrument;
 use crate::{
 	checks,
 	colors,
@@ -32,7 +31,6 @@ pub async fn setup(ctx: Context<'_>) -> Result<()> {
 	Ok(())
 }
 
-#[instrument(skip_all)]
 /// Sets up various settings for the bot on the server.
 #[poise::command(
 	guild_only,
@@ -186,7 +184,6 @@ async fn bot(ctx: Context<'_>) -> Result<()> {
 	Ok(())
 }
 
-#[instrument(skip_all)]
 /// Edits settings for the role management feature.
 #[poise::command(
 	guild_only,

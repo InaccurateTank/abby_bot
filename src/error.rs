@@ -70,13 +70,9 @@ pub enum BotError {
 	#[error("A role with an identical name already exists.")]
 	RoleAlreadyExists,
 
-	/// Special error for role picking due to constraints.
-	#[error("For security reasons the role management feature only works on users without role management permissions. As you have these permissions, simply assign them yourself. If you cannot assign them to yourself then I can't assign them to anyone anyway.")]
-	RolePickPermissions,
-
 	/// Generic error for missing permissions. Pretty much used entirely on longform interactions.
-	#[error("You must have the following permissions to use that interaction:\n```\n{0:#?}\n```")]
-	InteractionMissingPermissions(Vec<serenity::Permissions>),
+	#[error("Missing required permissions for component: {}", .0.get_permission_names().join(", ").to_ascii_uppercase())]
+	InteractionMissingPermissions(serenity::Permissions),
 
 	/// Commands can filter being in a guild, Interactions can't somehow.
 	#[error("This interaction can only be created and used in a guild. If this is in a direct message somthing has gone wrong.")]
@@ -101,46 +97,11 @@ pub async fn error_handler<U>(
 		FrameworkError::Setup { error, ..} =>
 			error!("Failed to complete setup: {error:#}"),
 
-		FrameworkError::EventHandler { error, ctx, event, .. } => {
-			let message = if let serenity::FullEvent::InteractionCreate { interaction } = event {
-				match interaction {
-					serenity::Interaction::Component(interaction) => interaction.get_response(ctx).await.ok(),
-					serenity::Interaction::Modal(interaction) => interaction.get_response(ctx).await.ok(),
-					_ => None
-				}
-			} else {
-				None
-			};
+		FrameworkError::EventHandler { error, event, .. } => {
 			if error.is::<UserError>() {
-				warn!("User made an error with event {:?}: {error:?}", event.snake_case_name());
-				if let Some(mut message) = message {
-					message.edit(
-						ctx,
-						serenity::EditMessage::default()
-							.embed(
-								status::warning(
-									None,
-									format!("An error has been made during event {:?}:\n```\n{error:#}\n```", event.snake_case_name())
-								).footer(serenity::CreateEmbedFooter::new(USER_ERROR))
-							)
-							.components(vec![])
-					).await?;
-				}
+				warn!("User made an error with event {:?}: {error:#}", event.snake_case_name());
 			} else {
-				error!("Failed to handle event {:?}: {error:?}", event.snake_case_name());
-				if let Some(mut message) = message {
-					message.edit(
-						ctx,
-						serenity::EditMessage::default()
-							.embed(
-								status::warning(
-									None,
-									format!("An error occurred during event {:?}:\n```\n{error:#}\n```", event.snake_case_name())
-								).footer(serenity::CreateEmbedFooter::new(BOT_ERROR))
-							)
-							.components(vec![])
-					).await?;
-				}
+				error!("Failed to handle event {:?}: {error:#}", event.snake_case_name());
 			}
 		},
 
@@ -156,7 +117,7 @@ pub async fn error_handler<U>(
 						)
 				).await?;
 			} else {
-				error!("An error occurred during the execution of {:?}: {error:?}", ctx.invocation_string());
+				error!("An error occurred during the execution of {:?}: {error:#}", ctx.invocation_string());
 				ctx.send(
 					error_reply().embed(
 						status::error(

@@ -4,6 +4,7 @@ use std::{
 };
 use color_eyre::Result;
 use poise::serenity_prelude as serenity;
+use tracing::instrument;
 use crate::{
 	colors, database, error::{BotError, UserError}, structs, templates, utils, Data
 };
@@ -28,6 +29,7 @@ pub async fn mci_handler(
 	Ok(())
 }
 
+#[instrument(skip_all)]
 async fn roles_click(
 	ctx: &serenity::Context,
 	data: &Data,
@@ -60,12 +62,14 @@ async fn roles_click(
 		// Rolelist Pick
 		"pick" => {
 			if guild.user_permissions_in(&channel, member).manage_roles() {
-				let error = UserError(BotError::RolePickPermissions.into());
 				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
 					.ephemeral(true)
-					.embed(templates::status::error(None, format!("{error}")))
+					.embed(templates::status::warning(
+						None,
+						"For security reasons the role management feature only works on users without role management permissions. As you have these permissions simply assign them yourself. If you can't assign them to yourself I can't assign them to anyone regardless of rank."
+					))
 				)).await?;
-				return Err(UserError(BotError::RolePickPermissions.into()).into())
+				return Ok(())
 			}
 
 			let mut roles_list = db_group_roles.into_iter()
@@ -174,8 +178,16 @@ async fn roles_click(
 
 		// Rolelist Edit
 		"edit" => {
-			if !guild.user_permissions_in(&channel, member).manage_roles() {
-				return Err(UserError(BotError::InteractionMissingPermissions(vec![serenity::Permissions::MANAGE_ROLES]).into()).into())
+			if true {// !guild.user_permissions_in(&channel, member).manage_roles() {
+				let permissions = serenity::Permissions::MANAGE_ROLES;
+				mci.create_response(ctx, serenity::CreateInteractionResponse::Message(serenity::CreateInteractionResponseMessage::new()
+					.ephemeral(true)
+					.embed(templates::status::warning(
+						None,
+						format!("The following permissions are required to use that component:\n```{}```", permissions.get_permission_names().join("\n").to_ascii_uppercase())
+					))
+				)).await?;
+				return Err(UserError(BotError::InteractionMissingPermissions(permissions).into()).into())
 			}
 
 			// Select menu sorting

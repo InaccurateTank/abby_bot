@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
 		},
 		on_error: |error| Box::pin(async move {
 			if let Err(e) = error::error_handler(error).await {
-				error!("Failed to handle error: {e:#}");
+				error!("Failed to handle error: {e:?}");
 			}
 		}),
 		..Default::default()
@@ -165,6 +165,7 @@ fn install_tracing(
 	let log_layer = tracing_subscriber::fmt::layer()
 		.with_writer(non_blocking)
 		.with_target(false)
+		.with_thread_ids(true)
 		.with_ansi(false)
 		.fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
 		.with_filter(tracing_subscriber::filter::LevelFilter::INFO);

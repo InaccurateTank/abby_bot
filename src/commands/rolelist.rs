@@ -3,7 +3,14 @@ use color_eyre::Result;
 use poise::serenity_prelude as serenity;
 use sqlx::query;
 use crate::{
-	checks, colors, database, error::{BotError, UserError}, structs, templates, utils, Context
+	checks,
+	colors,
+	database,
+	error::{BotError, UserError},
+	structs,
+	templates,
+	utils,
+	Context
 };
 
 /// Creates or deletes a list of roles to select from.
@@ -44,6 +51,7 @@ async fn autocomplete_groups<'a>(
 		.filter_map(move |f| if f.group_name.starts_with(partial) {Some(f.group_name)} else {None})
 }
 
+/// Deletes a list of roles.
 #[poise::command(
 	guild_only,
 	slash_command,
