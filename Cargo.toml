@@ -18,6 +18,7 @@ time = { version = "0.3", features = ["formatting", "local-offset"] }
 tokio = { version = "1.45", features = ["macros", "rt-multi-thread", "signal"] }
 toml = { version = "0.8" }
 tracing = { version = "0.1" }
+tracing-appender = { version = "0.2" }
 tracing-error = { version = "0.2" }
 tracing-subscriber = { version = "0.3" }
 regex = { version = "1.11" }

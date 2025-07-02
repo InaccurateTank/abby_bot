@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
 	let opts = structs::Opts::parse();
 
 	// Installing tracing subscriber
-	install_tracing(&opts);
+	let _guard = install_tracing(&opts);
 
 	// Config
 	info!("Loading configuration {}", opts.config.to_string_lossy());
@@ -133,25 +133,51 @@ async fn main() -> Result<()> {
 
 fn install_tracing(
 	options: &structs::Opts
-) {
+) -> tracing_appender::non_blocking::WorkerGuard {
 	use tracing::Level;
+	use tracing_appender::rolling;
 	use tracing_error::ErrorLayer;
 	use tracing_subscriber::prelude::*;
 
+	// Log level filter
 	let verbosity = match options.verbose {
 		0 => Level::INFO,
 		1 => Level::DEBUG,
 		_ => Level::TRACE
 	};
-	let fmt_layer = tracing_subscriber::fmt::layer()
-		.with_writer(std::io::stdout.with_max_level(verbosity))
-		.without_time()
-		.with_target(false);
+	let out_filter = tracing_subscriber::filter::LevelFilter::from_level(verbosity);
 
-	tracing_subscriber::registry()
+	// STDOUT
+	let fmt_layer = tracing_subscriber::fmt::layer()
+		.with_writer(std::io::stdout)
+		.without_time()
+		.with_target(false)
+		.with_filter(out_filter);
+
+	// Log Files
+	let file_appender = rolling::Builder::new()
+		.max_log_files(4)
+		.filename_prefix("abbybot.log")
+		.rotation(rolling::Rotation::DAILY)
+		.build(&options.data_dir)
+		.expect("Failed to create log file appender");
+	let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+	let log_layer = tracing_subscriber::fmt::layer()
+		.with_writer(non_blocking)
+		.with_target(false)
+		.with_ansi(false)
+		.fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
+		.with_filter(tracing_subscriber::filter::LevelFilter::INFO);
+
+	// Subscriber
+	let sub = tracing_subscriber::registry()
 		.with(fmt_layer)
-		.with(ErrorLayer::default())
-		.init();
+		.with(log_layer)
+		.with(ErrorLayer::default());
+	tracing::subscriber::set_global_default(sub)
+		.expect("Failed to set subscriber");
+
+	guard
 }
 
 #[cfg(unix)]
