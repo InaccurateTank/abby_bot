@@ -26,7 +26,7 @@ pub async fn admin(ctx: Context<'_>) -> Result<bool> {
 			ctx.send(feature_not_enabled("roles")).await?;
 			return Ok(false)
 		},
-		Err(e) => return Err(e.into())
+		Err(e) => return Err(e)
 	};
 	Ok(true)
 }
@@ -41,7 +41,7 @@ pub async fn roles(ctx: Context<'_>) -> Result<bool> {
 			ctx.send(feature_not_enabled("roles")).await?;
 			return Ok(false)
 		},
-		Err(e) => return Err(e.into())
+		Err(e) => return Err(e)
 	};
 	Ok(true)
 }
@@ -56,7 +56,7 @@ pub async fn unserious(ctx: Context<'_>) -> Result<bool> {
 			ctx.send(feature_not_enabled("unserious")).await?;
 			return Ok(false)
 		},
-		Err(e) => return Err(e.into())
+		Err(e) => return Err(e)
 	};
 	Ok(true)
 }
