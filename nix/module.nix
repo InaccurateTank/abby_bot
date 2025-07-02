@@ -35,6 +35,7 @@ in {
 		format = pkgs.formats.toml {};
 		configFile = format.generate "abby_bot.toml" {
 			token_file = cfg.tokenFile;
+			lib.location = /var/lib/abby_bot;
 		};
 	in mkIf cfg.enable {
 		users = {
