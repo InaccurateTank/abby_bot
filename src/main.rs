@@ -33,26 +33,13 @@ pub struct Data {
 #[tokio::main]
 async fn main() -> Result<()> {
 	color_eyre::install()?;
-
-	// Options
 	let opts = structs::Opts::parse();
-
-	// Installing tracing subscriber
-	let _guard = install_tracing(&opts);
-
-	// Config
-	info!("Loading configuration {}", opts.config.to_string_lossy());
-	let config = structs::Config::load(opts.config)?;
-
-	// Data Directory
-	if !opts.data_dir.try_exists()? {
-		warn!("Attempting to initialize missing data directory {}", opts.data_dir.to_string_lossy());
-		std::fs::create_dir_all(&opts.data_dir)?;
-	}
+	let config = structs::Config::load(&opts.config)?;
+	let _guard = install_tracing(&opts, &config)?;
 
 	// Database
 	let db_file = opts.data_dir.join("sqlite.db");
-	info!("Connecting to database at {}", db_file.to_string_lossy());
+	info!("Connecting to database at \"{}\"", db_file.to_string_lossy());
 	let pool = SqlitePoolOptions::new()
 		.max_connections(5)
 		.connect_with(
@@ -132,8 +119,9 @@ async fn main() -> Result<()> {
 }
 
 fn install_tracing(
-	options: &structs::Opts
-) -> tracing_appender::non_blocking::WorkerGuard {
+	options: &structs::Opts,
+	config: &structs::Config
+) -> Result<tracing_appender::non_blocking::WorkerGuard> {
 	use tracing::Level;
 	use tracing_appender::rolling;
 	use tracing_error::ErrorLayer;
@@ -145,40 +133,39 @@ fn install_tracing(
 		1 => Level::DEBUG,
 		_ => Level::TRACE
 	};
-	let out_filter = tracing_subscriber::filter::LevelFilter::from_level(verbosity);
 
 	// STDOUT
 	let fmt_layer = tracing_subscriber::fmt::layer()
-		.with_writer(std::io::stdout)
+		.with_writer(std::io::stdout.with_max_level(verbosity))
 		.without_time()
-		.with_target(false)
-		.with_filter(out_filter);
+		.with_target(false);
 
 	// Log Files
+	let log_dir = match &config.log.location {
+		Some(dir) => dir.as_path(),
+		None => &options.data_dir
+	};
 	let file_appender = rolling::Builder::new()
-		.max_log_files(4)
+		.max_log_files(config.log.max_files)
 		.filename_prefix("abbybot.log")
 		.rotation(rolling::Rotation::DAILY)
-		.build(&options.data_dir)
-		.expect("Failed to create log file appender");
+		.build(log_dir)?;
 	let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 	let log_layer = tracing_subscriber::fmt::layer()
-		.with_writer(non_blocking)
+		.with_writer(non_blocking.with_max_level(config.log.level))
 		.with_target(false)
 		.with_thread_ids(true)
 		.with_ansi(false)
-		.fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new())
-		.with_filter(tracing_subscriber::filter::LevelFilter::INFO);
+		.fmt_fields(tracing_subscriber::fmt::format::PrettyFields::new());
 
 	// Subscriber
 	let sub = tracing_subscriber::registry()
 		.with(fmt_layer)
 		.with(log_layer)
 		.with(ErrorLayer::default());
-	tracing::subscriber::set_global_default(sub)
-		.expect("Failed to set subscriber");
+	tracing::subscriber::set_global_default(sub)?;
 
-	guard
+	Ok(guard)
 }
 
 #[cfg(unix)]

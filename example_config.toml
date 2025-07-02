@@ -1,0 +1,13 @@
+# Abbybot config file
+token = "INSERT_TOKEN"
+# Alternatively you can use a file with the token inside of it.
+# The token field will be ignored if this is set
+# token_file = "PATH_TO_TOKEN"
+
+# File logging configuration is optional
+# location:	Dictates where the logs will be stored. Defaults to data_path arg.
+# level:		Follows standard logging levels. Not case sensitive.
+# [log]
+# location = "/var/log/abby_bot"
+# max_files = 5
+# level = "INFO"

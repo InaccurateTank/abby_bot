@@ -1,33 +1,32 @@
-use std::{fs, io};
+use std::{fs, io, path::PathBuf, str::FromStr};
 use color_eyre::{Report, Section};
-use tracing::{info, instrument, warn};
+use serde::Deserialize;
+use tracing::{Level, info, instrument};
 use crate::error::ConfigError;
 
-const DEFAULT_CONFIG: &str = r##"# Abbybot config file
-token = "INSERT_TOKEN"
-# Alternatively you can use a file with the token inside of it.
-# This will be parsed before the token setting.
-# token_file = "PATH_TO_TOKEN"##;
-
-#[derive(serde::Deserialize)]
+#[derive(Deserialize)]
 pub struct Config {
-	pub token: Option<String>,
-	pub token_file: Option<String>
+	token: Option<String>,
+	token_file: Option<String>,
+	#[serde(default = "LogConfig::default")]
+	pub log: LogConfig
 }
 impl Config {
-	#[instrument(fields(path = %path.as_ref().to_string_lossy()))]
 	pub fn load(
 		path: impl AsRef<std::path::Path>
 	) -> Result<Self, Report> {
 		let config_path = path.as_ref();
 		match fs::read_to_string(config_path) {
-			Ok(file) => Ok(toml::from_str(&file)?),
+			Ok(file) => {
+				let res = toml::from_str(&file)?;
+				Ok(res)
+			},
 			Err(e) => {
 				let generated: Result<bool, io::Error> = if e.kind() == io::ErrorKind::NotFound {
 					if let Some(folder) = config_path.parent() {
 						fs::create_dir_all(folder)?;
 					}
-					fs::write(config_path, DEFAULT_CONFIG)?;
+					fs::write(config_path, include_str!("../../example_config.toml"))?;
 					Ok(true)
 				} else {
 					Ok(false)
@@ -47,7 +46,7 @@ impl Config {
 		}
 	}
 
-	#[instrument(skip(self))]
+	#[instrument(skip_all)]
 	pub fn read_token(&self) -> Result<String, Report> {
 		if let Some(p) = &self.token_file {
 			info!("Loading token from token file.");
@@ -57,6 +56,34 @@ impl Config {
 			Ok(t.to_owned())
 		} else {
 			Err(ConfigError::Token.into())
+		}
+	}
+}
+
+fn level_from_string<'de, D> (deserializer: D) -> std::result::Result<Level, D::Error>
+where
+	D: serde::Deserializer<'de>
+{
+	use serde::de;
+	let string = String::deserialize(deserializer)?;
+	Level::from_str(&string)
+		.map_err(|_| de::Error::invalid_value(de::Unexpected::Str(&string), &"a logging level"))
+}
+
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct LogConfig {
+	pub location: Option<PathBuf>,
+	pub max_files: usize,
+	#[serde(deserialize_with = "level_from_string")]
+	pub level: tracing::Level
+}
+impl Default for LogConfig {
+	fn default() -> Self {
+		Self {
+			location: None,
+			max_files: 5,
+			level: Level::INFO
 		}
 	}
 }

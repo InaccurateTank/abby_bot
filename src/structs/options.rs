@@ -29,7 +29,7 @@ impl Opts {
 	pub fn parse() -> Self {
 		let mut res = Opts::parse_args_default_or_exit();
 		// default configuration location
-		if res.config.as_os_str().is_empty() {
+		if res.config.components().count() == 0 {
 			res.config = res.data_dir.join("config");
 			res.config.set_extension("toml");
 		}
