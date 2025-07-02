@@ -4,6 +4,14 @@ abby_bot is a general purpose discord bot built as a hobby project. While origin
 
 The general plan behind this bot is to integrate features that Discord has not or will not incorperate into their UI. So far these features include bulk message deletion and end-user role management. Any other features are frankly up to my whims on a moment to moment basis. Occasionally I'll sneak in a meme command. You've been warned.
 
+## Features
+
+- Role Management `rolelist`
+- Quickly adding roles and channels via text input `snap`
+- Mass deletion (and text archival) of messages in a channel `rewind`
+- Meme commands!
+- Meme responses!
+
 ## Configuration
 
 The bot by default creates its needed files (A SQLite database and config file) in a data folder within its running directory. It can however be fed a both a persistent data folder and a configuration file. Choosing a data folder requires using the argument `--data_dir` or `-d` while configuration files take `--config` or `-c`. For example `abby_bot -c /etc/abby_bot/config.toml -d /var/lib/abbybot`.
