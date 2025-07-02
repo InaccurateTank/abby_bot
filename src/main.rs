@@ -84,7 +84,14 @@ async fn main() -> Result<()> {
 		}),
 		..Default::default()
 	};
-	let intents = serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::GUILD_MESSAGES | serenity::GatewayIntents::MESSAGE_CONTENT;
+	let intents = serenity::GatewayIntents::GUILDS
+		| serenity::GatewayIntents::DIRECT_MESSAGES
+		// Allows seeing other users
+		| serenity::GatewayIntents::GUILD_PRESENCES
+		// Allows refresh of user information
+		| serenity::GatewayIntents::GUILD_MEMBERS
+		// To view message events
+		| serenity::GatewayIntents::MESSAGE_CONTENT;
 
 	// Bot Setup
 	let framework = poise::Framework::builder()

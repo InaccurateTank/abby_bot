@@ -134,20 +134,19 @@ async fn roles_click(
 				// Finish processing user counts
 				r.users.solve().await?;
 				let member_contain = member.roles.contains(&r.id);
-				let selected_contain = selected_roles.iter()
-					.any(|f| f == &r.id);
+				let selected_contain = selected_roles.contains(&r.id);
 
 				// If role is selected but not in member roles
 				if selected_contain && !member_contain {
 					// Add Role to Member
-					match member.to_owned().add_role(ctx, r.id).await {
+					match member.add_role(ctx, r.id).await {
 						Ok(_) => {r.users.increment()?;},
 						Err(e) => error_list.push(format!("Error applying role \"{}\": {}", r.name, e))
 					}
 				// If role isn't selected and is in member roles
 				} else if !selected_contain && member_contain {
 					// Remove Role from Member
-					match member.to_owned().remove_role(ctx, r.id).await {
+					match member.remove_role(ctx, r.id).await {
 						Ok(_) => {r.users.decrement()?;},
 						Err(e) => error_list.push(format!("Error removing role \"{}\": {}", r.name, e))
 					}
